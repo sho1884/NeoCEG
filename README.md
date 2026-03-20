@@ -81,7 +81,7 @@ Specifications are maintained in the [`Doc/`](Doc/) directory. / 仕様書は `D
 
 ## Acknowledgments / 謝辞
 
-This project owes a profound debt to **X-CEG** (Koichi Akiyama) and **CEGTest** (Masaki Kase), whose tools brought the Cause-Effect Graphing technique into practical, usable form.
+This project owes a profound debt to **X-CEG** (Dr. Koichi Akiyama) and **CEGTest** (Masaki Kase), whose tools brought the Cause-Effect Graphing technique into practical, usable form.
 
 本プロジェクトは、秋山浩一氏の **X-CEG** および加瀬正樹氏の **CEGTest** に多大な恩恵を受けています。両氏のツールは、原因結果グラフ技法を実用的かつ使いやすい形に具現化しました。
 
