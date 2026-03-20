@@ -1,0 +1,83 @@
+# NeoCEG Non-Functional Requirements
+
+version: "0.3"
+last_updated: "2026-01-25"
+
+requirements:
+  NFR-001:
+    parent: [UR-002, UR-003]
+    category: performance
+    name: "Response performance"
+    criteria:
+      - item: "Edit operation response"
+        standard: "Within 100ms (up to 100 nodes)"
+      - item: "Decision table recalculation"
+        standard: "Within 1 second (up to 100 nodes)"
+      - item: "DSL import"
+        standard: "Within 1 second (up to 1000 lines)"
+
+  NFR-010:
+    parent: [UR-002]
+    category: usability
+    name: "Intuitive operation"
+    criteria:
+      - item: "Main operations"
+        standard: "Completable with mouse only"
+      - item: "Help"
+        standard: "Display via tooltips"
+      - item: "First use"
+        standard: "Provide onboarding (tutorial)"
+
+  NFR-011:
+    parent: [UR-002, UR-006]
+    category: usability
+    name: "Error handling"
+    criteria:
+      - item: "Error messages"
+        standard: "Display in selected language (see NFR-040)"
+      - item: "Data protection"
+        standard: "Data is not lost on error"
+      - item: "Syntax errors"
+        standard: "Display with line number"
+
+  NFR-020:
+    parent: []
+    category: compatibility
+    name: "Browser compatibility"
+    criteria:
+      - item: "Primary"
+        standard: "Chrome latest version"
+      - item: "Secondary"
+        standard: "Firefox, Safari, Edge latest versions"
+      - item: "Out of scope"
+        standard: "Mobile browsers (future consideration)"
+
+  NFR-030:
+    parent: []
+    category: maintainability
+    name: "Code quality"
+    criteria:
+      - item: "Type safety"
+        standard: "Implemented in TypeScript"
+      - item: "Testability"
+        standard: "Design testable at component level"
+      - item: "Modularity"
+        standard: "DSL parser as independent module"
+
+  NFR-040:
+    parent: []
+    category: internationalization
+    name: "Internationalization"
+    criteria:
+      - item: "Supported languages"
+        standard: "English (EN), Japanese (JA)"
+      - item: "UI language switch"
+        standard: "User can switch in settings"
+      - item: "Default language"
+        standard: "Follow browser locale setting"
+      - item: "DSL keywords"
+        standard: "English only (AND, OR, NOT, ONE, EXCL, INCL, REQ, MASK)"
+      - item: "Node labels"
+        standard: "Unicode characters allowed (including Japanese)"
+      - item: "Error messages"
+        standard: "Display in selected language"

@@ -1,0 +1,13 @@
+# NOT single input: NOT(A) -> C
+# Used by: cegAlgorithm (extractExpressions single-input)
+#          decisionTable (NOT expression)
+
+p1: "A"
+p2: "C"
+
+p2 := NOT p1
+
+@layout {
+  p1: (100, 175)
+  p2: (400, 175)
+}

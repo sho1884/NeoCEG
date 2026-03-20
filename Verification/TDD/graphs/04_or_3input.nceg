@@ -1,0 +1,16 @@
+# OR 3-input: A OR B OR C -> D
+# Used by: cegAlgorithm (extractExpressions - 4 expressions)
+
+p1: "A"
+p2: "B"
+p3: "C"
+p4: "D"
+
+p4 := p1 OR p2 OR p3
+
+@layout {
+  p1: (100, 50)
+  p2: (100, 200)
+  p3: (100, 350)
+  p4: (400, 200)
+}

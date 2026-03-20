@@ -1,0 +1,12 @@
+# Simple pass-through: ref(A) -> C
+# Used by: cegAlgorithm (extractExpressions single-input)
+
+p1: "A"
+p2: "C"
+
+p2 := p1
+
+@layout {
+  p1: (100, 175)
+  p2: (400, 175)
+}

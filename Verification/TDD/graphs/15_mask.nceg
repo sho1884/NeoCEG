@@ -1,0 +1,16 @@
+# MASK constraint: trigger -> target, MASK(trigger -> target)
+# Used by: decisionTable (MASK constraint, masked targets shown as M)
+
+p1: "trigger"
+p2: "mask target"
+p3: "result"
+
+p3 := p2
+
+MASK(p1 -> p2)
+
+@layout {
+  p1: (100, 100)
+  p2: (100, 250)
+  p3: (400, 175)
+}

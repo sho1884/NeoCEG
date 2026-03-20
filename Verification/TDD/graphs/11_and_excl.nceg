@@ -1,0 +1,17 @@
+# AND with EXCL constraint: A AND B -> C, EXCL(A, B)
+# Used by: decisionTable (EXCL constraint), learningMode (infeasible columns)
+#          cegAlgorithm (integration deduce with EXCL)
+
+p1: "A"
+p2: "B"
+p3: "C"
+
+p3 := p1 AND p2
+
+EXCL(p1, p2)
+
+@layout {
+  p1: (100, 100)
+  p2: (100, 250)
+  p3: (400, 175)
+}

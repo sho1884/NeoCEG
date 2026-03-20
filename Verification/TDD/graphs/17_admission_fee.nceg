@@ -1,0 +1,59 @@
+# Admission Fee Example (Algorithm_Design.md Section 17)
+# The primary end-to-end integration test graph.
+# 8 causes, 2 intermediates, 5 effects, 3 ONE constraints
+# Expected: 22 expressions, 7 test conditions, 100% coverage
+# Used by: cegAlgorithm (admission fee example)
+#          decisionTable (admission fee example)
+
+# Causes
+n1: "Individual"
+n2: "Group"
+n3: "65+ years old"
+n4: "Adult"
+n5: "Elementary school"
+n6: "Under 6 years old"
+n7: "Prefecture resident Yes"
+n8: "Prefecture resident No"
+
+# Intermediates
+n9: "Prefecture resident elementary"
+n10: "Non-resident elementary"
+
+n9 := n5 AND n7
+n10 := n5 AND n8
+
+# Effects
+e1: "Free"
+e2: "1200 yen"
+e3: "1000 yen"
+e4: "600 yen"
+e5: "500 yen"
+
+e1 := n3 OR n6 OR n9
+e2 := n1 AND n4
+e3 := n2 AND n4
+e4 := n1 AND n10
+e5 := n2 AND n10
+
+# Constraints
+ONE(n1, n2)
+ONE(n3, n4, n5, n6)
+ONE(n7, n8)
+
+@layout {
+  n1: (100, 50)
+  n2: (100, 150)
+  n3: (100, 250)
+  n4: (100, 350)
+  n5: (100, 450)
+  n6: (100, 550)
+  n7: (100, 650)
+  n8: (100, 750)
+  n9: (350, 500)
+  n10: (350, 600)
+  e1: (600, 100)
+  e2: (600, 250)
+  e3: (600, 400)
+  e4: (600, 550)
+  e5: (600, 700)
+}

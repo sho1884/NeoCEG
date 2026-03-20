@@ -1,0 +1,16 @@
+# AND 3-input: A AND B AND C -> D
+# Used by: cegAlgorithm (extractExpressions - 4 expressions)
+
+p1: "A"
+p2: "B"
+p3: "C"
+p4: "D"
+
+p4 := p1 AND p2 AND p3
+
+@layout {
+  p1: (100, 50)
+  p2: (100, 200)
+  p3: (100, 350)
+  p4: (400, 200)
+}

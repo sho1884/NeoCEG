@@ -1,0 +1,20 @@
+# Chain graph: A AND B -> I, I AND C -> E
+# Used by: cegAlgorithm (expression numbering, required values scope, deduce chain, calcTable chain)
+#          decisionTable (intermediate nodes)
+
+p1: "A"
+p2: "B"
+p3: "C"
+p4: "I (intermediate)"
+p5: "E (effect)"
+
+p4 := p1 AND p2
+p5 := p4 AND p3
+
+@layout {
+  p1: (100, 50)
+  p2: (100, 200)
+  p3: (100, 350)
+  p4: (350, 125)
+  p5: (600, 200)
+}

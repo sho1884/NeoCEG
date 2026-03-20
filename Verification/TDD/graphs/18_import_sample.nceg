@@ -1,0 +1,23 @@
+# Import/Export round-trip sample graph
+# Used by: import-export tests, logicalDsl (sample file parsing)
+# 3 causes, 2 effects, 2 constraints, NOT edges
+
+n1: "User clicks login button"
+n2: "Network connected"
+n3: "Auth server response"
+n4: "Login success"
+n5: "Error message display"
+
+n4 := n1 AND n2 AND n3
+n5 := NOT n2 OR NOT n3
+
+EXCL(n4, n5)
+REQ(n1 -> n3)
+
+@layout {
+  n1: (100, 100)
+  n2: (100, 220)
+  n3: (100, 340)
+  n4: (400, 170)
+  n5: (400, 290)
+}

@@ -1,0 +1,14 @@
+# OR with NOT edge: A OR NOT(B) -> C
+# Used by: cegAlgorithm (extractExpressions, deduceValue, checkRelation)
+
+p1: "A"
+p2: "B"
+p3: "C"
+
+p3 := p1 OR NOT p2
+
+@layout {
+  p1: (100, 100)
+  p2: (100, 250)
+  p3: (400, 175)
+}

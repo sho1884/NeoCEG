@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="#b71c3c"/>
+      <stop offset="100%" stop-color="#880e2e"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <!-- CEG text - top half -->
+  <text x="256" y="210" text-anchor="middle" font-family="'Helvetica Neue',Arial,sans-serif" font-size="190" font-weight="900" fill="#fff" letter-spacing="2">CEG</text>
+  <!-- Large graph - bottom half -->
+  <!-- Edges (yellow-gold for contrast) -->
+  <line x1="82" y1="300" x2="216" y2="380" stroke="#ffd54f" stroke-width="8"/>
+  <line x1="82" y1="450" x2="216" y2="380" stroke="#ffd54f" stroke-width="8"/>
+  <line x1="260" y1="380" x2="380" y2="380" stroke="#ffd54f" stroke-width="8"/>
+  <!-- Arrow head -->
+  <polygon points="396,380 372,364 372,396" fill="#ffd54f"/>
+  <!-- Cause nodes (blue) -->
+  <circle cx="70" cy="292" r="34" fill="#42a5f5" stroke="#fff" stroke-width="4"/>
+  <circle cx="70" cy="458" r="34" fill="#42a5f5" stroke="#fff" stroke-width="4"/>
+  <!-- Intermediate node (indigo) -->
+  <circle cx="236" cy="380" r="38" fill="#5c6bc0" stroke="#fff" stroke-width="4"/>
+  <!-- Effect node (purple) -->
+  <circle cx="410" cy="380" r="34" fill="#ab47bc" stroke="#fff" stroke-width="4"/>
+</svg>

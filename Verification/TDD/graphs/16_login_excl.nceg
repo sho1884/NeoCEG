@@ -1,0 +1,22 @@
+# Login example with EXCL: complex graph from decisionTable tests
+# Used by: decisionTable (complex graph with EXCL)
+# 3 causes, 2 effects with NOT edges and EXCL constraint
+
+p1: "Login button click"
+p2: "Network connected"
+p3: "Server response"
+p4: "Login success"
+p5: "Error display"
+
+p4 := p1 AND p2 AND p3
+p5 := NOT p2 OR NOT p3
+
+EXCL(p4, p5)
+
+@layout {
+  p1: (100, 50)
+  p2: (100, 200)
+  p3: (100, 350)
+  p4: (450, 100)
+  p5: (450, 300)
+}

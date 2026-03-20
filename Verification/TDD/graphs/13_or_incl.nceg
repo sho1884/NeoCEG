@@ -1,0 +1,16 @@
+# OR with INCL constraint: A OR B -> C, INCL(A, B)
+# Used by: decisionTable (INCL constraint)
+
+p1: "A"
+p2: "B"
+p3: "C"
+
+p3 := p1 OR p2
+
+INCL(p1, p2)
+
+@layout {
+  p1: (100, 100)
+  p2: (100, 250)
+  p3: (400, 175)
+}

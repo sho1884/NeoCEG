@@ -1,0 +1,19 @@
+# Mixed chain: A AND B -> I (AND), I OR C -> E (OR)
+# Used by: cegAlgorithm (mixed AND/OR graph, deduce mixed chain)
+
+p1: "A"
+p2: "B"
+p3: "C"
+p4: "I (intermediate)"
+p5: "E (effect)"
+
+p4 := p1 AND p2
+p5 := p4 OR p3
+
+@layout {
+  p1: (100, 50)
+  p2: (100, 200)
+  p3: (100, 350)
+  p4: (350, 125)
+  p5: (600, 200)
+}

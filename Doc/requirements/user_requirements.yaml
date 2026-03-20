@@ -1,0 +1,43 @@
+# NeoCEG User Requirements
+# Format: Task expression with background context
+
+version: "0.3"
+last_updated: "2026-01-25"
+
+requirements:
+  UR-001:
+    task: "Review AI-generated graph"
+    background: >
+      Drawing cause-effect graphs from scratch is difficult.
+      A workflow where AI generates the graph and humans review/edit is desired.
+    priority: high
+
+  UR-002:
+    task: "Create cause-effect graph"
+    background: >
+      Test designers visually express logical relations and constraints.
+    priority: high
+
+  UR-003:
+    task: "Derive test conditions"
+    background: >
+      Generate decision table from graph and understand required test conditions.
+    priority: high
+
+  UR-004:
+    task: "Confirm test condition coverage"
+    background: >
+      Verify whether each logical expression is covered by test conditions.
+    priority: medium
+
+  UR-005:
+    task: "Understand deleted test conditions"
+    background: >
+      Sometimes need to review conditions deleted by optimization or untestable conditions.
+    priority: medium
+
+  UR-006:
+    task: "Save and share graph"
+    background: >
+      Save created graphs and share with other tools or team members.
+    priority: high

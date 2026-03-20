@@ -1,0 +1,370 @@
+# NeoCEG Test Strategy
+# テスト戦略
+
+version: "0.1"
+last_updated: "2026-02-01"
+
+# =============================================================================
+# Overview / 概要
+# =============================================================================
+
+approach: "hybrid"
+description: |
+  Hybrid approach combining manual golden data creation with potential
+  future CEGTest 1.6 CLI automation.
+  手動ゴールデンデータ作成と将来のCEGTest CLI自動化を組み合わせたハイブリッドアプローチ。
+
+phases:
+  phase_1:
+    name: "Manual Golden Data Creation"
+    description: "Create representative test cases manually using CEGTest 1.6"
+    deliverables:
+      - "Golden test cases (DSL + expected decision table + coverage table)"
+      - "Known bug documentation"
+    status: "planned"
+
+  phase_2:
+    name: "Core API Development with Tests"
+    description: "Develop NeoCEG core API with regression tests against golden data"
+    deliverables:
+      - "DSL Parser"
+      - "Decision Table Calculator"
+      - "Coverage Table Calculator"
+      - "Unit tests"
+      - "Integration tests"
+    status: "planned"
+
+  phase_3:
+    name: "CEGTest CLI Automation (Optional)"
+    description: "Extract CEGTest 1.6 calculation engine for large-scale comparison"
+    trigger: "When NeoCEG core API is stable and more test coverage is needed"
+    status: "future"
+
+# =============================================================================
+# Test Categories / テストカテゴリ
+# =============================================================================
+
+test_categories:
+
+  unit_tests:
+    description: "Test individual functions in isolation"
+    targets:
+      - component: "DSL Lexer"
+        tests:
+          - "Token recognition (keywords, identifiers, operators)"
+          - "Unicode node names (Japanese)"
+          - "Error recovery on invalid tokens"
+      - component: "DSL Parser"
+        tests:
+          - "Logical relation parsing (A := B AND C)"
+          - "Constraint parsing (EXCL, ONE, INCL, REQ, MASK)"
+          - "NOT on logical edges"
+          - "NOT on constraint members"
+          - "Syntax error reporting with line numbers"
+      - component: "Graph Model"
+        tests:
+          - "Node creation and deletion"
+          - "Edge creation and deletion"
+          - "Role derivation (cause/intermediate/effect)"
+          - "Constraint management"
+      - component: "Decision Table Calculator"
+        tests:
+          - "Basic AND/OR evaluation"
+          - "NOT evaluation"
+          - "MASK constraint (M value propagation)"
+          - "M AND M = I (bug fix validation)"
+          - "Constraint violation detection"
+          - "Infeasible condition marking"
+      - component: "Coverage Table Calculator"
+        tests:
+          - "Logical expression enumeration"
+          - "Coverage relationship computation"
+          - "Weak condition detection"
+          - "Untestable condition detection"
+
+  integration_tests:
+    description: "Test DSL → Decision Table → Coverage Table pipeline"
+    approach: "Golden data comparison"
+    format:
+      input: "DSL file (.ceg)"
+      expected_output:
+        - "decision_table.json"
+        - "coverage_table.json"
+        - "warnings.json (for constraint contradictions)"
+
+  comparison_tests:
+    description: "Compare NeoCEG output with CEGTest 1.6 output"
+    known_differences:
+      - id: "BUG-001"
+        description: "M AND M calculation"
+        cegtest_result: "T or F (inconsistent)"
+        neoceg_result: "I (correct)"
+        action: "Expect different results"
+      - id: "BUG-002"
+        description: "M OR M calculation"
+        cegtest_result: "T or F (inconsistent)"
+        neoceg_result: "I (correct)"
+        action: "Expect different results"
+
+# =============================================================================
+# Golden Test Cases / ゴールデンテストケース
+# =============================================================================
+
+golden_test_cases:
+
+  basic:
+    - id: "GT-001"
+      name: "Simple AND"
+      description: "Two causes connected by AND to one effect"
+      dsl: |
+        effect := cause1 AND cause2
+      expected_conditions: 4  # 2^2
+
+    - id: "GT-002"
+      name: "Simple OR"
+      description: "Two causes connected by OR to one effect"
+      dsl: |
+        effect := cause1 OR cause2
+      expected_conditions: 4
+
+    - id: "GT-003"
+      name: "AND-OR combination"
+      description: "Three causes with mixed operators"
+      dsl: |
+        intermediate := cause1 AND cause2
+        effect := intermediate OR cause3
+      expected_conditions: 8
+
+  not_logic:
+    - id: "GT-010"
+      name: "NOT on logical edge"
+      description: "Negative logic on input"
+      dsl: |
+        effect := cause1 AND NOT cause2
+      expected_conditions: 4
+
+    - id: "GT-011"
+      name: "Multiple NOT"
+      description: "NOT on multiple inputs"
+      dsl: |
+        effect := NOT cause1 AND NOT cause2
+      expected_conditions: 4
+
+  constraints_basic:
+    - id: "GT-020"
+      name: "EXCL constraint"
+      description: "Mutual exclusion between two causes"
+      dsl: |
+        effect := cause1 OR cause2
+        EXCL(cause1, cause2)
+      infeasible_conditions: 1  # cause1=T, cause2=T
+
+    - id: "GT-021"
+      name: "ONE constraint"
+      description: "Exactly one of three causes must be true"
+      dsl: |
+        effect := cause1 OR cause2 OR cause3
+        ONE(cause1, cause2, cause3)
+      infeasible_conditions: 5  # all-false + multiple-true combinations
+
+    - id: "GT-022"
+      name: "INCL constraint"
+      description: "At least one must be true"
+      dsl: |
+        effect := cause1 AND cause2
+        INCL(cause1, cause2)
+      infeasible_conditions: 1  # cause1=F, cause2=F
+
+    - id: "GT-023"
+      name: "REQ constraint"
+      description: "Implication relationship"
+      dsl: |
+        effect := cause1 OR cause2
+        REQ(cause1 -> cause2)
+      infeasible_conditions: 1  # cause1=T, cause2=F
+
+    - id: "GT-024"
+      name: "MASK constraint"
+      description: "Mask causes indeterminate"
+      dsl: |
+        effect := cause1 AND cause2
+        MASK(cause1 -> {cause2})
+      untestable_conditions: 2  # cause1=T makes cause2=M
+
+  constraints_with_not:
+    - id: "GT-030"
+      name: "EXCL with NOT member"
+      description: "EXCL(A, NOT B) - A and ¬B cannot both be true"
+      dsl: |
+        effect := cause1 OR cause2
+        EXCL(cause1, NOT cause2)
+      infeasible_conditions: 1  # cause1=T, cause2=F (both effective values true)
+
+    - id: "GT-031"
+      name: "REQ with NOT target"
+      description: "REQ(A -> NOT B) - if A=T then B=F"
+      dsl: |
+        effect := cause1 OR cause2
+        REQ(cause1 -> NOT cause2)
+      infeasible_conditions: 1  # cause1=T, cause2=T
+
+    - id: "GT-032"
+      name: "REQ with NOT source"
+      description: "REQ(NOT A -> B) - if A=F then B=T"
+      dsl: |
+        effect := cause1 OR cause2
+        REQ(NOT cause1 -> cause2)
+      infeasible_conditions: 1  # cause1=F, cause2=F
+
+    - id: "GT-033"
+      name: "MASK with NOT trigger (valid)"
+      description: "MASK(NOT A -> B) - if A=F then B is masked"
+      dsl: |
+        effect := cause1 AND cause2
+        MASK(NOT cause1 -> cause2)
+      expected:
+        total_conditions: 2
+        valid_conditions: 1  # cause1=T, cause2=T → effect=T
+        # cause1=F → cause2=M (masked by NOT trigger)
+
+    - id: "GT-034"
+      name: "ONE with NOT member"
+      description: "ONE(A, NOT B) - exactly one of {A, ¬B} true"
+      dsl: |
+        effect := cause1 OR cause2
+        ONE(cause1, NOT cause2)
+      infeasible_conditions: 2  # both effective true, both effective false
+
+    - id: "GT-035"
+      name: "REQ with NOT on both sides (rejected)"
+      description: "REQ(NOT A -> NOT B) - prohibited (ambiguous double negation)"
+      dsl: |
+        effect := cause1 OR cause2
+        REQ(NOT cause1 -> NOT cause2)
+      expected: "Parse error: NOT on both source and target sides of REQ is not allowed"
+
+  mask_bug_fix:
+    - id: "GT-040"
+      name: "M AND M = I (bug fix)"
+      description: "Verify correct handling of M AND M"
+      dsl: |
+        intermediate := cause1 AND cause2
+        effect := intermediate AND cause3
+        MASK(cause3 -> {cause1, cause2})
+      note: "When cause3=T, both cause1 and cause2 are M. M AND M should be I, not T or F."
+      cegtest_behavior: "incorrect"
+      neoceg_behavior: "correct (I)"
+
+  complex:
+    - id: "GT-050"
+      name: "Multiple constraints"
+      description: "Graph with multiple constraint types"
+      dsl: |
+        auth := valid_id AND password_match
+        access := auth AND has_permission
+        EXCL(admin_mode, guest_mode)
+        REQ(admin_mode -> has_permission)
+        MASK(NOT valid_id -> {password_match})
+
+    - id: "GT-051"
+      name: "Constraint contradiction"
+      description: "Contradicting constraints should warn"
+      dsl: |
+        effect := cause1 OR cause2
+        ONE(cause1, cause2)
+        REQ(cause1 -> cause2)
+      expected_warning: "Constraint contradiction: ONE + REQ"
+
+# =============================================================================
+# Test Data Format / テストデータ形式
+# =============================================================================
+
+test_data_format:
+  directory: "tests/golden/"
+  structure:
+    - "{test_id}/"
+    - "  input.ceg          # DSL input"
+    - "  expected_decision_table.json"
+    - "  expected_coverage_table.json"
+    - "  expected_warnings.json"
+    - "  metadata.yaml      # Test case info"
+
+  decision_table_schema:
+    columns:
+      - name: "condition_number"
+        type: "integer"
+      - name: "causes"
+        type: "object"  # { "node_name": "T" | "F" | "M" | "I" }
+      - name: "effects"
+        type: "object"  # { "node_name": "T" | "F" | "M" | "I" }
+      - name: "status"
+        type: "string"  # "valid" | "infeasible" | "untestable" | "weak"
+      - name: "violated_constraints"
+        type: "array"   # constraint IDs if infeasible
+      - name: "mask_source"
+        type: "object"  # MASK constraint info if untestable
+
+  coverage_table_schema:
+    rows:
+      - name: "expression_id"
+        type: "string"
+      - name: "expression"
+        type: "string"  # e.g., "cause1 ∧ cause2"
+      - name: "covered_by"
+        type: "array"   # condition numbers
+      - name: "status"
+        type: "string"  # "covered" | "infeasible" | "untestable"
+
+# =============================================================================
+# CI Integration / CI統合
+# =============================================================================
+
+ci_integration:
+  test_commands:
+    unit: "npm test -- --testPathPattern=unit"
+    integration: "npm test -- --testPathPattern=integration"
+    golden: "npm test -- --testPathPattern=golden"
+    all: "npm test"
+
+  coverage_threshold:
+    statements: 80
+    branches: 75
+    functions: 80
+    lines: 80
+
+  github_actions:
+    triggers:
+      - push
+      - pull_request
+    jobs:
+      - lint
+      - unit_tests
+      - integration_tests
+      - golden_tests
+      - build
+
+# =============================================================================
+# Future: CEGTest CLI Extraction / 将来: CEGTest CLI抽出
+# =============================================================================
+
+cegtest_cli_extraction:
+  status: "future"
+  source_files:
+    - "Reference/CEGTest-1.6-20130804/js/calc.js"
+    - "Reference/CEGTest-1.6-20130804/js/node.js"
+    - "Reference/CEGTest-1.6-20130804/js/constr.js"
+    - "Reference/CEGTest-1.6-20130804/js/util.js"
+
+  extraction_tasks:
+    - "Remove DOM dependencies (jQuery, Canvas)"
+    - "Modularize global state (nodes[], constrs[])"
+    - "Add JSON input parser"
+    - "Add JSON/CSV output"
+    - "Create Node.js CLI wrapper"
+
+  estimated_effort: "4-5 days"
+
+  trigger_conditions:
+    - "NeoCEG core API is stable"
+    - "More extensive regression testing is needed"
+    - "Manual golden data creation becomes bottleneck"

@@ -1,0 +1,1397 @@
+# NeoCEG System Requirements
+# Format: Verb + Object with rule scenarios
+# Reference: Myers, Badgett, Sandler "The Art of Software Testing" 3rd Ed., Ch.4
+
+version: "1.0"
+last_updated: "2026-02-04"
+
+# Change Log:
+# v1.0 - Simplify node expression handling (SR-002)
+#        - Remove auto-fill expression display (too complex with label special chars)
+#        - Remove expression tooltip on hover
+#        - Add "Set label to expression" context menu for intermediate/effect nodes
+#        - Expression uses quoted labels: "A" AND "B" (safe for any label content)
+# v0.9 - Add observable flag (default ON) for nodes (SR-002)
+#        - Add constraint position storage in DSL layout section (SR-041)
+# v0.8 - Add Learning Mode / Practice Mode for decision table display (SR-025, SR-026)
+#        - Add terminology definitions for column exclusion reasons
+#        - Add future extension candidates
+# v0.7 - Unify constraint colors to gray (#757575) for cleaner visual appearance
+#        - Change node text alignment from center to left
+# v0.6 - Add undo/redo buttons with 50-entry history (SR-060)
+#        - Specify operator badge position (left-center inside node)
+#        - Update node width specification (default 150, min 80, max 400)
+# v0.5 - Add NOT (negative logic) support for both logical relations and constraint members
+#        - Logical NOT: blue (#1976d2), "Not" label
+#        - Constraint NOT: light blue (#64b5f6), "Not" label
+#        - Updated constraint definitions with NOT member examples
+#        - Updated decision table calculation rules for constraint NOT evaluation
+
+# =============================================================================
+# Constraint Definitions (based on Myers)
+# =============================================================================
+# Myers uses symbols: E (Exclusive), I (Inclusive), O (One-and-only-one), R (Requires), M (Masks)
+# NeoCEG uses keywords: EXCL, INCL, ONE, REQ, MASK
+
+constraint_definitions:
+  # All constraints support NOT (negative logic) on member references.
+  # NOT inverts the truth value of the referenced node when evaluating the constraint.
+  # Example: EXCL(A, NOT B) means "A and (NOT B) cannot both be true"
+  #          which is equivalent to "A=T implies B=T" (since NOT B = F when B = T)
+
+  negative_member_support:
+    description: "Constraints can reference nodes with NOT (negative logic)"
+    syntax: "NOT node_name within constraint member list"
+    scope: |
+      Symmetric constraints (ONE/EXCL/INCL): NOT allowed on any member.
+      REQ: NOT allowed on source or targets, but not both simultaneously.
+           REQ(NOT A -> NOT B) is prohibited (ambiguous double negation).
+      MASK: NOT allowed on trigger only. NOT prohibited on targets.
+      REQ vs MASK asymmetry: REQ sets T/F on targets, so NOT reverses the value (T->F) and is meaningful.
+      MASK sets M (Don't Care) on targets, and NOT M = M, so target NOT is meaningless (same result).
+    examples:
+      - "EXCL(A, NOT B) - A and ¬B cannot both be true"
+      - "ONE(A, NOT B, C) - Exactly one of {A, ¬B, C} must be true"
+      - "INCL(A, NOT B) - At least one of {A, ¬B} must be true"
+      - "REQ(NOT A -> B) - If A is false, B must be true"
+      - "REQ(A -> NOT B) - If A is true, B must be false"
+      - "MASK(NOT A -> B) - If A is false, B is masked"
+      # NOT on both sides of REQ causes a parse error:
+      # REQ(NOT A -> NOT B) → parse error (both-sides-NOT prohibited)
+      # NOT on MASK target causes a parse error:
+      # MASK(A -> NOT B) → parse error (NOT prohibited on targets, M is symmetric)
+    evaluation: "NOT member value is inverted before constraint logic is applied"
+
+  ONE:
+    myers_symbol: "O"
+    formal_definition: "Exactly one of {A, B, ...} must be true"
+    logic: "∑(nodes) = 1"
+    logic_with_not: "∑(effective_values) = 1, where NOT members are inverted"
+    minimum_nodes: 2
+    cardinality: "n-ary (n >= 2)"
+    direction: "none (symmetric)"
+    example: "ONE(user_input, file_input, api_input)"
+    example_with_not: "ONE(enabled, NOT disabled) - exactly one of {enabled, ¬disabled}"
+    note: "Stronger than EXCL - forbids all-false case"
+
+  EXCL:
+    myers_symbol: "E"
+    formal_definition: "At most one of {A, B, ...} can be true (all false is allowed)"
+    logic: "∑(nodes) <= 1"
+    logic_with_not: "∑(effective_values) <= 1, where NOT members are inverted"
+    minimum_nodes: 2
+    cardinality: "n-ary (n >= 2)"
+    direction: "none (symmetric)"
+    example: "EXCL(admin_mode, guest_mode)"
+    example_with_not: "EXCL(premium, NOT free_tier) - premium and ¬free_tier cannot both be true"
+    note: "Mutual exclusion - allows all-false"
+
+  INCL:
+    myers_symbol: "I"
+    formal_definition: "At least one of {A, B, ...} must be true"
+    logic: "∑(nodes) >= 1"
+    logic_with_not: "∑(effective_values) >= 1, where NOT members are inverted"
+    minimum_nodes: 2
+    cardinality: "n-ary (n >= 2)"
+    direction: "none (symmetric)"
+    example: "INCL(email_notify, sms_notify)"
+    example_with_not: "INCL(active, NOT suspended) - at least one of {active, ¬suspended}"
+    note: "OR relationship - forbids all-false"
+
+  REQ:
+    myers_symbol: "R"
+    formal_definition: "If A is true, then {B, C, ...} must all be true (A → B ∧ C ∧ ...)"
+    logic: "A → (B ∧ C ∧ ...) (equivalently: ¬A ∨ (B ∧ C ∧ ...))"
+    logic_with_not: "NOT on source or targets, but not both simultaneously. REQ(NOT A -> NOT B) is prohibited."
+    minimum_nodes: 2
+    cardinality: "1:n (one source, multiple targets)"
+    direction: "directional (source → target set)"
+    first_connection_rule: "First edge dragged to an empty REQ node becomes the source"
+    example: "REQ(premium_user -> {advanced_features, priority_support})"
+    example_with_not: "REQ(A -> NOT B) - if A=T then B must be F"
+    note: "Implication - targets can be true even if source is false"
+
+  MASK:
+    myers_symbol: "M"
+    formal_definition: "When A is true, {B, C, ...} become indeterminate (Don't Care)"
+    logic: "A=T → {B,C,...}=M"
+    logic_with_not: "NOT allowed on trigger side only. NOT prohibited on targets."
+    minimum_nodes: 2
+    cardinality: "1:n (one trigger, multiple targets)"
+    direction: "directional (trigger → target set)"
+    first_connection_rule: "First edge dragged to an empty MASK node becomes the trigger"
+    example: "MASK(offline_mode -> {server_response, latency})"
+    example_with_not: "MASK(NOT A -> B) - when A=F, B becomes M (negation is on trigger)"
+    note: "Makes target values irrelevant for testing"
+
+# =============================================================================
+# Terminology Definitions
+# =============================================================================
+# Clarification of terms used for decision table column exclusion reasons
+
+terminology:
+  column_exclusion_reasons:
+    description: "Categories of test conditions that are excluded or marked in decision tables"
+
+    infeasible:
+      definition: "A test condition that violates one or more constraints"
+      japanese: "実行不可能（制約違反）"
+      cause: "Constraint violation (ONE, EXCL, INCL, REQ)"
+      examples:
+        - constraint: "ONE(A, B)"
+          case: "A=T, B=T"
+          reason: "Violates ONE constraint (exactly one must be true, but both are true)"
+        - constraint: "EXCL(A, B)"
+          case: "A=T, B=T"
+          reason: "Violates EXCL constraint (at most one can be true)"
+        - constraint: "INCL(A, B)"
+          case: "A=F, B=F"
+          reason: "Violates INCL constraint (at least one must be true)"
+        - constraint: "REQ(A -> B)"
+          case: "A=T, B=F"
+          reason: "Violates REQ constraint (A=T requires B=T)"
+      display: "Marked with vertical double lines in coverage table"
+
+    weak:
+      definition: "A test condition that is subsumed by another condition (weaker coverage)"
+      japanese: "弱いテスト条件（包含される）"
+      synonym: "subsumed"
+      cause: "Another test condition covers this one (subsumption)"
+      examples:
+        - scenario: "Condition C1 covers all paths that C2 covers, plus more"
+          reason: "C2 is weak (subsumed by C1)"
+        - scenario: "Masking causes partial coverage overlap"
+          reason: "Less effective condition is marked as weak"
+      display: "Hidden in Practice Mode, shown with reason in Learning Mode"
+
+    untestable:
+      definition: "A test condition where an effect node has indeterminate (I) value due to MASK"
+      japanese: "テスト不可（MASKによる不確定）"
+      cause: "MASK constraint causes effect node to become indeterminate"
+      explanation: |
+        When a MASK trigger is true, masked nodes become M (Don't Care).
+        When M propagates through logic, it may become I (Indeterminate).
+        If an effect node evaluates to I, we cannot test whether that effect occurs.
+      examples:
+        - constraint: "MASK(offline -> server_response)"
+          case: "offline=T"
+          effect: "server_response=M, downstream effect may be I"
+          reason: "Cannot test effect when cause path is indeterminate"
+      display: "Marked with horizontal double lines in coverage table"
+
+  value_symbols:
+    T: "The node is true"
+    t: "Must logically be true (no matching combination in expressions)"
+    F: "The node is false"
+    f: "Must logically be false (no matching combination in expressions)"
+    M: "Truth value cannot be determined due to MASK constraint"
+    I: "Truth value cannot be determined (cause-side node indeterminate)"
+
+# =============================================================================
+# File Format Specifications
+# =============================================================================
+
+file_formats:
+  dsl:
+    extension: ".nceg"
+    encoding: "UTF-8 (without BOM)"
+    line_ending: "LF (Unix) or CRLF (Windows) - both accepted on import"
+    mime_type: "text/plain"
+    description: "NeoCEG DSL format for graph definition"
+
+  csv:
+    extension: ".csv"
+    encoding: "UTF-8 (without BOM)"
+    delimiter: ","
+    quote_char: '"'
+    escape: '""'
+    line_ending: "CRLF (for Excel compatibility)"
+    header: "required"
+    description: "Decision table export format"
+
+# =============================================================================
+# Dependencies and Licenses
+# =============================================================================
+# NeoCEG is released under MIT License.
+# All dependencies must be MIT-compatible (MIT, Apache-2.0, BSD, ISC).
+# GPL/LGPL/AGPL licenses are NOT allowed.
+
+dependencies:
+  project_license: "MIT"
+  last_updated: "2026-02-06"
+
+  # ===========================================================================
+  # Algorithm References (Requires License Clarification)
+  # ===========================================================================
+  # The following software was referenced during algorithm implementation.
+  # License negotiation is required before public release.
+
+  algorithm_references:
+    CEGTest:
+      version: "1.6 (2013-08-04)"
+      author: "Masaki KASE (加瀬正樹)"
+      email: "softest@nifty.com"
+      copyright: "(C) Copyright 2010 by Masaki KASE"
+      license: "NOT SPECIFIED (All rights reserved by default)"
+      url: "Reference/CEGTest-1.6-20130804/"
+      usage_in_neoceg:
+        description: |
+          NeoCEG's decision table optimization algorithm (cegAlgorithm.ts) is based on
+          the algorithm implemented in CEGTest's calc.js. While the code was rewritten
+          in TypeScript with a different architecture, the core algorithm concepts
+          (expression coverage, expression merging, backtracking) are derived from
+          studying CEGTest's implementation.
+        referenced_files:
+          - "Reference/CEGTest-1.6-20130804/js/calc.js"
+        implemented_in:
+          - "src/services/cegAlgorithm.ts"
+          - "src/types/decisionTable.ts (CEG algorithm types)"
+        concepts_derived:
+          - "Logical expression extraction from graph edges"
+          - "Expression coverage as test minimization criterion"
+          - "Expression merging strategy for test condition optimization"
+          - "Backtracking with unsuitable marking"
+          - "Result coverage (ensuring each effect is TRUE at least once)"
+        documentation:
+          - "Doc/Algorithm_Design.md"
+      license_status: "PENDING - Requires permission from author"
+      action_required: |
+        Contact Masaki KASE (softest@nifty.com) to request:
+        1. Permission to release NeoCEG under MIT License
+        2. Clarification of CEGTest's license terms
+        3. Appropriate attribution requirements
+
+  # ===========================================================================
+  # Runtime Dependencies (MIT-compatible)
+  # ===========================================================================
+
+  runtime:
+    react:
+      version: "^19.2.0"
+      license: "MIT"
+      purpose: "UI framework"
+      url: "https://github.com/facebook/react"
+
+    react-dom:
+      version: "^19.2.0"
+      license: "MIT"
+      purpose: "React DOM rendering"
+      url: "https://github.com/facebook/react"
+
+    "@xyflow/react":
+      version: "^12.6.5"
+      license: "MIT"
+      purpose: "Graph/flow diagram rendering (React Flow)"
+      url: "https://github.com/xyflow/xyflow"
+
+    zustand:
+      version: "^5.0.5"
+      license: "MIT"
+      purpose: "State management"
+      url: "https://github.com/pmndrs/zustand"
+
+
+    i18next:
+      version: "^24.2.3"
+      license: "MIT"
+      purpose: "Internationalization framework"
+      url: "https://github.com/i18next/i18next"
+
+    react-i18next:
+      version: "^15.5.1"
+      license: "MIT"
+      purpose: "React bindings for i18next"
+      url: "https://github.com/i18next/react-i18next"
+
+  development:
+    vite:
+      version: "^7.2.4"
+      license: "MIT"
+      purpose: "Build tool and dev server"
+      url: "https://github.com/vitejs/vite"
+
+    vitest:
+      version: "^3.2.3"
+      license: "MIT"
+      purpose: "Unit testing framework"
+      url: "https://github.com/vitest-dev/vitest"
+
+    typescript:
+      version: "~5.9.3"
+      license: "Apache-2.0"
+      purpose: "TypeScript compiler"
+      note: "Apache-2.0 is MIT-compatible"
+      url: "https://github.com/microsoft/TypeScript"
+
+    eslint:
+      version: "^9.39.1"
+      license: "MIT"
+      purpose: "Code linting"
+      url: "https://github.com/eslint/eslint"
+
+    "@vitejs/plugin-react":
+      version: "^5.1.1"
+      license: "MIT"
+      purpose: "Vite React plugin"
+      url: "https://github.com/vitejs/vite-plugin-react"
+
+# =============================================================================
+# Visual Rendering Specifications
+# =============================================================================
+
+rendering:
+  nodes:
+    shape: "rounded rectangle"
+    default_width: 150
+    min_width: 80
+    max_width: 400
+    width_adjustable: true  # User can resize with mouse drag on border
+    text_wrap: true  # Auto-wrap long text within node width
+    text_align: "left"
+    font: "system default, monospace fallback"
+    operator_badge:
+      position: "left-center (inside node, left of label)"
+      display: "AND or OR badge"
+      visibility: "Only shown for nodes with incoming edges (intermediate/effect)"
+      interaction: "Click to toggle AND/OR"
+    colors:
+      cause: { fill: "#e3f2fd", border: "#1976d2", text: "#000000" }
+      intermediate: { fill: "#e8eaf6", border: "#3949ab", text: "#000000" }
+      effect: { fill: "#f3e5f5", border: "#7b1fa2", text: "#000000" }
+    monochrome:
+      cause: { fill: "#ffffff", border: "#000000", pattern: "none" }
+      intermediate: { fill: "#e0e0e0", border: "#000000", pattern: "none" }
+      effect: { fill: "#c0c0c0", border: "#000000", pattern: "none" }
+
+  edges:
+    logical_relation:
+      positive:
+        color: "#333333"
+        style: "solid"
+        width: 2
+        arrow: "filled"
+      negative:  # NOT relation
+        color: "#1976d2"  # Blue for negative logic
+        style: "solid"
+        width: 2
+        arrow: "filled"
+        label: "Not"  # Edge label for NOT (consistent with AND/OR labels)
+    constraint_relation:
+      positive:
+        color: "#9e9e9e"  # Gray for constraints
+        style: "dotted"
+        width: 1
+      negative:  # NOT on constraint member (e.g., EXCL(A, NOT B))
+        color: "#64b5f6"  # Light blue for constraint negative
+        style: "dotted"
+        width: 1
+        label: "Not"
+    monochrome:
+      logical_positive:
+        color: "#000000"
+        style: "solid"
+        width: 2
+      logical_negative:
+        color: "#000000"
+        style: "solid"
+        width: 2
+        label: "Not"
+      constraint_positive:
+        color: "#666666"
+        style: "dotted"
+        width: 1
+      constraint_negative:
+        color: "#666666"
+        style: "dotted"
+        width: 1
+        label: "Not"
+
+  constraints:
+    # Constraints are represented as dedicated constraint nodes (not just labels on edges)
+    # This provides better visual clarity and easier selection/editing
+    representation: "constraint_node"
+    node_shape: "rounded rectangle (smaller than regular nodes)"
+
+    # All constraint types use unified gray color for cleaner visual appearance
+    unified_color: "#757575"  # Gray for all constraint types
+
+    ONE:
+      color: "#757575"  # Unified gray
+      style: "dotted"
+      connector: "edges from constraint node to all member nodes"
+      label: "One"
+    EXCL:
+      color: "#757575"  # Unified gray
+      style: "dotted"
+      connector: "edges from constraint node to all member nodes"
+      label: "Excl"
+    INCL:
+      color: "#757575"  # Unified gray
+      style: "dotted"
+      connector: "edges from constraint node to all member nodes"
+      label: "Incl"
+    REQ:
+      color: "#757575"  # Unified gray
+      style: "dotted"
+      connector: "incoming edge from source, outgoing edges to targets"
+      label: "Req"
+    MASK:
+      color: "#757575"  # Unified gray
+      style: "dotted"
+      connector: "incoming edge from trigger, outgoing edges to targets"
+      label: "Mask"
+
+# =============================================================================
+# Layout and Coordinates
+# =============================================================================
+
+layout:
+  coordinate_handling:
+    with_coordinates: "Place nodes at specified positions"
+    without_coordinates: "Apply auto-layout (no error)"
+    partial_coordinates: "Place specified nodes, auto-layout others"
+
+  auto_layout:
+    algorithm: "layered left-to-right"
+    cause_position: "left side"
+    effect_position: "right side"
+    intermediate_position: "between causes and effects"
+    minimum_spacing:
+      horizontal: 100
+      vertical: 50
+    overlap_prevention: true
+    future_enhancement: "GraphViz MCP integration for better layout"
+
+  node_resize:
+    method: "mouse drag on node border"
+    preserve_aspect: false
+    snap_to_grid: false
+
+# =============================================================================
+# 3.1 Graph Editing
+# =============================================================================
+
+requirements:
+  SR-001:
+    parent: [UR-002]
+    category: graph_editing
+    function: "Place node on canvas"
+    scenarios:
+      - context: "Canvas is displayed"
+        action: "User clicks position and enters node name"
+        outcome: "Node appears at that position"
+      - context: "Node with same name exists"
+        action: "User attempts to create node with that name"
+        outcome: "Show error message, node is not created"
+      - context: "Node name is empty"
+        action: "User confirms"
+        outcome: "Show error message, node is not created"
+
+  SR-002:
+    parent: [UR-002]
+    category: graph_editing
+    function: "Edit node properties"
+    editable_properties:
+      - "Node name (label) - Unicode allowed including Japanese propositions/predicates"
+      - "Logical operator (AND/OR) - only valid for nodes with multiple inputs"
+      - "Observable flag (default: ON) - whether node can be directly tested"
+      - "Memo"
+    display_properties:
+      width:
+        default: 150
+        min: 80
+        max: 400
+        adjustable: "Mouse drag on node border"
+      text_wrap:
+        enabled: true
+        note: "Newline input not allowed, but auto-wrap for display"
+      observable_indicator:
+        enabled: true
+        visual: "Green circle badge at top-right corner"
+        tooltip: "Observable - can be directly tested"
+        default: true  # ON by default
+    context_menu:
+      set_label_to_expression:
+        enabled: true
+        condition: "Node has incoming edges (intermediate/effect)"
+        behavior: "Set node label to logical expression with quoted source labels"
+        example: '"入力A" AND "入力B"'
+        note: "Labels are quoted to safely handle special characters in labels"
+    note: "Node role (cause/intermediate/effect) is not editable - derived from graph structure"
+    scenarios:
+      - context: "Node exists"
+        action: "User double-clicks node"
+        outcome: "Start inline label editing"
+      - context: "Node exists"
+        action: "User right-clicks node"
+        outcome: "Show context menu with options"
+      - context: "Node has incoming edges"
+        action: "User selects 'Set label to expression' from context menu"
+        outcome: "Node label is set to logical expression (e.g., '\"A\" AND \"B\"')"
+      - context: "Node is observable"
+        action: "User selects 'Mark as Non-Observable' from context menu"
+        outcome: "Node observable flag is set to OFF"
+      - context: "Non-observable node exists"
+        action: "User selects 'Mark as Observable' from context menu"
+        outcome: "Node observable flag is set to ON"
+      - context: "Editing properties"
+        action: "User changes node name and confirms"
+        outcome: "Node name is updated, related displays are updated"
+      - context: "New name duplicates existing node"
+        action: "User confirms"
+        outcome: "Show error message, change is not applied"
+      - context: "Node label is long"
+        action: "Display node"
+        outcome: "Auto-wrap text within node width"
+      - context: "Node displayed"
+        action: "User drags node border"
+        outcome: "Resize node width, text re-wraps accordingly"
+
+  SR-003:
+    parent: [UR-002]
+    category: graph_editing
+    function: "Delete node"
+    constraint_cascade_rules:
+      minimum_nodes:
+        ONE: 2
+        EXCL: 2
+        INCL: 2
+        REQ: 2  # source + target
+        MASK: 2  # trigger + at least 1 target
+      behavior:
+        - condition: "Constraint drops below minimum nodes"
+          action: "Auto-delete constraint"
+        - condition: "Constraint remains above minimum but membership changes"
+          action: "Show warning listing affected constraints, update constraint on confirm"
+    scenarios:
+      - context: "Node is selected"
+        action: "User presses Delete key"
+        outcome: "Show confirmation dialog listing affected logical relations and constraints"
+      - context: "Confirmation dialog is shown"
+        action: "User selects OK"
+        outcome: "Delete node, related logical relations, and cascade constraint updates"
+      - context: "Confirmation dialog is shown"
+        action: "User selects Cancel"
+        outcome: "Node is not deleted"
+      - context: "Confirmation dialog disabled in settings"
+        action: "User presses Delete key"
+        outcome: "Immediately delete node and cascade updates"
+      - context: "Node is part of ONE/EXCL/INCL with 3+ nodes"
+        action: "User deletes node"
+        outcome: "Constraint is updated to exclude deleted node (e.g., ONE(A,B,C) -> ONE(A,B)), show notification"
+      - context: "Node is part of constraint with exactly minimum nodes"
+        action: "User deletes node"
+        outcome: "Constraint is auto-deleted, show notification"
+      - context: "Node is REQ/MASK trigger"
+        action: "User deletes trigger node"
+        outcome: "REQ/MASK constraint is auto-deleted"
+      - context: "Node is MASK target (one of multiple)"
+        action: "User deletes target node"
+        outcome: "Target is removed from MASK set, constraint updated"
+
+  SR-004:
+    parent: [UR-002]
+    category: graph_editing
+    function: "Move node"
+    scenarios:
+      - context: "Node exists"
+        action: "User drags node"
+        outcome: "Node follows mouse position"
+      - context: "During drag"
+        action: "-"
+        outcome: "Connection lines redraw in real-time"
+      - context: "Multiple nodes selected"
+        action: "User drags"
+        outcome: "All selected nodes move simultaneously"
+
+  SR-005:
+    parent: [UR-002]
+    category: graph_editing
+    function: "Create logical relation"
+    scenarios:
+      - context: "Two or more nodes exist"
+        action: "User drags from node handle to another node"
+        outcome: "Create logical relation (edge)"
+      - context: "Target node receives multiple inputs"
+        action: "-"
+        outcome: "Show operator selection UI (AND/OR)"
+      - context: "Target is ancestor of source"
+        action: "User attempts connection"
+        outcome: "Show error message, prevent circular reference"
+
+  SR-006:
+    parent: [UR-002]
+    category: graph_editing
+    function: "Edit logical relation"
+    scenarios:
+      - context: "Edge exists"
+        action: "User clicks edge"
+        outcome: "Show edit menu"
+      - context: "Edit menu shown"
+        action: "User selects 'Toggle AND/OR'"
+        outcome: "Switch logical operator"
+      - context: "Edit menu shown"
+        action: "User selects 'Toggle NOT'"
+        outcome: "Toggle negation state, change line color to blue (#1976d2), add 'Not' label"
+
+  SR-007:
+    parent: [UR-002]
+    category: graph_editing
+    function: "Delete logical relation"
+    scenarios:
+      - context: "Edge is selected"
+        action: "User presses Delete key"
+        outcome: "Delete edge"
+
+# =============================================================================
+# 3.2 Constraints
+# =============================================================================
+
+  SR-010:
+    parent: [UR-002]
+    category: constraints
+    function: "Create ONE constraint"
+    definition: "Exactly one of multiple nodes must be true"
+    scenarios:
+      - context: "Two or more nodes selected"
+        action: "User selects 'Add ONE constraint'"
+        outcome: "Create ONE constraint among selected nodes, display visually"
+      - context: "One or fewer nodes selected"
+        action: "User selects 'Add ONE constraint'"
+        outcome: "Show error message"
+
+  SR-011:
+    parent: [UR-002]
+    category: constraints
+    function: "Create EXCL constraint"
+    definition: "Multiple nodes cannot be true simultaneously (all false is allowed)"
+    scenarios:
+      - context: "Two or more nodes selected"
+        action: "User selects 'Add EXCL constraint'"
+        outcome: "Create EXCL constraint among selected nodes"
+
+  SR-012:
+    parent: [UR-002]
+    category: constraints
+    function: "Create INCL constraint"
+    definition: "At least one of multiple nodes must be true"
+    scenarios:
+      - context: "Two or more nodes selected"
+        action: "User selects 'Add INCL constraint'"
+        outcome: "Create INCL constraint among selected nodes"
+
+  SR-013:
+    parent: [UR-002]
+    category: constraints
+    function: "Create REQ constraint"
+    definition: "If A is true then B must be true (A implies B)"
+    scenarios:
+      - context: "Source and target nodes specified"
+        action: "User selects 'Add REQ constraint'"
+        outcome: "Create REQ constraint from source to target"
+
+  SR-014:
+    parent: [UR-002]
+    category: constraints
+    function: "Create MASK constraint"
+    definition: "When A is true, node set {B,C,...} becomes indeterminate (M)"
+    scenarios:
+      - context: "Source node and target node set specified"
+        action: "User selects 'Add MASK constraint'"
+        outcome: "Create MASK constraint from source to {target set}"
+
+  SR-015:
+    parent: [UR-002]
+    category: constraints
+    function: "Edit/delete constraint"
+    scenarios:
+      - context: "Constraint exists"
+        action: "User clicks constraint"
+        outcome: "Show edit menu"
+      - context: "Edit menu shown"
+        action: "User selects 'Delete'"
+        outcome: "Delete constraint"
+      - context: "Edit menu shown"
+        action: "User selects 'Change type'"
+        outcome: "Change constraint type"
+      - context: "Constraint edge to member exists"
+        action: "User clicks constraint edge"
+        outcome: "Show edge edit menu"
+      - context: "Constraint edge edit menu shown"
+        action: "User selects 'Toggle NOT'"
+        outcome: "Toggle negation on member reference, change edge color to light blue (#64b5f6), add 'Not' label"
+
+  SR-016:
+    parent: [UR-002, UR-003]
+    category: constraints
+    function: "Detect constraint contradiction"
+    contradiction_patterns:
+      - pattern: "ONE(A,B) + REQ(A->B)"
+        reason: "ONE requires exactly one true, but REQ forces both true when A=T"
+      - pattern: "ONE(A,B) + ONE(B,C) with 3 nodes"
+        reason: "Two ONE constraints may require conflicting true nodes"
+      - pattern: "EXCL(A,B) + INCL(A,B) on same pair"
+        reason: "EXCL forbids both true, INCL forbids both false - forces XOR"
+      - pattern: "REQ(A->B) + REQ(B->A) + EXCL(A,B)"
+        reason: "REQ pair forces A=B, but EXCL forbids both true"
+    scenarios:
+      - context: "User creates or edits a constraint"
+        action: "System checks constraint set"
+        outcome: "If contradiction detected, show warning with conflicting constraints highlighted"
+      - context: "Constraint contradiction exists"
+        action: "User attempts to generate decision table"
+        outcome: "Show error message identifying contradictory constraints, abort calculation"
+      - context: "Contradiction warning shown"
+        action: "User chooses to proceed anyway"
+        outcome: "Allow editing to continue (user may fix later)"
+
+# =============================================================================
+# 3.3 Decision Table
+# =============================================================================
+
+  SR-020:
+    parent: [UR-003]
+    category: decision_table
+    function: "Generate decision table"
+    scenarios:
+      - context: "Graph has logical relations"
+        action: "Graph is edited"
+        outcome: "Recalculate decision table and update display"
+      - context: "Graph is empty"
+        action: "-"
+        outcome: "Hide decision table"
+      - context: "Constraint contradiction detected (see SR-016)"
+        action: "System attempts to generate table"
+        outcome: "Show error with contradicting constraints, abort calculation"
+
+  SR-021:
+    parent: [UR-003]
+    category: decision_table
+    function: "Display table values"
+    value_definitions:
+      T: { meaning: "The node is true", color: "green" }
+      t: { meaning: "Must logically be true (no matching combination in expressions)", color: "light green" }
+      F: { meaning: "The node is false", color: "red" }
+      f: { meaning: "Must logically be false (no matching combination in expressions)", color: "light red" }
+      M: { meaning: "Truth value cannot be determined due to MASK constraint", color: "gray" }
+      I: { meaning: "Truth value cannot be determined (cause-side node indeterminate)", color: "yellow" }
+
+  SR-022:
+    parent: [UR-005]
+    category: decision_table
+    function: "Switch display mode"
+    display_modes:
+      optimized: "Standard display excluding weak test conditions"
+      full: "Complete version including deleted conditions (with deletion reason)"
+    scenarios:
+      - context: "Optimized display active"
+        action: "User selects 'Full display'"
+        outcome: "Show all test conditions with deletion reasons"
+      - context: "Full display active"
+        action: "User selects 'Optimized display'"
+        outcome: "Hide weak test conditions"
+
+  SR-023:
+    parent: [UR-003]
+    category: decision_table
+    function: "Calculate indeterminate values correctly"
+    background: "Bug fix for CEGTest 1.6"
+    calculation_rules:
+      # Logical operation rules (M = Masked/Don't Care)
+      - { operation: "M AND M", result: "I", reason: "Both indeterminate, result indeterminate" }
+      - { operation: "M OR M", result: "I", reason: "Both indeterminate, result indeterminate" }
+      - { operation: "M AND T", result: "I", reason: "One indeterminate, result indeterminate" }
+      - { operation: "M AND F", result: "F", reason: "F is certain, AND is F" }
+      - { operation: "M OR T", result: "T", reason: "T is certain, OR is T" }
+      - { operation: "M OR F", result: "I", reason: "One indeterminate, result indeterminate" }
+      # NOT operation rules
+      - { operation: "NOT T", result: "F", reason: "Inversion of true" }
+      - { operation: "NOT F", result: "T", reason: "Inversion of false" }
+      - { operation: "NOT M", result: "M", reason: "Inversion of masked is still masked" }
+      - { operation: "NOT I", result: "I", reason: "Inversion of indeterminate is indeterminate" }
+    constraint_not_evaluation:
+      description: "NOT on constraint members inverts the node value before constraint logic"
+      examples:
+        - constraint: "EXCL(A, NOT B)"
+          case: "A=T, B=T"
+          evaluation: "effective values: A=T, NOT B=F → ∑=1 ≤ 1, constraint satisfied"
+        - constraint: "EXCL(A, NOT B)"
+          case: "A=T, B=F"
+          evaluation: "effective values: A=T, NOT B=T → ∑=2 > 1, constraint VIOLATED"
+        - constraint: "REQ(A -> NOT B)"
+          case: "A=T, B=T"
+          evaluation: "A=T requires NOT B=T (i.e., B=F), but B=T → constraint VIOLATED"
+        - constraint: "ONE(A, NOT B)"
+          case: "A=F, B=F"
+          evaluation: "effective values: A=F, NOT B=T → ∑=1, constraint satisfied"
+        - constraint: "MASK(NOT A -> {B})"
+          case: "A=F"
+          evaluation: "NOT A=T triggers mask, B becomes M"
+      infeasibility_detection: "Constraints with NOT may create infeasible conditions (e.g., EXCL(A, NOT B) + REQ(A->B))"
+    scenarios:
+      - context: "Node is M due to MASK constraint"
+        action: "Calculate decision table"
+        outcome: "Calculate subsequent node values according to above rules"
+      - context: "Node value is I"
+        action: "Calculate subsequent nodes"
+        outcome: "I propagates (cannot be determined)"
+      - context: "Constraint has NOT member"
+        action: "Evaluate constraint"
+        outcome: "Invert NOT member value, then apply constraint logic"
+      - context: "NOT member is M"
+        action: "Evaluate constraint"
+        outcome: "NOT M = M, constraint evaluation uses M for that member"
+
+  SR-025:
+    parent: [UR-003, UR-005]
+    category: decision_table
+    function: "Display mode selection (Learning/Practice)"
+    description: "Switch between Learning Mode and Practice Mode for decision table display"
+    modes:
+      learning_mode:
+        japanese: "学習モード"
+        description: "Educational mode enumerating all 2^n cause combinations in binary counting order"
+        behavior:
+          - "Generate all 2^n cause combinations in systematic binary counting order"
+          - "Evaluate each combination: propagate values, check constraints"
+          - "Show exclusion reason for each excluded column (infeasible, redundant, untestable)"
+          - "Exclusion explanations are beginner-friendly and concise"
+        exclusion_types:
+          infeasible: "Constraint violation (ONE, EXCL, INCL, REQ)"
+          redundant: "Feasible but not needed for expression coverage"
+          untestable: "Effect indeterminate (I) due to MASK propagation"
+        truth_values: "Always uppercase T/F (no t/f distinction) — beginners see 'what would happen if tested' without expression-matching subtlety"
+        purpose: "Help beginners understand which combinations are discarded and why"
+      practice_mode:
+        japanese: "実務モード"
+        description: "Practical mode showing only necessary test conditions"
+        behavior:
+          - "Hide infeasible columns (constraint violations)"
+          - "Hide weak columns (subsumed conditions)"
+          - "Hide untestable columns (MASK indeterminate effects)"
+          - "Display only actionable test conditions"
+        purpose: "Efficient test case generation for practical use"
+    ui_element:
+      type: "toggle switch"
+      location: "GUI toolbar or settings panel"
+      label: "Learning Mode / Practice Mode"
+      default: "Practice Mode"
+      accessibility: "Always visible and switchable"
+    scenarios:
+      - context: "User opens application"
+        action: "-"
+        outcome: "Default to Practice Mode"
+      - context: "Practice Mode active"
+        action: "User clicks mode switch"
+        outcome: "Switch to Learning Mode, generate and display all 2^n cause combinations"
+      - context: "Learning Mode active"
+        action: "User clicks mode switch"
+        outcome: "Switch to Practice Mode, display optimized test conditions only"
+
+  SR-026:
+    parent: [UR-003, UR-005]
+    category: decision_table
+    function: "Auto-switch to Practice Mode on large tables"
+    description: "Automatically switch to Practice Mode when decision table exceeds threshold"
+    threshold: 256  # columns
+    rationale: "Learning Mode with hundreds of columns becomes unusable and performance-heavy"
+    scenarios:
+      - context: "Graph edit causes decision table to exceed 256 columns"
+        action: "System detects column count > 256"
+        outcome: "Show notification message, auto-switch to Practice Mode"
+      - context: "Notification message shown"
+        action: "-"
+        outcome: "Message: 'Decision table exceeds 256 columns. Switched to Practice Mode for performance.'"
+      - context: "Auto-switched to Practice Mode"
+        action: "User reduces graph complexity below threshold"
+        outcome: "User can manually switch back to Learning Mode"
+      - context: "In Practice Mode due to auto-switch"
+        action: "User manually switches to Learning Mode"
+        outcome: "Show warning if columns still exceed threshold, allow switch if confirmed"
+    note: "Threshold value may be configurable in future versions (see future_extensions)"
+
+  SR-024:
+    parent: [UR-003, UR-004, UR-005]
+    category: decision_table
+    function: "Trace calculation result causes"
+    traceability_info:
+      - result: "I (Indeterminate)"
+        info: "MASK constraint ID and propagation path"
+      - result: "Infeasible (column deleted)"
+        info: "Violated constraint ID (ONE/EXCL/INCL/REQ)"
+      - result: "Untestable"
+        info: "MASK constraint causing I in effect node"
+      - result: "Weak test condition (column deleted)"
+        info: "Subsuming condition number(s)"
+    scenarios:
+      - context: "Cell displays I, M, or deleted marker"
+        action: "User hovers over cell"
+        outcome: "Show tooltip with cause constraint ID and brief explanation"
+      - context: "Cell is hovered showing constraint cause"
+        action: "-"
+        outcome: "Highlight related constraint in graph view"
+      - context: "Full display mode active"
+        action: "-"
+        outcome: "Show deletion reason column with constraint IDs"
+      - context: "Coverage table shows infeasible/untestable"
+        action: "User hovers over marker"
+        outcome: "Show tooltip identifying causal constraints"
+
+# =============================================================================
+# 3.4 Coverage Table
+# =============================================================================
+
+  SR-030:
+    parent: [UR-004]
+    category: coverage
+    function: "Display coverage table"
+    not_handling:
+      description: "NOT on constraint members affects which conditions are infeasible/untestable"
+      examples:
+        - constraint: "EXCL(A, NOT B)"
+          impact: "Conditions where A=T and B=F become infeasible (both effective values true)"
+        - constraint: "REQ(A -> NOT B)"
+          impact: "Conditions where A=T and B=T become infeasible"
+        - constraint: "MASK(NOT A -> {B})"
+          impact: "When A=F, conditions involving B become untestable (B=M→I propagation)"
+      traceability: "Infeasible/untestable markers show constraint with NOT indication in tooltip"
+    scenarios:
+      - context: "Decision table is generated"
+        action: "-"
+        outcome: "Display coverage relationship between logical expressions and test conditions in table format"
+      - context: "Logical expression is infeasible"
+        action: "-"
+        outcome: "Display '-' (hyphen) marker in red; show 'Infeasible' in Status column and constraint detail (e.g., 'ONE(A, B, C)') in Reason column; gray entire row"
+      - context: "Logical expression is untestable"
+        action: "-"
+        outcome: "Display '?' (question) marker in amber; show 'Untestable' in Status column and 'MASK(X → Y)' in Reason column; gray entire row"
+      - context: "Constraint with NOT member causes infeasibility"
+        action: "-"
+        outcome: "Tooltip shows constraint ID with NOT indication (e.g., 'EXCL(A, NOT B)')"
+      - context: "MASK with NOT trigger causes untestability"
+        action: "-"
+        outcome: "Tooltip shows MASK constraint with NOT trigger indication"
+
+# =============================================================================
+# 3.5 Import/Export
+# =============================================================================
+
+  SR-040:
+    parent: [UR-001, UR-006]
+    category: import_export
+    function: "Import DSL"
+    file_format:
+      extension: ".nceg"
+      encoding: "UTF-8 (without BOM)"
+      accepts: "LF or CRLF line endings"
+    import_modes:
+      replace: "Discard existing graph, create new from DSL"
+      merge: "Add to existing graph, update duplicate nodes"
+    error_classification:
+      syntax_errors:
+        - type: "Lexical error"
+          example: "Invalid character or token"
+          handling: "Show line number, abort import"
+        - type: "Parse error"
+          example: "auth := AND (incomplete expression)"
+          handling: "Show line number and expected token, abort import"
+      semantic_errors:
+        - type: "Undefined reference"
+          example: "result := undefined_node"
+          handling: "List all undefined nodes, allow partial import or abort"
+        - type: "Circular reference"
+          example: "A := B; B := A"
+          handling: "Show circular path, abort import"
+        - type: "Self reference"
+          example: "A := A AND B"
+          handling: "Show self-referencing node, abort import"
+        - type: "Constraint contradiction"
+          example: "ONE(A,B) + REQ(A->B)"
+          handling: "Show warning (SR-016), allow import with warning"
+        - type: "Duplicate definition"
+          example: "A := B; A := C (in same DSL)"
+          handling: "Show duplicate, use last definition or abort"
+    scenarios:
+      - context: "DSL text is input, graph is empty"
+        action: "User executes 'Import'"
+        outcome: "Parse DSL and generate graph"
+      - context: "DSL text is input, graph already exists"
+        action: "User executes 'Import'"
+        outcome: "Show mode selection dialog (Replace/Merge/Cancel)"
+      - context: "Replace mode selected"
+        action: "Import"
+        outcome: "Discard existing graph, create new from DSL"
+      - context: "Merge mode selected"
+        action: "Import"
+        outcome: "Add new nodes, update existing nodes with same name, merge constraints"
+      - context: "Merge mode, node name conflict"
+        action: "Import"
+        outcome: "Update existing node properties, preserve coordinates unless DSL specifies"
+      - context: "DSL contains coordinate information"
+        action: "Import"
+        outcome: "Place nodes at specified coordinates"
+      - context: "DSL lacks coordinate information"
+        action: "Import"
+        outcome: "Apply auto-layout to place nodes (new nodes only in merge mode)"
+      - context: "DSL has syntax error"
+        action: "Import"
+        outcome: "Show error message with line number and context, abort import"
+      - context: "DSL has undefined node reference"
+        action: "Import"
+        outcome: "List undefined nodes, offer: create as new nodes / abort"
+      - context: "DSL has circular reference"
+        action: "Import"
+        outcome: "Show circular path (e.g., A -> B -> C -> A), abort import"
+      - context: "DSL has self reference"
+        action: "Import"
+        outcome: "Show self-referencing node, abort import"
+      - context: "DSL has constraint contradiction"
+        action: "Import"
+        outcome: "Import with warning, highlight contradicting constraints (SR-016)"
+
+  SR-043:
+    parent: [UR-001, UR-006]
+    category: import_export
+    function: "Open from URL (?file= query parameter)"
+    description: "Load a .nceg file from a URL on application startup"
+    parameter: "?file=<HTTPS URL>"
+    constraints:
+      - "HTTPS only (HTTP rejected for security)"
+      - "File host must allow CORS"
+    scenarios:
+      - context: "URL has ?file= parameter with valid HTTPS URL"
+        action: "Application starts"
+        outcome: "Fetch file, parse DSL, display graph"
+      - context: "URL has ?file= parameter but fetch fails (network error, CORS, 404)"
+        action: "Application starts"
+        outcome: "Show error message, start with empty canvas"
+      - context: "URL has ?file= parameter but file has syntax errors"
+        action: "Application starts"
+        outcome: "Show parse error, start with empty canvas"
+      - context: "URL has ?file= parameter with HTTP (not HTTPS)"
+        action: "Application starts"
+        outcome: "Reject with security error, start with empty canvas"
+      - context: "URL has no ?file= parameter"
+        action: "Application starts"
+        outcome: "Normal startup with empty canvas"
+
+  SR-041:
+    parent: [UR-006]
+    category: import_export
+    function: "Export DSL"
+    file_format:
+      extension: ".nceg"
+      encoding: "UTF-8 (without BOM)"
+      line_ending: "LF"
+    dsl_features:
+      observable_flag:
+        syntax: 'nodename: "label" [observable]'
+        note: "Observable is default ON, so non-observable nodes are marked with [!observable]"
+      constraint_positions:
+        syntax: "c0: (x, y)"
+        note: "Constraint node positions stored in @layout section with c0, c1, c2... IDs"
+        example: |
+          @layout
+          n1: (100, 100)
+          n2: (200, 100)
+          c0: (150, 50)
+    scenarios:
+      - context: "Graph exists"
+        action: "User executes 'Export'"
+        outcome: "Convert graph to DSL format"
+      - context: "'Include coordinates' option is ON"
+        action: "Export"
+        outcome: "Include @layout section with node and constraint positions"
+      - context: "'Include coordinates' option is OFF"
+        action: "Export"
+        outcome: "Output only logical relations and constraints"
+      - context: "Node is marked non-observable"
+        action: "Export"
+        outcome: "Include [!observable] flag in node definition"
+      - context: "Constraint nodes exist"
+        action: "Export with coordinates"
+        outcome: "Include constraint positions as c0, c1, etc. in @layout section"
+      - context: "Export complete"
+        action: "-"
+        outcome: "Copy to clipboard or download as file"
+
+  SR-042:
+    parent: [UR-006]
+    category: import_export
+    function: "Export decision table"
+    file_format:
+      extension: ".csv"
+      encoding: "UTF-8 (without BOM)"
+      delimiter: ","
+      line_ending: "CRLF (for Excel compatibility)"
+    scenarios:
+      - context: "Decision table exists"
+        action: "User executes export"
+        outcome: "Output in CSV format"
+      - context: "Export in full display mode"
+        action: "Export"
+        outcome: "Include deleted test conditions in output"
+
+# =============================================================================
+# 3.6 Data Persistence
+# =============================================================================
+
+  SR-050:
+    parent: [UR-006]
+    category: persistence
+    function: "Save graph to local storage"
+    scenarios:
+      - context: "Graph is edited"
+        action: "-"
+        outcome: "Automatically save to local storage"
+      - context: "Browser is reloaded"
+        action: "-"
+        outcome: "Restore graph from local storage"
+      - context: "User executes 'Clear'"
+        action: "-"
+        outcome: "Delete local storage data"
+
+  SR-051:
+    parent: [UR-006]
+    category: persistence
+    function: "Save/load graph as file"
+    scenarios:
+      - context: "Graph exists"
+        action: "User executes 'Save'"
+        outcome: "Download file in DSL format (.nceg extension recommended)"
+      - context: "File is selected"
+        action: "User executes 'Open'"
+        outcome: "Import file contents as DSL"
+
+# =============================================================================
+# 3.7 Operation Support
+# =============================================================================
+
+  SR-060:
+    parent: [UR-002]
+    category: operation_support
+    function: "Undo/redo operations"
+    ui_elements:
+      - "Undo button in toolbar"
+      - "Redo button in toolbar"
+    keyboard_shortcuts:
+      undo: "Ctrl+Z"
+      redo: "Ctrl+Y (or Ctrl+Shift+Z)"
+    history_limit: 50
+    scenarios:
+      - context: "Operation history exists"
+        action: "User presses Ctrl+Z or clicks Undo button"
+        outcome: "Undo previous operation"
+      - context: "Undone operations exist"
+        action: "User presses Ctrl+Y or clicks Redo button"
+        outcome: "Redo undone operation"
+      - context: "History exceeds 50 entries"
+        action: "New operation performed"
+        outcome: "Delete oldest history entry"
+      - context: "No history (nothing to undo)"
+        action: "User attempts undo"
+        outcome: "Button is disabled"
+      - context: "No redo history"
+        action: "User attempts redo"
+        outcome: "Button is disabled"
+
+  SR-061:
+    parent: [UR-002]
+    category: operation_support
+    function: "Select elements"
+    scenarios:
+      - context: "Element exists"
+        action: "User clicks"
+        outcome: "Select that element"
+      - context: "Element is selected"
+        action: "User Ctrl+clicks"
+        outcome: "Add to selection (multi-select)"
+      - context: "On canvas"
+        action: "User drag-selects area"
+        outcome: "Select elements within area"
+      - context: "Element is selected"
+        action: "User presses Esc"
+        outcome: "Deselect"
+
+  SR-062:
+    parent: [UR-002]
+    category: operation_support
+    function: "Zoom/pan canvas"
+    scenarios:
+      - context: "Canvas is displayed"
+        action: "User scrolls mouse wheel"
+        outcome: "Zoom in/out"
+      - context: "Canvas is displayed"
+        action: "User right-drags"
+        outcome: "Pan (move) canvas"
+      - context: "Any zoom state"
+        action: "User clicks 'Fit all' button"
+        outcome: "Adjust zoom to fit entire graph"
+
+  SR-063:
+    parent: [UR-001, UR-002]
+    category: operation_support
+    function: "Auto-layout nodes"
+    coordinate_handling:
+      with_coordinates: "Place at specified positions"
+      without_coordinates: "Auto-layout (no error)"
+      partial_coordinates: "Place specified, auto-layout rest"
+    layout_algorithm:
+      current: "Simple layered layout (prevent overlap)"
+      future: "GraphViz MCP integration for hierarchical layout"
+    scenarios:
+      - context: "DSL import with full coordinates"
+        action: "Import"
+        outcome: "Place nodes at specified positions"
+      - context: "DSL import lacks coordinates"
+        action: "Import"
+        outcome: "Apply auto-layout (no error)"
+      - context: "DSL import with partial coordinates"
+        action: "Import"
+        outcome: "Place specified nodes, auto-layout others"
+      - context: "Graph exists"
+        action: "User executes 'Auto-layout'"
+        outcome: "Rearrange all nodes"
+      - context: "During auto-layout"
+        action: "-"
+        outcome: "Place causes (in-degree 0) on left, effects (out-degree 0) on right"
+      - context: "During auto-layout"
+        action: "-"
+        outcome: "Ensure minimum spacing so nodes don't overlap"
+      - context: "Future enhancement"
+        action: "-"
+        outcome: "Call GraphViz MCP server for better hierarchical layout"
+
+  SR-064:
+    parent: [UR-002]
+    category: operation_support
+    function: "Warn on page leave"
+    scenarios:
+      - context: "Graph has unsaved changes (canUndo=true)"
+        action: "User navigates away or closes tab"
+        outcome: "Browser shows standard leave confirmation dialog"
+      - context: "No changes or after Clear All"
+        action: "User navigates away"
+        outcome: "No warning shown"
+
+  SR-065:
+    parent: [UR-002]
+    category: graph_editing
+    function: "Generate sequential default logical statement names"
+    scenarios:
+      - context: "User creates logical node by double-clicking canvas"
+        action: "Node created"
+        outcome: "Default label is 'Logical Statement N' (N = sequential counter)"
+      - context: "User executes Clear All"
+        action: "Graph cleared"
+        outcome: "Logical statement name counter resets to 0"
+
+  SR-066:
+    parent: [UR-003]
+    category: import_export
+    function: "Display DSL export in bottom panel tab"
+    scenarios:
+      - context: "User clicks Export tab"
+        action: "Tab activates"
+        outcome: "Show read-only textarea with current DSL text, updated reactively"
+      - context: "Export tab active"
+        action: "User clicks Copy DSL"
+        outcome: "DSL text copied to clipboard"
+      - context: "Export tab active"
+        action: "User clicks Download (.nceg)"
+        outcome: "DSL file downloaded"
+
+  SR-067:
+    parent: [UR-003]
+    category: import_export
+    function: "Export graph as SVG image"
+    scenarios:
+      - context: "Export tab active"
+        action: "User clicks Download SVG"
+        outcome: "Graph canvas exported as SVG file download"
+      - context: "Export tab active"
+        action: "User clicks Copy SVG"
+        outcome: "SVG markup copied to clipboard as text"
+
+  SR-068:
+    parent: [UR-003]
+    category: import_export
+    function: "Export graph as PNG image"
+    scenarios:
+      - context: "Export tab active"
+        action: "User clicks Download PNG"
+        outcome: "Graph canvas exported as PNG file download (2x resolution)"
+      - context: "Export tab active"
+        action: "User clicks Copy PNG"
+        outcome: "PNG image copied to clipboard (pasteable into PowerPoint, Slack, etc.)"
+
+# =============================================================================
+# Future Extensions (Candidates)
+# =============================================================================
+# These items are not currently in scope but may be implemented in future versions
+
+future_extensions:
+  FE-001:
+    category: decision_table
+    title: "Configurable column threshold for auto-switch"
+    description: |
+      Allow users to configure the threshold for auto-switching from Learning Mode
+      to Practice Mode (currently fixed at 256 columns).
+    rationale: "Different users may have different performance tolerance and educational needs"
+    default_value: 256
+    range: "64-1024"
+
+  FE-002:
+    category: decision_table
+    title: "Preview column count before mode switch"
+    description: |
+      Show estimated column count before switching to Learning Mode when table is large.
+      User can decide whether to proceed knowing the size.
+    ui: "Confirmation dialog showing: 'Learning Mode will display N columns. Continue?'"
+
+  FE-003:
+    category: decision_table
+    title: "Hybrid display mode"
+    description: |
+      Display only a subset of excluded columns in Learning Mode:
+      - Show first N examples of each exclusion category
+      - Provide expandable sections for full list
+      - Balance educational value with usability
+    rationale: "Full Learning Mode may be overwhelming for very large tables"
+
+  FE-004:
+    category: constraints
+    title: "Constraint wizard for complex scenarios"
+    description: |
+      Guided UI for creating complex constraint combinations:
+      - Suggest constraints based on node selection
+      - Warn about potential contradictions before creation
+      - Visualize constraint effects preview
+
+  FE-005:
+    category: import_export
+    title: "Export with exclusion annotations"
+    description: |
+      Include exclusion reasons in CSV export:
+      - Optional column for exclusion reason
+      - Machine-readable format for test management tools
+      - Support filtering by exclusion type during export
+
+  FE-006:
+    category: operation_support
+    title: "GraphViz MCP integration for advanced layout"
+    description: |
+      Use GraphViz via MCP server for better hierarchical layout:
+      - Dot layout for directed graphs
+      - Minimize edge crossings
+      - Support for constraint node positioning
+
+  FE-007:
+    category: decision_table
+    title: "Detailed exclusion reason display in Learning Mode"
+    description: |
+      Show detailed relationships in Learning Mode exclusion reasons:
+      - Subsumption relationships for redundant conditions
+      - MASK propagation path for untestable conditions
+      - Constraint member highlighting for infeasible conditions
+    rationale: "Advanced educational detail, not needed for initial Learning Mode version"
