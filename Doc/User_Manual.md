@@ -708,18 +708,63 @@ The clipboard contains both `text/html` (for rich paste) and `text/plain` (CSV f
 
 ---
 
-## 13. Troubleshooting / トラブルシューティング
+## 13. FAQ / よくある質問
 
-| Problem / 問題 | Cause / 原因 | Solution / 解決策 |
-|---|---|---|
-| Decision table shows "No feasible rules" / デシジョンテーブルに「No feasible rules」| All cause combinations violate constraints / 全原因組合せが制約に違反 | Review constraints for contradictions (e.g., ONE + REQ on overlapping nodes) / 制約の矛盾を確認（例：同じノードにONEとREQ） |
-| Node does not turn purple (effect) / ノードが紫（結果）にならない | Node has outgoing edges / 出力エッジがある | Remove outgoing edges from the intended effect node / 意図する結果ノードの出力エッジを削除 |
-| AND/OR badge does not appear / AND/ORバッジが表示されない | Node has no incoming edges / 入力エッジがない | Connect at least one incoming logical edge / 入力論理エッジを少なくとも1つ接続 |
-| Learning Mode auto-switches to Practice / Learning Modeが自動でPracticeに切替 | More than 8 causes (>256 combinations) / 原因が8個超（256組合せ超） | Reduce cause count or use Practice Mode / 原因数を減らすかPractice Modeを使用 |
-| Page leave warning appears / ページ離脱警告が表示される | Unsaved changes exist / 未保存の変更がある | Save via File > Save CEG Definition, or dismiss / Fileメニューで保存するかダイアログを閉じる |
-| "NOT was removed" alert after promotion / 昇格後に「NOT was removed」アラート | Source promotion created both-sides-NOT (REQ) or MASK trigger demotion / REQでソース昇格により両側NOTが発生、またはMASKトリガー降格 | Expected behavior — both-sides-NOT prohibited for REQ, MASK targets cannot have NOT. Ctrl+Z to undo / 想定動作。REQの両側NOTは禁止、MASKターゲットNOT不可。Ctrl+Zで元に戻す |
-| Coverage shows 0% / カバレッジが0% | No effects in the graph / グラフに結果ノードがない | Ensure at least one node has no outgoing logical edges / 出力論理エッジのないノードが最低1つ必要 |
-| Import error with line number / 行番号付きインポートエラー | Syntax error in `.nceg` file / `.nceg`ファイルの構文エラー | Check the indicated line for typos, missing quotes, or invalid keywords / 指定行のタイプミス、引用符不足、無効なキーワードを確認 |
+**Q: Decision table shows "No feasible rules" — is this a bug?**
+**Q: デシジョンテーブルに「No feasible rules」と表示されました。バグですか？**
+
+This usually means that your constraints are contradicting each other. For example, applying both ONE and REQ to overlapping nodes can make all combinations infeasible. Try reviewing your constraint definitions for unintended conflicts.
+
+制約同士が矛盾している可能性があります。たとえば、重複するノードに ONE と REQ を両方適用すると、すべての組み合わせが実行不能になることがあります。制約の定義に意図しない矛盾がないか確認してみてください。
+
+**Q: My node won't turn purple (effect). What am I doing wrong?**
+**Q: ノードが紫色（結果）になりません。何が間違っていますか？**
+
+A node is recognized as an effect only when it has no outgoing logical edges. If the node still has outgoing edges, it is treated as an intermediate node. Check whether an unintended edge is connected from that node.
+
+ノードは出力論理エッジがない場合にのみ結果ノードとして認識されます。出力エッジが残っていると中間ノードとして扱われます。意図しないエッジが接続されていないか確認してみてください。
+
+**Q: The AND/OR badge doesn't appear on my node.**
+**Q: ノードに AND/OR バッジが表示されません。**
+
+The badge appears when a node has incoming logical edges. If the node has no incoming edges, it is a cause node and does not display a logic badge. You may have forgotten to connect an edge to that node.
+
+バッジはノードに入力論理エッジがある場合に表示されます。入力エッジがなければ原因ノードであり、ロジックバッジは表示されません。エッジの接続を忘れていないか確認してみてください。
+
+**Q: Learning Mode automatically switched to Practice Mode. Why?**
+**Q: Learning Mode が自動的に Practice Mode に切り替わりました。なぜですか？**
+
+Learning Mode displays the full exhaustive decision table, which grows exponentially with the number of causes. When causes exceed 8 (more than 256 combinations), NeoCEG automatically switches to Practice Mode to maintain performance. This is expected behavior — consider whether some causes can be consolidated, or continue working in Practice Mode.
+
+Learning Mode は完全な組み合わせデシジョンテーブルを表示するため、原因数に対して指数的に増大します。原因が8個を超える（256組み合わせ超）と、パフォーマンス維持のため自動的に Practice Mode に切り替わります。これは想定通りの動作です。原因を統合できないか検討するか、そのまま Practice Mode でお使いください。
+
+**Q: A "NOT was removed" alert appeared after I changed a constraint. Did I lose something?**
+**Q: 制約を変更したら「NOT was removed」というアラートが出ました。何か失われましたか？**
+
+This happens when editing a constraint would create an invalid combination — for example, NOT on both sides of a REQ, or NOT on a MASK target. NeoCEG automatically removes the NOT to keep the model valid and notifies you. If this wasn't what you intended, press Ctrl+Z (Cmd+Z on Mac) to undo.
+
+制約の編集により無効な組み合わせが生じる場合に発生します。たとえば REQ の両側に NOT がつく場合や、MASK ターゲットに NOT がつく場合です。NeoCEG はモデルの整合性を保つために自動的に NOT を除去し、通知します。意図した操作でなければ、Ctrl+Z（Mac は Cmd+Z）で元に戻せます。
+
+**Q: Coverage shows 0%. Is the calculation broken?**
+**Q: カバレッジが 0% と表示されます。計算がおかしいのでは？**
+
+Coverage is calculated based on effect nodes. If your graph has no effect nodes (i.e., every node has at least one outgoing logical edge), there is nothing to measure coverage against. Check whether your intended effect nodes have unintended outgoing edges.
+
+カバレッジは結果ノードを基に計算されます。グラフに結果ノードがない場合（すべてのノードに出力論理エッジがある場合）、カバレッジの計算対象がありません。意図した結果ノードに不要な出力エッジがついていないか確認してみてください。
+
+**Q: I get an import error with a line number. What should I look for?**
+**Q: 行番号付きのインポートエラーが出ます。何を確認すればよいですか？**
+
+The error message indicates where the parser encountered a problem in the `.nceg` file. Common mistakes include missing quotation marks around labels, typos in keywords (AND, OR, NOT, etc.), or incorrect constraint syntax. Check the indicated line and its surroundings.
+
+エラーメッセージは `.nceg` ファイル内でパーサーが問題を検出した箇所を示しています。よくある間違いは、ラベルの引用符の付け忘れ、キーワード（AND, OR, NOT など）の綴り間違い、制約構文の誤りなどです。指定された行とその前後を確認してみてください。
+
+**Q: A page leave warning appeared. Is my work saved?**
+**Q: ページ離脱の警告が出ました。作業は保存されていますか？**
+
+This warning appears when you have unsaved changes. Your work is still in the browser, but has not been saved to a file. Use File > Save CEG Definition to save before leaving, or dismiss the warning if you don't need the changes.
+
+この警告は未保存の変更がある場合に表示されます。作業はブラウザ上にまだ残っていますが、ファイルには保存されていません。離脱前に File > Save CEG Definition で保存するか、変更が不要であれば警告を閉じてください。
 
 ---
 
