@@ -23,6 +23,7 @@ Draw logical and constraint relationships as a graph, and NeoCEG automatically g
 - **DSL with [EBNF grammar](https://sho1884.github.io/public-files/NeoCEG/DSL_Grammar_Specification/)** — provide it to an AI assistant to generate graphs from natural language requirements / EBNF文法をAIアシスタントに渡して自然言語の要求仕様からグラフを生成
 - **PWA** — installable as a standalone app from the browser / ブラウザからアプリとしてインストール可能
 - **Export** / エクスポート: CSV, HTML, SVG
+- **[CLI tool](Doc/CLI_User_Manual.md)** — UNIX filter for CI/CD pipelines: `.nceg` → decision table CSV, coverage table CSV, graph SVG / CI/CDパイプライン向け UNIX フィルタ
 
 ## Getting Started / はじめに
 
@@ -78,6 +79,8 @@ Specifications are maintained in the [`Doc/`](Doc/) directory. / 仕様書は `D
 - [Algorithm Design / アルゴリズム設計](Doc/Algorithm_Design.md)
 - [Security Design / セキュリティ設計](Doc/Security_Design.md)
 - [User Manual / ユーザーマニュアル](Doc/User_Manual.md)
+- [CLI User Manual / CLI ユーザーマニュアル](Doc/CLI_User_Manual.md)
+- [CLI Requirements Specification / CLI 要求仕様](Doc/CLI_Requirements_Specification.md)
 
 ## Acknowledgments / 謝辞
 
