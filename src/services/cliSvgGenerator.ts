@@ -493,32 +493,40 @@ export function generateGraphSVG(model: LogicalModel): string {
 
   // Build constraint info with layout
   const constraintInfos: ConstraintInfo[] = [];
-  // Constraints don't have explicit positions in the model, so we derive them.
-  // Place constraint nodes between their member nodes.
   for (const constraint of model.constraints) {
-    const memberNames = constraint.type === 'REQ'
-      ? [constraint.source.name, ...constraint.targets.map((t) => t.name)]
-      : constraint.type === 'MASK'
-        ? [constraint.trigger.name, ...constraint.targets.map((t) => t.name)]
-        : constraint.members.map((m) => m.name);
-
-    let cx = 0, cy = 0, count = 0;
-    for (const mn of memberNames) {
-      const ni = nodeInfos.get(mn);
-      if (ni) {
-        cx += ni.x + ni.w / 2;
-        cy += ni.y;
-        count++;
-      }
-    }
-    if (count > 0) {
-      cx = cx / count;
-      cy = cy / count - 40; // Place above the midpoint
-    }
-
     const isDirectional = constraint.type === 'REQ' || constraint.type === 'MASK';
     const w = isDirectional ? 50 : 40;
     const h = 40;
+
+    let cx: number, cy: number;
+
+    if (constraint.position) {
+      // Use @layout coordinates from .nceg file
+      cx = constraint.position.x + w / 2;
+      cy = constraint.position.y + h / 2;
+    } else {
+      // Fallback: place between member nodes
+      const memberNames = constraint.type === 'REQ'
+        ? [constraint.source.name, ...constraint.targets.map((t) => t.name)]
+        : constraint.type === 'MASK'
+          ? [constraint.trigger.name, ...constraint.targets.map((t) => t.name)]
+          : constraint.members.map((m) => m.name);
+
+      cx = 0; cy = 0;
+      let count = 0;
+      for (const mn of memberNames) {
+        const ni = nodeInfos.get(mn);
+        if (ni) {
+          cx += ni.x + ni.w / 2;
+          cy += ni.y;
+          count++;
+        }
+      }
+      if (count > 0) {
+        cx = cx / count;
+        cy = cy / count - 40;
+      }
+    }
 
     constraintInfos.push({
       constraint,
