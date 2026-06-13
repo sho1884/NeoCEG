@@ -1,4 +1,4 @@
-# NeoCEG DSL Grammar Specification v1.4
+# NeoCEG DSL Grammar Specification v1.5
 
 **Status**: Finalized (2026-02-08)
 **Language**: English (primary) / 日本語 (説明)
@@ -23,7 +23,10 @@ This document defines the formal grammar for the NeoCEG DSL (Domain-Specific Lan
 ## EBNF Grammar / EBNF文法
 
 ```ebnf
-(* NeoCEG DSL Grammar v1.4 *)
+(* NeoCEG DSL Grammar v1.5 *)
+(* Authoring note (incl. AI): to build a graph from requirements, output ONLY    *)
+(* .nceg DSL conforming to this grammar — no prose, no code fences, no comments   *)
+(* of your own. Names follow the factor = level convention below.                 *)
 
 (* ============================================================================= *)
 (* Top-level structure / 最上位構造 *)
@@ -48,6 +51,25 @@ node_definition = identifier ( cause_def | effect_def ) ;
 
 cause_def       = ":" string ;
 effect_def      = ":=" expression ;
+
+(* --------------------------------------------------------------------------- *)
+(* Naming convention — factor = level (shared with NeoCombi's factor/level      *)
+(* domain). Name a CAUSE by an ATTRIBUTE and its VALUE, where the value is an   *)
+(* EQUIVALENCE CLASS (not a raw value). Name an EFFECT as an output factor =    *)
+(* level too. Logic (AND/OR/NOT) lives in the graph, NEVER inside a node name.  *)
+(*   居住地 = 県内       residence = in-prefecture                              *)
+(*   年齢   = 65歳以上   age = senior            (level = equivalence class)    *)
+(*   区分   = 団体       category = group                                       *)
+(*   料金   = 無料       fee = free              (effect: output factor=level)  *)
+(* The factor = level text is the node's quoted LABEL; reference it by a short  *)
+(* identifier that mirrors it (no spaces/'='):  居住地_県内 : "居住地 = 県内".   *)
+(* Levels of one factor are mutually exclusive -> usually a ONE(...) constraint.*)
+(* ❌ name by a downstream consequence:  "free pupil" / 有料小学生              *)
+(* ✅ name by the attribute the group has: 居住地 = 県外 ; 区分 = 小学生        *)
+(* English only: keep a level short and single-concept; do NOT put the words   *)
+(* or / and / not, or a raw comparison, inside a level (they read as logic).    *)
+(* ❌ age = 65 or older   ❌ amount > 1000   ✅ age = senior   ✅ amount = over-limit *)
+(* --------------------------------------------------------------------------- *)
 
 (* ============================================================================= *)
 (* Logical expressions / 論理式 *)
@@ -254,6 +276,48 @@ explicit:
 A meaningful identifier may itself serve as the statement when no separate label is given; the tool then
 displays the identifier (never the expression).
 意味のある識別子は別ラベルが無ければそのまま言明として機能してよい。ツールは識別子を表示する（式は表示しない）。
+
+### P6. Name causes (and effects) by `factor = level` — equivalence class / 原因（と結果）は `因子 = 水準`（同値クラス）で名づける
+This is the concrete form of P3 ("name by the attribute"). A **cause** is an atomic proposition: an
+**attribute (factor / 因子) at a value (level / 水準)**, where the level is an **equivalence class**, not a raw
+value. Name an **effect** as an output `factor = level` too. The compound logic (AND/OR/NOT) is carried by the
+**graph** (P2), so a node name is a single `factor = level` proposition — **never an expression, never a raw
+comparison**.
+P3「属性で名づける」の具体形。**原因**は原子命題＝**属性（因子）に値（水準）**を与えたもので、水準は生値で
+なく**同値クラス**。**結果**も出力 `因子 = 水準` で名づける。複合論理（AND/OR/NOT）は**グラフ**が担う（P2）
+ので、ノード名は単一の `因子 = 水準` 命題——**式や生比較にしない**。
+
+- **Levels of one factor are mutually exclusive → usually a `ONE(...)`/`EXCL(...)` constraint.** So sibling
+  `factor = level` nodes make the constraint structure legible from the names. / 同一因子の水準は相互排他＝
+  ふつう `ONE(...)`/`EXCL(...)`。同じ因子の `因子 = 水準` ノード群から制約が読み取れる。
+- **NeoCombi unification.** `factor / level (因子 / 水準)` is the shared vocabulary of the sibling tools. In
+  NeoCombi a factor is a *parameter*; `factor = level` corresponds to its atomic comparison `[factor] = "level"`
+  and a factor's whole level set to a parameter declaration. Keep names **readable** — plain `factor = level`,
+  no brackets or quotes; mechanical / AI conversion adds NeoCombi's `[ ]` and `" "`. / 姉妹ツール共通語彙。
+  NeoCombi では因子＝パラメータで、`factor = level` は原子比較 `[factor] = "level"` に、因子の水準全体は
+  パラメータ宣言に対応。表記は**読みやすさ優先**（素の `因子 = 水準`、括弧・引用なし）、変換側が補う。
+- **English only — avoid logical words and raw comparisons in a level.** Keep a level short and single-concept;
+  do **not** put `or` / `and` / `not`, or a comparison, inside a level — they read as logic and break the
+  equivalence-class discipline. ❌ `age = 65 or older`, `amount > 1000`　✅ `age = senior`, `amount = over-limit`.
+  （英語のみの注意。日本語の水準では起きない。）
+- A genuinely **compound** concept is still its own named proposition per P1–P3 (e.g. `非在住小学生 :=
+  居住地_県外 AND 区分_小学生`), built **from** `factor = level` causes — it is not itself a `factor = level`. /
+  本当に**複合**の概念は P1–P3 どおり独立の命題として名づけ（`factor = level` の原因から組み立てる）、それ
+  自体は `factor = level` にしない。
+- **Where it lives.** `factor = level` (with spaces and `=`) is the node's **statement = the quoted label**;
+  an identifier cannot contain spaces or `=`. Use a short **identifier that mirrors it with `_`** (e.g.
+  `居住地_県内`) so it can be referenced in expressions and constraints, and put the `=` form in the label. /
+  `factor = level`（空白と `=` を含む）はノードの**言明＝引用符付きラベル**。識別子は空白・`=` を含められない
+  ので、それを `_` で写した短い識別子（例 `居住地_県内`）で参照し、`=` 形はラベルに書く。
+
+Example / 例:
+
+    区分_団体     : "区分 = 団体"          # identifier mirrors factor_level; label is the statement
+    区分_個人     : "区分 = 個人"
+    年齢_65以上   : "年齢 = 65歳以上"       # level = equivalence class, not a raw value
+    ONE(区分_団体, 区分_個人)              # levels of one factor are mutually exclusive
+    料金_無料     : "料金 = 無料"           # effect, named as an output factor = level
+    料金_無料     := 区分_団体 OR 年齢_65以上
 
 ---
 
@@ -485,3 +549,4 @@ This DSL format is **NOT compatible** with CEGTest 1.6's CSV format.
 | 2026-06-13 | 1.3 | **Remove the observable flag entirely** (`[unobservable]`/`[observable]` no longer recognised) — feature removed / **観測フラグを完全削除**（`[unobservable]`/`[observable]` は非対応に）— 機能廃止 |
 | 2026-03-04 | 1.2 | Add optional width to layout entry: `(x, y, width)` — backward compatible / レイアウトエントリに省略可能な幅を追加：`(x, y, width)` — 後方互換 |
 | 2026-06-13 | 1.4 | Add inline ✅/❌ examples to the EBNF comments (single-gate expressions, REQ/MASK NOT rules, constraints, layout, escapes), mirroring the parser tests. Grammar unchanged — illustrative only, aids human and AI authors / EBNFコメントに ✅/❌ 例を追加（単一ゲート式・REQ/MASKのNOT規則・制約・レイアウト・エスケープ）、パーサのテストと一致。文法は不変＝例示のみ、人間とAIの作成を補助 |
+| 2026-06-14 | 1.5 | Add the **`factor = level` (equivalence class) naming convention** (Pragmatics §P6) for unification with the sibling tool NeoCombi's factor/level domain; fold a compact digest + an AI output-format note into the EBNF comments. Includes the English-only caution (no `or`/`and`/`not` or raw comparisons inside a level) and the identifier-vs-label rule. Grammar unchanged / NeoCombi の factor/level ドメインと統一するため **`factor = level`（同値クラス）命名規則**（語用論 §P6）を追加。圧縮ダイジェストと AI 向け出力体裁メモを EBNF コメントへ畳み込み。英語限定の注意（水準に `or`/`and`/`not` や生比較を入れない）と識別子／ラベルの規則を含む。文法は不変 |
