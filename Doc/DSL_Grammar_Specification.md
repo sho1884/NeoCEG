@@ -1,4 +1,4 @@
-# NeoCEG DSL Grammar Specification v1.3
+# NeoCEG DSL Grammar Specification v1.4
 
 **Status**: Finalized (2026-02-08)
 **Language**: English (primary) / 日本語 (説明)
@@ -23,7 +23,7 @@ This document defines the formal grammar for the NeoCEG DSL (Domain-Specific Lan
 ## EBNF Grammar / EBNF文法
 
 ```ebnf
-(* NeoCEG DSL Grammar v1.3 *)
+(* NeoCEG DSL Grammar v1.4 *)
 
 (* ============================================================================= *)
 (* Top-level structure / 最上位構造 *)
@@ -42,8 +42,8 @@ comment         = "#" text newline ;
 (* Node definitions / ノード定義 *)
 (* ============================================================================= *)
 
-(* Cause node: identifier : "label" *)
-(* Effect/Intermediate node: identifier := expression *)
+(* Cause node (in-degree 0):           n1 : "user clicks login"  *)
+(* Effect/Intermediate node (has :=):  n3 := n1 AND n2           *)
 node_definition = identifier ( cause_def | effect_def ) ;
 
 cause_def       = ":" string ;
@@ -65,6 +65,17 @@ and_gate        = literal "AND" literal { "AND" literal } ;
 
 literal         = [ "NOT" ] identifier ;
 
+(* Examples — these mirror the parser tests (src/__tests__/logicalDsl.test.ts): *)
+(* ✅ n3 := n1 OR n2             — OR gate                                       *)
+(* ✅ n3 := n1 AND n2            — AND gate                                      *)
+(* ✅ n3 := n1 AND NOT n2        — gate with a negated literal                  *)
+(* ✅ n2 := NOT n1               — a single literal                            *)
+(* ✅ compound logic -> two nodes (separate lines):  m := n2 OR n3   then   n4 := n1 AND m *)
+(* ❌ n4 := n1 AND n2 OR n3      — AND and OR mixed in one node (decompose it)   *)
+(* ❌ n4 := n1 AND (n2 OR n3)    — parentheses / nesting (decompose it)         *)
+(* 例（上記はパーサのテストと一致）: 1ノード＝1ゲート。混在・括弧・ネストは不可、 *)
+(* 複合論理は中間ノード m に分解する。                                          *)
+
 (* ============================================================================= *)
 (* Constraints / 制約 *)
 (* ============================================================================= *)
@@ -73,12 +84,16 @@ constraint_stmt = symmetric_constraint
                 | directional_constraint ;
 
 (* Symmetric constraints: ONE, EXCL, INCL *)
+(* ✅ ONE(n1, n2, n3)   ✅ EXCL(n1, n2)   ✅ INCL(n1, n2)                       *)
 symmetric_constraint = ( "ONE" | "EXCL" | "INCL" )
                        "(" member_list ")" ;
 
 (* Directional constraints: REQ, MASK *)
 (* REQ: NOT on source or targets, but not both simultaneously *)
+(* ✅ REQ(n1 -> n2)   ✅ REQ(NOT n1 -> n2)   ✅ REQ(n1 -> NOT n2)               *)
+(* ❌ REQ(NOT n1 -> NOT n2)   — NOT on both source and target                  *)
 (* MASK: NOT on trigger only, targets always positive *)
+(* ✅ MASK(NOT n1 -> n2)   ❌ MASK(n1 -> NOT n2)   — NOT not allowed on a target *)
 req_constraint  = "REQ" "(" constraint_member "->" member_list ")" ;
 mask_constraint = "MASK" "(" constraint_member "->" identifier_list ")" ;
 directional_constraint = req_constraint | mask_constraint ;
@@ -97,6 +112,7 @@ layout_stmt     = "@layout" "{" { layout_entry } "}" ;
 
 layout_entry    = identifier ":" "(" number "," number [ "," number ] ")" ;
                   (* x, y, optional width / x座標, y座標, 省略可能な幅 *)
+                  (* e.g.  n1: (100, 220)   or with width  n1: (100, 220, 180) *)
 
 (* ============================================================================= *)
 (* Lexical elements / 字句要素 *)
@@ -109,6 +125,7 @@ string          = '"' { string_char | escape_sequence } '"' ;
 string_char     = (* any character except " and \ *) ;
 
 escape_sequence = "\" ( "n" | '"' | "\" ) ;
+                  (* e.g.  n1 : "He said \"hi\"\nthen left"  ->  newline + quotes *)
 
 number          = [ "-" ] digit { digit } ;
 
@@ -467,3 +484,4 @@ This DSL format is **NOT compatible** with CEGTest 1.6's CSV format.
 | 2026-06-13 | 1.2 | Restrict expressions to **one gate per node** (no parentheses / nesting / AND-OR mixing); add **Pragmatics §P1–P5** (node = proposition; expression is a naming hint; expression-as-name is a last resort) / 式を**1ノード1ゲート**に制限（括弧・入れ子・AND/OR混在不可）、**語用論 §P1–P5** を追加（ノード＝命題／式は命名の手がかり／式の名前代用は最後の手段） |
 | 2026-06-13 | 1.3 | **Remove the observable flag entirely** (`[unobservable]`/`[observable]` no longer recognised) — feature removed / **観測フラグを完全削除**（`[unobservable]`/`[observable]` は非対応に）— 機能廃止 |
 | 2026-03-04 | 1.2 | Add optional width to layout entry: `(x, y, width)` — backward compatible / レイアウトエントリに省略可能な幅を追加：`(x, y, width)` — 後方互換 |
+| 2026-06-13 | 1.4 | Add inline ✅/❌ examples to the EBNF comments (single-gate expressions, REQ/MASK NOT rules, constraints, layout, escapes), mirroring the parser tests. Grammar unchanged — illustrative only, aids human and AI authors / EBNFコメントに ✅/❌ 例を追加（単一ゲート式・REQ/MASKのNOT規則・制約・レイアウト・エスケープ）、パーサのテストと一致。文法は不変＝例示のみ、人間とAIの作成を補助 |
