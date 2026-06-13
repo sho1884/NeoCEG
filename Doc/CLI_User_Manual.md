@@ -90,10 +90,10 @@ node bin/neoceg.mjs input.nceg
 
 Output / 出力:
 ```csv
-ID,Classification (分類),Observable (観測可能),Logical Statement (論理言明),#1,#2,#3
-p1,Cause (原因),-,A,T,F,T
-p2,Cause (原因),-,B,T,T,F
-p3,Effect (結果),Yes,C,T,F,F
+ID,Classification (分類),Logical Statement (論理言明),#1,#2,#3
+p1,Cause (原因),A,T,F,T
+p2,Cause (原因),B,T,T,F
+p3,Effect (結果),C,T,F,F
 ```
 
 ### 4.2 Decision Table to file / デシジョンテーブルをファイルへ
@@ -165,7 +165,6 @@ Each row represents a node. Each column after the header columns represents a te
 |--------|----------|
 | ID | Node identifier / ノード識別子 |
 | Classification / 分類 | Cause, Intermediate, or Effect / 原因、中間、または結果 |
-| Observable / 観測可能 | Yes, No, or `-` (causes are always observable) / Yes、No、または `-`（原因は常に観測可能） |
 | Logical Statement / 論理言明 | Node label / ノードラベル |
 | #1, #2, ... | Truth values for each test rule / 各テストルールの真理値 |
 

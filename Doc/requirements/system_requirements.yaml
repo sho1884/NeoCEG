@@ -494,7 +494,6 @@ requirements:
     editable_properties:
       - "Node name (label) - Unicode allowed including Japanese propositions/predicates"
       - "Logical operator (AND/OR) - only valid for nodes with multiple inputs"
-      - "Observable flag (default: ON) - whether node can be directly tested"
       - "Memo"
     display_properties:
       width:
@@ -505,11 +504,6 @@ requirements:
       text_wrap:
         enabled: true
         note: "Newline input not allowed, but auto-wrap for display"
-      observable_indicator:
-        enabled: true
-        visual: "Green circle badge at top-right corner"
-        tooltip: "Observable - can be directly tested"
-        default: true  # ON by default
     context_menu:
       set_label_to_expression:
         enabled: true
@@ -528,12 +522,6 @@ requirements:
       - context: "Node has incoming edges"
         action: "User selects 'Set label to expression' from context menu"
         outcome: "Node label is set to logical expression (e.g., '\"A\" AND \"B\"')"
-      - context: "Node is observable"
-        action: "User selects 'Mark as Non-Observable' from context menu"
-        outcome: "Node observable flag is set to OFF"
-      - context: "Non-observable node exists"
-        action: "User selects 'Mark as Observable' from context menu"
-        outcome: "Node observable flag is set to ON"
       - context: "Editing properties"
         action: "User changes node name and confirms"
         outcome: "Node name is updated, related displays are updated"
@@ -1084,9 +1072,6 @@ requirements:
       encoding: "UTF-8 (without BOM)"
       line_ending: "LF"
     dsl_features:
-      observable_flag:
-        syntax: 'nodename: "label" [observable]'
-        note: "Observable is default ON, so non-observable nodes are marked with [!observable]"
       constraint_positions:
         syntax: "c0: (x, y)"
         note: "Constraint node positions stored in @layout section with c0, c1, c2... IDs"
@@ -1105,9 +1090,6 @@ requirements:
       - context: "'Include coordinates' option is OFF"
         action: "Export"
         outcome: "Output only logical relations and constraints"
-      - context: "Node is marked non-observable"
-        action: "Export"
-        outcome: "Include [!observable] flag in node definition"
       - context: "Constraint nodes exist"
         action: "Export with coordinates"
         outcome: "Include constraint positions as c0, c1, etc. in @layout section"

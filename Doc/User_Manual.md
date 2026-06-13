@@ -168,28 +168,11 @@ When a node receives its first incoming edge, an **AND** badge appears at the no
 - **AND**: Blue `#1976d2`
 - **OR**: Muted orange `#bf6c00`
 
-### 4.5 Observable Flag / 観測可能フラグ
-
-By default, all nodes are **observable** (no indicator shown). If a node's output cannot be directly tested or measured, mark it as non-observable:
-
-デフォルトではすべてのノードが**観測可能**です（インジケーター表示なし）。ノードの出力を直接テスト・計測できない場合、非観測可能に設定します：
-
-**Right-click node > Mark as Non-Observable** / 右クリック > 観測不可能に設定
-
-| State / 状態 | Graph Indicator / グラフ表示 | Decision Table / デシジョンテーブル |
-|---|---|---|
-| Observable (default) / 観測可能 | No indicator / 表示なし | No indicator / 表示なし |
-| Non-observable / 観測不可 | Amber closed-eye icon at top-right / 右上にamber閉じた目アイコン | Amber dot (●) next to label / ラベル横にamber丸 |
-
-> **Note**: Cause nodes never display the indicator (they are always observable by definition).
-> 原因ノードはインジケーターを表示しません（定義上常に観測可能）。
-
-### 4.6 Node Right-click Menu / ノード右クリックメニュー
+### 4.5 Node Right-click Menu / ノード右クリックメニュー
 
 | Menu Item / メニュー項目 | Condition / 条件 | Action / 動作 |
 |---|---|---|
-| Set label to expression | Node has incoming edges / 入力エッジあり | Replace label with the logical expression of inputs / ラベルを入力の論理式で置換 |
-| Mark as Observable / Non-Observable | Always / 常時 | Toggle observable flag / 観測可能フラグを切替 |
+| Set label to expression | Node has incoming edges / 入力エッジあり | Replace label with the logical expression of inputs (last-resort naming) / ラベルを入力の論理式で置換（最後の手段の命名） |
 | Delete Node | Always / 常時 | Delete node and cascade-delete related constraints / ノードと関連制約を連鎖削除 |
 
 ---
@@ -505,7 +488,7 @@ The **Compare** tab displays the Decision Table and Coverage Table stacked verti
 # Cause definitions: identifier: "label"
 p1: "Valid user ID entered"
 p2: "Password matches"
-p3: "Server available" [unobservable]    # Non-observable node
+p3: "Server available"
 
 # Effect/Intermediate definitions: identifier := expression
 auth_success := p1 AND p2
@@ -546,26 +529,24 @@ All keywords are **case-insensitive** but conventionally written in UPPERCASE.
 | `REQ` | Requires constraint / 要求制約 |
 | `MASK` | Masking constraint / マスク制約 |
 
-### 10.4 Operator Precedence / 演算子優先順位
+### 10.4 One gate per node / 1ノード＝1ゲート
 
-| Priority / 優先度 | Operator | Associativity / 結合性 |
-|---|---|---|
-| 1 (highest) | `NOT` | Right / 右結合 |
-| 2 | `AND` | Left / 左結合 |
-| 3 (lowest) | `OR` | Left / 左結合 |
+Each node body is a **single gate**: an `AND` of references, an `OR` of references, or a single reference,
+where each reference may be negated with `NOT`. There are **no parentheses and no AND/OR mixing** in one node
+— a compound sub-expression is a separate concept, so make it its **own named node**.
 
-Use parentheses `()` to override precedence. Example: `p1 AND (p2 OR p3)`.
+各ノード本体は**単一ゲート**（参照の `AND`／`OR`／単一参照。各参照は `NOT` で否定可）。**1ノード内に括弧や
+AND/OR 混在はない** — 複合部分式は別の概念なので、**それ自体を名前付きノード**にする。
 
-括弧 `()` で優先順位を変更できます。例：`p1 AND (p2 OR p3)`
+```
+# Not allowed (mixed in one node) / 不可（1ノードに混在）:
+#   result := p1 AND (p2 OR p3)
+# Instead, name the sub-concept as its own node / 代わりに部分概念をノード化:
+either23 := p2 OR p3
+result   := p1 AND either23
+```
 
-### 10.5 Observable Flag / 観測可能フラグ
-
-- `[unobservable]` after a cause definition marks the node as non-observable.
-- `[observable]` is accepted for backward compatibility (equivalent to the default — observable).
-- If neither tag is present, the node is observable by default.
-- When re-exporting, only `[unobservable]` is written; `[observable]` is never output.
-
-### 10.6 Formal Grammar / 正式文法
+### 10.5 Formal Grammar / 正式文法
 
 For the complete EBNF grammar definition, see [DSL_Grammar_Specification.md](./DSL_Grammar_Specification.md).
 
@@ -632,7 +613,7 @@ The process is: (1) parse the clipboard text, (2) if syntax errors exist, show a
 
 | Type | Method / 方法 | Content / 内容 |
 |---|---|---|
-| Decision Table CSV | File > Download Decision CSV / Copy Decision CSV | Classification, Logical Statement, Observable status, and truth values per rule / 分類、論理言明、観測可能状態、ルール毎の真理値 |
+| Decision Table CSV | File > Download Decision CSV / Copy Decision CSV | Classification, Logical Statement, and truth values per rule / 分類、論理言明、ルール毎の真理値 |
 | Coverage Table CSV | File > Download Coverage CSV / Copy Coverage CSV | Expression coverage data with coverage percentage / 論理式カバレッジデータとカバレッジ率 |
 
 CSV files use UTF-8 encoding.
@@ -779,7 +760,6 @@ This warning appears when you have unsaved changes. Your work is still in the br
 | Rule | ルール | A column in the decision table representing one test condition / デシジョンテーブルの1列（1テスト条件） |
 | Expression | 論理式 | A logical edge (subexpression) to be covered in the coverage table / カバレッジテーブルでカバーすべき論理エッジ（部分式） |
 | Constraint | 制約 | A rule restricting valid truth-value combinations among causes / 原因間の有効な真理値組合せを制限するルール |
-| Observable | 観測可能 | A node whose output value can be directly tested or measured / 出力値を直接テスト・計測可能なノード |
 | Masked (M) | マスク | A Don't Care value caused by a MASK constraint trigger being true / MASKトリガーが真のときのDon't Care値 |
 | Indeterminate (I) | 不定 | A value that cannot be determined due to M propagating through logic / Mが論理式を伝播して確定不能な値 |
 | Feasible | 実行可能 | A rule that satisfies all constraints / すべての制約を満たすルール |

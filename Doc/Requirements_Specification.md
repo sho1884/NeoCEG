@@ -78,8 +78,20 @@ This document defines requirements for NeoCEG, a modern reimplementation of CEGT
 - Node name (label) - Unicode allowed including Japanese propositions/predicates
   ノード名（ラベル）- 日本語の命題・述語論理表現を含むUnicode文字可
 - Logical operator (AND/OR) - only valid for nodes with multiple inputs / 論理演算子（AND/OR）- 複数入力を持つノードのみ有効
-- Observability / 観測可能性
 - Memo / メモ
+
+**Node semantics — a node is a proposition / ノードの意味論 — ノードは命題**:
+- Every node denotes a **logical statement (proposition)**: the condition (cause) or effect it represents.
+  Unlike an electronic circuit, an **intermediate node's meaning must be stated** — it is not an anonymous
+  internal wire. / すべてのノードは**論理言明（命題）**＝表す条件（原因）／効果。電子回路と違い**中間
+  ノードの意味は明記必須**（無名の内部配線ではない）。
+- The statement is the node's **identity and what is displayed**; the logical expression (`:= …`) is its
+  **definition** — a separate thing, never shown in place of the statement. / 言明がノードの**同一性・表示**。
+  論理式（`:= …`）は**定義**で別物、命題の代わりに表示しない。
+- One node = one gate (single AND/OR); compound logic is decomposed into named nodes. The syntactic part is
+  enforced by the **single-gate rule**, and the naming discipline by **Pragmatics §P1–P5**, in
+  `DSL_Grammar_Specification.md`. / 1ノード＝1ゲート、複合は名前付きノードに分解。構文は**単層ゲート規則**、
+  命名は**語用論 §P1–P5**（`DSL_Grammar_Specification.md`）で規定。
 
 **Node Display / ノード表示** (SR-002):
 

@@ -149,8 +149,7 @@ MASK(guest_mode -> {valid_user_id, password_match})
 
 // Node attributes (optional)
 @attributes {
-  "auth_success": {"observable": true, "memo": "intermediate node"},
-  "login_result": {"observable": true}
+  "auth_success": {"memo": "intermediate node"}
 }
 ```
 
@@ -168,15 +167,14 @@ statement       = comment | node_definition | constraint_stmt | layout_stmt ;
 
 (* ノード定義 *)
 node_definition = identifier ( cause_def | effect_def ) ;
-cause_def       = ":" string [ observable_flag ] ;
+cause_def       = ":" string ;
 effect_def      = ":=" expression ;
 
-(* 論理式 *)
-expression      = or_expr ;
-or_expr         = and_expr { "OR" and_expr } ;
-and_expr        = unary_expr { "AND" unary_expr } ;
-unary_expr      = [ "NOT" ] primary_expr ;
-primary_expr    = identifier | "(" expression ")" ;
+(* 論理式: 1ノード＝1ゲート（括弧・入れ子・AND/OR混在なし） *)
+expression      = or_gate | and_gate | literal ;
+or_gate         = literal "OR"  literal { "OR"  literal } ;
+and_gate        = literal "AND" literal { "AND" literal } ;
+literal         = [ "NOT" ] identifier ;
 
 (* 制約 *)
 constraint_stmt = symmetric_constraint | directional_constraint ;

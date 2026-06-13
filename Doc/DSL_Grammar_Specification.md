@@ -1,4 +1,4 @@
-# NeoCEG DSL Grammar Specification v1.0
+# NeoCEG DSL Grammar Specification v1.3
 
 **Status**: Finalized (2026-02-08)
 **Language**: English (primary) / 日本語 (説明)
@@ -23,7 +23,7 @@ This document defines the formal grammar for the NeoCEG DSL (Domain-Specific Lan
 ## EBNF Grammar / EBNF文法
 
 ```ebnf
-(* NeoCEG DSL Grammar v1.0 *)
+(* NeoCEG DSL Grammar v1.3 *)
 
 (* ============================================================================= *)
 (* Top-level structure / 最上位構造 *)
@@ -42,29 +42,28 @@ comment         = "#" text newline ;
 (* Node definitions / ノード定義 *)
 (* ============================================================================= *)
 
-(* Cause node: identifier : "label" [unobservable] *)
+(* Cause node: identifier : "label" *)
 (* Effect/Intermediate node: identifier := expression *)
 node_definition = identifier ( cause_def | effect_def ) ;
 
-cause_def       = ":" string [ observable_flag ] ;
+cause_def       = ":" string ;
 effect_def      = ":=" expression ;
-
-observable_flag = "[unobservable]" | "[observable]" ;  (* [observable] accepted for backward compatibility *)
 
 (* ============================================================================= *)
 (* Logical expressions / 論理式 *)
 (* ============================================================================= *)
 
-expression      = or_expr ;
+(* A node body is exactly ONE gate (single level): an OR of literals, an AND of *)
+(* literals, or a single literal. No parentheses, no nesting, and no mixing of  *)
+(* AND and OR within one node. Compound logic MUST be decomposed into separate, *)
+(* named nodes (see "Single-gate rule" under Semantic Rules).                   *)
+expression      = or_gate | and_gate | literal ;
 
-or_expr         = and_expr { "OR" and_expr } ;
+or_gate         = literal "OR"  literal { "OR"  literal } ;
 
-and_expr        = unary_expr { "AND" unary_expr } ;
+and_gate        = literal "AND" literal { "AND" literal } ;
 
-unary_expr      = [ "NOT" ] primary_expr ;
-
-primary_expr    = identifier
-                | "(" expression ")" ;
+literal         = [ "NOT" ] identifier ;
 
 (* ============================================================================= *)
 (* Constraints / 制約 *)
@@ -158,21 +157,86 @@ All keywords are **case-insensitive** but conventionally written in **UPPERCASE*
 | `REQ` | Requires constraint / 要求制約 |
 | `MASK` | Masking constraint / マスク制約 |
 
-### Operator Precedence / 演算子優先順位
+### Single-gate rule (one gate per node) / 単層ゲート規則（1ノード＝1ゲート）
 
-| Priority / 優先度 | Operator / 演算子 | Associativity / 結合性 |
-|------------------|------------------|----------------------|
-| 1 (highest) | `NOT` | Right / 右結合 |
-| 2 | `AND` | Left / 左結合 |
-| 3 (lowest) | `OR` | Left / 左結合 |
+A node body is **exactly one gate**: an `AND` of literals, an `OR` of literals, or a single literal, where a
+literal is an (optionally `NOT`-negated) reference to another node. This mirrors the cause-effect graph
+itself, where each node is a single AND/OR gate and inputs are edges (optionally negated).
 
-### Observable Flag / 観測可能フラグ
+- **No parentheses, no nesting, no AND/OR mixing within one node.** A compound sub-expression is a *separate
+  gate*, so it must be its **own named node**. Example: `E := A OR (B AND C)` is **not allowed**; introduce a
+  node `M := B AND C` and write `E := A OR M`.
+- The parser **rejects** nested / mixed / parenthesised expressions with a clear, line-numbered error that
+  names the offending node and suggests decomposition.
+- Because only one operator type appears in a node, no cross-operator precedence is needed; `NOT` applies to
+  the single literal it precedes.
 
-- Default: **ON** for all nodes (all nodes are observable by default)
-- デフォルト: すべてのノードで**ON**（デフォルトで観測可能）
-- `[unobservable]` marks a node as non-observable / `[unobservable]` で非観測可能を指定
-- `[observable]` is accepted for backward compatibility (equivalent to default) / `[observable]` は後方互換のため受け入れる（デフォルトと同等）
-- Can be toggled in the UI or specified in DSL / UIでトグル可能、またはDSLで指定可能
+ノード本体は**ちょうど1ゲート**（リテラルの `AND`／`OR`／単一リテラル。リテラルは（任意で `NOT` 否定した）
+他ノードへの参照）。これは CEG 本体—各ノードが単一の AND/OR ゲートで、入力は（否定可能な）辺—に対応する。
+
+- **括弧・入れ子・AND/OR 混在は不可。** 複合部分式は*別ゲート*なので**それ自体を名前付きノード**にする。
+  例: `E := A OR (B AND C)` は**不可**。`M := B AND C` を作り `E := A OR M` と書く。
+- パーサは入れ子・混在・括弧を、**該当ノード名と分解の示唆を含む行番号付きエラー**で**拒否**する。
+- 1ノードに1種類の演算子しか現れないため、演算子間の優先順位は不要。`NOT` は直後の単一リテラルに適用。
+
+---
+
+## Pragmatics / 語用論（作法）
+
+These conventions **cannot be enforced by the grammar** (a parser cannot judge whether a name is a
+meaningful concept). They are the modeling **discipline (作法)** of the cause-effect graph method, to be
+followed by the author — human or AI.
+これらは**文法では強制できない**（名前が意味のある概念かはパーサに判定できない）。原因結果グラフ法の
+**モデリング作法**であり、作成者（人間・AI）が守る。
+
+### P1. A node is a proposition / ノードは命題である
+Every node denotes a **logical statement (proposition)** — the condition or effect it represents. **Unlike an
+electronic circuit, an intermediate node's meaning must be stated**; it is not an anonymous internal wire.
+The statement is the node's identity and is what the tool displays.
+すべてのノードは**論理言明（命題）**＝表す条件／効果。**電子回路と違い、中間ノードの意味は明記必須**
+（無名の内部配線ではない）。言明がノードの同一性であり、表示されるもの。
+
+### P2. The expression is the definition; each gate is its own named node / 式は定義、各ゲートは名前付きノード
+`:= expression` is the node's **definition** (when the effect/intermediate holds) — a **different thing** from
+its statement. In CEG, **each gate is its own named node**: decompose compound logic so that every sub-gate
+(e.g. `B AND C`) is its own named node and reference it. (The single-gate rule enforces this syntactically.)
+`:= 式` は**定義**（成立条件）で、命題とは**別物**。CEG では**各ゲートがそれ自体名前付きノード**：複合論理は
+各部分ゲート（例 `B AND C`）をそれぞれ名前付きノードにして参照する（単層ゲート規則で構文的にも保証）。
+
+### P3. Use the expression as a hint for the concept name / 式は概念命名の手がかり
+Naming an intermediate means **verbalizing an abstraction**, which can be hard. Use the expression as a hint —
+*"what concept is true exactly when `C2 AND NOT C5` holds?"* → e.g. "非在住の小学生". The tool should present
+the expression as a **naming aid**, not silently adopt it as the name.
+中間ノードの命名は**抽象の言語化**で難しいことがある。式を手がかりに「`C2 AND NOT C5` がちょうど真になる
+概念は？」と考える（例「非在住の小学生」）。ツールは式を**命名補助**として示し、黙って名前に採用しない。
+
+**Name by the attribute the group has / その集合が持つ属性で名づける.** Model attribute-first: first
+recognise the group — *"there are pupils who are not residents"* → "県内在住ではない小学生" — then decide the
+downstream effects (their fee, etc.) for that group. A name that describes the group itself stays meaningful
+however the fees are later defined.
+属性ファーストで考える：まず集合を捉え（「県内在住ではない小学生がいる」）→ その集合に対する下流の効果
+（料金など）を決める。集合そのものを表す名前は、料金の決め方が後で変わっても意味が保たれる。
+
+### P4. Prefer a real concept name; expression-as-name is a fallback / 概念名を優先、式の代用は予備
+Always aim for a genuine concept name (P3). Only when none can be found, the expression itself may serve as
+the name as a fallback — the node still exists; its name slot just holds the formula. A node still named by an
+auto-id (e.g. `n1`) or by its expression is **not yet fully modelled**, so the tool surfaces it as an
+invitation to name it.
+まず本物の概念名を目指す（P3）。どうしても無いときに限り、式を名前の予備として使ってよい（ノードは存在、
+名前欄に式が入るだけ）。自動 id（`n1` 等）のまま、または式と同一の名前のノードは**まだモデリング途上**で、
+ツールはそれを示して命名を促す。
+
+### P5. Recommended form / 推奨形
+Prefer a short reference identifier plus a quoted statement — references stay stable, the displayed concept is
+explicit:
+参照用の短い識別子＋引用符付き言明を推奨（参照は安定・表示概念は明示）：
+
+    非在住小学生: "県内在住ではない小学生"
+    非在住小学生 := C2 AND NOT C5
+
+A meaningful identifier may itself serve as the statement when no separate label is given; the tool then
+displays the identifier (never the expression).
+意味のある識別子は別ラベルが無ければそのまま言明として機能してよい。ツールは識別子を表示する（式は表示しない）。
 
 ---
 
@@ -400,4 +464,6 @@ This DSL format is **NOT compatible** with CEGTest 1.6's CSV format.
 |------------|---------------------|------------------|
 | 2026-02-08 | 1.0 | Initial finalized version / 初版確定版 |
 | 2026-03-01 | 1.1 | Invert observable flag: `[unobservable]` replaces `[observable]` (backward compat kept) / observable反転：`[unobservable]`に変更（`[observable]`は後方互換維持） |
+| 2026-06-13 | 1.2 | Restrict expressions to **one gate per node** (no parentheses / nesting / AND-OR mixing); add **Pragmatics §P1–P5** (node = proposition; expression is a naming hint; expression-as-name is a last resort) / 式を**1ノード1ゲート**に制限（括弧・入れ子・AND/OR混在不可）、**語用論 §P1–P5** を追加（ノード＝命題／式は命名の手がかり／式の名前代用は最後の手段） |
+| 2026-06-13 | 1.3 | **Remove the observable flag entirely** (`[unobservable]`/`[observable]` no longer recognised) — feature removed / **観測フラグを完全削除**（`[unobservable]`/`[observable]` は非対応に）— 機能廃止 |
 | 2026-03-04 | 1.2 | Add optional width to layout entry: `(x, y, width)` — backward compatible / レイアウトエントリに省略可能な幅を追加：`(x, y, width)` — 後方互換 |
