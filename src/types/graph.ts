@@ -24,6 +24,8 @@ export interface CEGNodeData {
   label: string;
   /** Logical operator for combining inputs (undefined for cause nodes) */
   operator?: LogicalOperator;
+  /** Logical expression text (from inputs) shown as a hover tooltip; not the display name */
+  expressionText?: string;
   /** Node display width in pixels (default: 150, min: 80, max: 400) */
   width?: number;
   /** Observable flag - default true. Set to false for non-observable nodes */

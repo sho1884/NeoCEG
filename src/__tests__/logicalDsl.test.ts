@@ -543,25 +543,25 @@ describe('Node display utilities', () => {
     expect(hasUserLabel(node)).toBe(true);
   });
 
-  it('should return expression when label is null', () => {
+  it('returns the identifier (name) when label is null — never the expression', () => {
     const node = {
       name: 'n1',
       label: null,
       expression: and(ref('a'), ref('b')),
     };
 
-    expect(getNodeDisplayText(node)).toBe('a AND b');
+    expect(getNodeDisplayText(node)).toBe('n1');
     expect(hasUserLabel(node)).toBe(false);
   });
 
-  it('should return expression when label is empty', () => {
+  it('returns the identifier when label is blank — never the expression', () => {
     const node = {
       name: 'n1',
       label: '  ',
       expression: and(ref('a'), not(ref('b'))),
     };
 
-    expect(getNodeDisplayText(node)).toBe('a AND NOT b');
+    expect(getNodeDisplayText(node)).toBe('n1');
     expect(hasUserLabel(node)).toBe(false);
   });
 

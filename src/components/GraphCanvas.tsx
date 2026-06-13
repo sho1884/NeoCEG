@@ -209,6 +209,8 @@ function GraphCanvasInner() {
         data: {
           ...n.data,
           role, // Pass calculated role to the node
+          // Expression text for the hover tooltip (a naming hint; never the display name).
+          expressionText: buildExpressionFromEdges(n.id, n.data.operator, storeEdges, nodeLabelMap) ?? undefined,
         },
       };
     });
@@ -224,7 +226,7 @@ function GraphCanvasInner() {
       };
     });
     return [...cegNodes, ...constraintNodes] as unknown as Node[];
-  }, [storeNodes, storeConstraintNodes, storeEdges, selectedNodes, dragPositions]);
+  }, [storeNodes, storeConstraintNodes, storeEdges, selectedNodes, dragPositions, nodeLabelMap]);
 
   const edges = useMemo(() =>
     storeEdges.map((e) => ({

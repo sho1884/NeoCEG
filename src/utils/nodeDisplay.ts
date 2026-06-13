@@ -5,9 +5,10 @@
  * All display code should use these functions instead of accessing node.label directly.
  *
  * Rules:
- * - If label is non-empty string: show label (user-provided)
- * - If label is empty/null and has expression: show expression
- * - Fallback: show node name
+ * - If label is a non-empty string: show the label (the node's proposition)
+ * - Otherwise: show the node's identifier (name)
+ * The logical expression is NEVER the display name — it is shown only as a
+ * tooltip (see getNodeExpressionText).
  */
 
 import type { LogicalNode, Expression } from '../types/logical';
@@ -19,21 +20,16 @@ import { serializeExpression } from '../services/logicalDslSerializer';
  *
  * Priority:
  * 1. User-provided label (non-empty string)
- * 2. Serialized expression (for effect/intermediate nodes)
- * 3. Node name (fallback)
+ * 2. Node identifier (name) — a meaningful id is the node's name; an auto
+ *    placeholder id (e.g. "Logical Statement 3") prompts the user to name it.
+ *
+ * The logical expression is NOT used as the name (it would go stale when the
+ * graph changes); it is shown only as a tooltip — see getNodeExpressionText.
  */
 export function getNodeDisplayText(node: LogicalNode): string {
-  // User-provided label takes priority
   if (node.label && node.label.trim() !== '') {
     return node.label;
   }
-
-  // Show expression if available
-  if (node.expression) {
-    return serializeExpression(node.expression);
-  }
-
-  // Fallback to name
   return node.name;
 }
 

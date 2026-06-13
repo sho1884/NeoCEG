@@ -22,7 +22,6 @@ import type {
 } from '../types/logical';
 
 import { ref, not, and, or } from '../types/logical';
-import { getNodeDisplayText } from '../utils/nodeDisplay';
 import { useGraphStore } from '../stores/graphStore';
 
 // =============================================================================
@@ -217,7 +216,7 @@ export function logicalToGraph(model: LogicalModel): GraphData {
       type: 'cegNode',
       position: logicalNode.position || { x: 0, y: 0 },
       data: {
-        label: getNodeDisplayText(logicalNode),
+        label: logicalNode.label ?? '',
         operator,
         width: logicalNode.width,
         // Note: expressionText is NOT imported here - it's computed dynamically in GraphCanvas

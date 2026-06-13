@@ -179,6 +179,7 @@ const CEGNode = memo(({ id, data, selected }: CEGNodeProps) => {
           onBlur={handleBlur}
           onKeyDown={isEditing ? handleKeyDown : undefined}
           className={isEditing ? 'nodrag nowheel' : ''}
+          title={!isEditing && data.expressionText ? data.expressionText : undefined}
           style={{
             flex: 1,
             fontWeight: 500,
@@ -197,7 +198,7 @@ const CEGNode = memo(({ id, data, selected }: CEGNodeProps) => {
             border: isEditing ? '1px solid #ccc' : 'none',
           }}
         >
-          {data.label}
+          {data.label || id}
         </div>
 
         {/* Output handle (logical) */}
