@@ -57,18 +57,18 @@ effect_def      = ":=" expression ;
 (* domain). Name a CAUSE by an ATTRIBUTE and its VALUE, where the value is an   *)
 (* EQUIVALENCE CLASS (not a raw value). Name an EFFECT as an output factor =    *)
 (* level too. Logic (AND/OR/NOT) lives in the graph, NEVER inside a node name.  *)
-(*   居住地 = 県内       residence = in-prefecture                              *)
-(*   年齢   = 65歳以上   age = senior            (level = equivalence class)    *)
-(*   区分   = 団体       category = group                                       *)
-(*   料金   = 無料       fee = free              (effect: output factor=level)  *)
+(*   天候 = 雨          weather = rainy                                         *)
+(*   気温 = 低          temperature = low        (level = equivalence class)    *)
+(*   風   = 強い        wind = strong                                           *)
+(*   服装 = 上着あり    outfit = coat            (effect: output factor=level)  *)
 (* The factor = level text is the node's quoted LABEL; reference it by a short  *)
-(* identifier that mirrors it (no spaces/'='):  居住地_県内 : "居住地 = 県内".   *)
+(* identifier that mirrors it (no spaces/'='):  天候_雨 : "天候 = 雨".          *)
 (* Levels of one factor are mutually exclusive -> usually a ONE(...) constraint.*)
-(* ❌ name by a downstream consequence:  "free pupil" / 有料小学生              *)
-(* ✅ name by the attribute the group has: 居住地 = 県外 ; 区分 = 小学生        *)
+(* ❌ name by a downstream consequence:  "umbrella needed" / 要傘              *)
+(* ✅ name by the attribute the input has: 天候 = 雨 ; 気温 = 低               *)
 (* English only: keep a level short and single-concept; do NOT put the words   *)
 (* or / and / not, or a raw comparison, inside a level (they read as logic).    *)
-(* ❌ age = 65 or older   ❌ amount > 1000   ✅ age = senior   ✅ amount = over-limit *)
+(* ❌ wind = strong or gusty   ❌ temp > 30   ✅ wind = strong   ✅ temp = high  *)
 (* --------------------------------------------------------------------------- *)
 
 (* ============================================================================= *)
@@ -244,17 +244,17 @@ its statement. In CEG, **each gate is its own named node**: decompose compound l
 
 ### P3. Use the expression as a hint for the concept name / 式は概念命名の手がかり
 Naming an intermediate means **verbalizing an abstraction**, which can be hard. Use the expression as a hint —
-*"what concept is true exactly when `C2 AND NOT C5` holds?"* → e.g. "非在住の小学生". The tool should present
-the expression as a **naming aid**, not silently adopt it as the name.
-中間ノードの命名は**抽象の言語化**で難しいことがある。式を手がかりに「`C2 AND NOT C5` がちょうど真になる
-概念は？」と考える（例「非在住の小学生」）。ツールは式を**命名補助**として示し、黙って名前に採用しない。
+*"what concept is true exactly when `天候_雨 AND 気温_低` holds?"* → e.g. "冷雨" (cold rain). The tool should
+present the expression as a **naming aid**, not silently adopt it as the name.
+中間ノードの命名は**抽象の言語化**で難しいことがある。式を手がかりに「`天候_雨 AND 気温_低` がちょうど真に
+なる概念は？」と考える（例「冷雨」）。ツールは式を**命名補助**として示し、黙って名前に採用しない。
 
 **Name by the attribute the group has / その集合が持つ属性で名づける.** Model attribute-first: first
-recognise the group — *"there are pupils who are not residents"* → "県内在住ではない小学生" — then decide the
-downstream effects (their fee, etc.) for that group. A name that describes the group itself stays meaningful
-however the fees are later defined.
-属性ファーストで考える：まず集合を捉え（「県内在住ではない小学生がいる」）→ その集合に対する下流の効果
-（料金など）を決める。集合そのものを表す名前は、料金の決め方が後で変わっても意味が保たれる。
+recognise the condition — *"there are situations that are both rainy and cold"* → "冷雨 (cold rain)" — then
+decide the downstream effects (umbrella, coat, …) for it. A name that describes the condition itself stays
+meaningful however those effects are later defined.
+属性ファーストで考える：まず集合を捉え（「雨かつ寒い状況がある」）→ その集合に対する下流の効果
+（傘・上着など）を決める。集合そのものを表す名前は、効果の決め方が後で変わっても意味が保たれる。
 
 ### P4. Prefer a real concept name; expression-as-name is a fallback / 概念名を優先、式の代用は予備
 Always aim for a genuine concept name (P3). Only when none can be found, the expression itself may serve as
@@ -270,8 +270,8 @@ Prefer a short reference identifier plus a quoted statement — references stay 
 explicit:
 参照用の短い識別子＋引用符付き言明を推奨（参照は安定・表示概念は明示）：
 
-    非在住小学生: "県内在住ではない小学生"
-    非在住小学生 := C2 AND NOT C5
+    冷雨: "冷たい雨"
+    冷雨 := 天候_雨 AND 気温_低
 
 A meaningful identifier may itself serve as the statement when no separate label is given; the tool then
 displays the identifier (never the expression).
@@ -298,26 +298,26 @@ P3「属性で名づける」の具体形。**原因**は原子命題＝**属性
   パラメータ宣言に対応。表記は**読みやすさ優先**（素の `因子 = 水準`、括弧・引用なし）、変換側が補う。
 - **English only — avoid logical words and raw comparisons in a level.** Keep a level short and single-concept;
   do **not** put `or` / `and` / `not`, or a comparison, inside a level — they read as logic and break the
-  equivalence-class discipline. ❌ `age = 65 or older`, `amount > 1000`　✅ `age = senior`, `amount = over-limit`.
+  equivalence-class discipline. ❌ `wind = strong or gusty`, `temp > 30`　✅ `wind = strong`, `temp = high`.
   （英語のみの注意。日本語の水準では起きない。）
-- A genuinely **compound** concept is still its own named proposition per P1–P3 (e.g. `非在住小学生 :=
-  居住地_県外 AND 区分_小学生`), built **from** `factor = level` causes — it is not itself a `factor = level`. /
+- A genuinely **compound** concept is still its own named proposition per P1–P3 (e.g. `冷雨 :=
+  天候_雨 AND 気温_低`), built **from** `factor = level` causes — it is not itself a `factor = level`. /
   本当に**複合**の概念は P1–P3 どおり独立の命題として名づけ（`factor = level` の原因から組み立てる）、それ
   自体は `factor = level` にしない。
 - **Where it lives.** `factor = level` (with spaces and `=`) is the node's **statement = the quoted label**;
   an identifier cannot contain spaces or `=`. Use a short **identifier that mirrors it with `_`** (e.g.
-  `居住地_県内`) so it can be referenced in expressions and constraints, and put the `=` form in the label. /
+  `天候_雨`) so it can be referenced in expressions and constraints, and put the `=` form in the label. /
   `factor = level`（空白と `=` を含む）はノードの**言明＝引用符付きラベル**。識別子は空白・`=` を含められない
-  ので、それを `_` で写した短い識別子（例 `居住地_県内`）で参照し、`=` 形はラベルに書く。
+  ので、それを `_` で写した短い識別子（例 `天候_雨`）で参照し、`=` 形はラベルに書く。
 
 Example / 例:
 
-    区分_団体     : "区分 = 団体"          # identifier mirrors factor_level; label is the statement
-    区分_個人     : "区分 = 個人"
-    年齢_65以上   : "年齢 = 65歳以上"       # level = equivalence class, not a raw value
-    ONE(区分_団体, 区分_個人)              # levels of one factor are mutually exclusive
-    料金_無料     : "料金 = 無料"           # effect, named as an output factor = level
-    料金_無料     := 区分_団体 OR 年齢_65以上
+    天候_晴       : "天候 = 晴"            # identifier mirrors factor_level; label is the statement
+    天候_雨       : "天候 = 雨"
+    気温_低       : "気温 = 低"             # level = equivalence class, not a raw value
+    ONE(天候_晴, 天候_雨)                  # levels of one factor are mutually exclusive
+    服装_上着あり : "服装 = 上着あり"        # effect, named as an output factor = level
+    服装_上着あり := 天候_雨 OR 気温_低
 
 ---
 
@@ -549,4 +549,4 @@ This DSL format is **NOT compatible** with CEGTest 1.6's CSV format.
 | 2026-06-13 | 1.3 | **Remove the observable flag entirely** (`[unobservable]`/`[observable]` no longer recognised) — feature removed / **観測フラグを完全削除**（`[unobservable]`/`[observable]` は非対応に）— 機能廃止 |
 | 2026-03-04 | 1.2 | Add optional width to layout entry: `(x, y, width)` — backward compatible / レイアウトエントリに省略可能な幅を追加：`(x, y, width)` — 後方互換 |
 | 2026-06-13 | 1.4 | Add inline ✅/❌ examples to the EBNF comments (single-gate expressions, REQ/MASK NOT rules, constraints, layout, escapes), mirroring the parser tests. Grammar unchanged — illustrative only, aids human and AI authors / EBNFコメントに ✅/❌ 例を追加（単一ゲート式・REQ/MASKのNOT規則・制約・レイアウト・エスケープ）、パーサのテストと一致。文法は不変＝例示のみ、人間とAIの作成を補助 |
-| 2026-06-14 | 1.5 | Add the **`factor = level` (equivalence class) naming convention** (Pragmatics §P6) for unification with the sibling tool NeoCombi's factor/level domain; fold a compact digest + an AI output-format note into the EBNF comments. Includes the English-only caution (no `or`/`and`/`not` or raw comparisons inside a level) and the identifier-vs-label rule. Grammar unchanged / NeoCombi の factor/level ドメインと統一するため **`factor = level`（同値クラス）命名規則**（語用論 §P6）を追加。圧縮ダイジェストと AI 向け出力体裁メモを EBNF コメントへ畳み込み。英語限定の注意（水準に `or`/`and`/`not` や生比較を入れない）と識別子／ラベルの規則を含む。文法は不変 |
+| 2026-06-14 | 1.5 | Add the **`factor = level` (equivalence class) naming convention** (Pragmatics §P6) for unification with the sibling tool NeoCombi's factor/level domain; fold a compact digest + an AI output-format note into the EBNF comments. Includes the English-only caution (no `or`/`and`/`not` or raw comparisons inside a level) and the identifier-vs-label rule. Examples use a **deliberately unrelated domain (weather → outfit)** so the spec carries no worked answer for any benchmark used to evaluate AI generation. Grammar unchanged / NeoCombi の factor/level ドメインと統一するため **`factor = level`（同値クラス）命名規則**（語用論 §P6）を追加。圧縮ダイジェストと AI 向け出力体裁メモを EBNF コメントへ畳み込み。英語限定の注意（水準に `or`/`and`/`not` や生比較を入れない）と識別子／ラベルの規則を含む。例は **わざと無関係なドメイン（天候→服装）** を使い、AI 生成の評価に使う題材の答えを仕様に載せない。文法は不変 |
