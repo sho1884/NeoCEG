@@ -1280,10 +1280,12 @@ function PseudoCodeView({
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
 
   const hasTable =
-    table.causeIds.length > 0 && table.conditions.some((c) => !c.excluded);
+    logicalModel !== null &&
+    table.causeIds.length > 0 &&
+    table.conditions.some((c) => !c.excluded);
 
   const skeleton = useMemo(
-    () => (hasTable ? generateSkeletonPseudoCode(table, nodeLabels, logicalModel) : ''),
+    () => (hasTable && logicalModel ? generateSkeletonPseudoCode(logicalModel, table, nodeLabels) : ''),
     [hasTable, table, nodeLabels, logicalModel],
   );
 
@@ -2016,11 +2018,11 @@ export default function DecisionTablePanel() {
                   />
                 </>
               )}
-              {activeTab === 'skeleton' && (
+              {activeTab === 'skeleton' && logicalModel && (
                 <>
                   <DownloadButton
                     onClick={() => {
-                      const skeleton = generateSkeletonPseudoCode(table, nodeLabels, logicalModel);
+                      const skeleton = generateSkeletonPseudoCode(logicalModel, table, nodeLabels);
                       const date = new Date().toISOString().split('T')[0];
                       downloadText(skeleton, `skeleton_${date}.txt`);
                     }}
@@ -2028,7 +2030,7 @@ export default function DecisionTablePanel() {
                   />
                   <CopyCSVButton
                     onClick={async () => {
-                      const skeleton = generateSkeletonPseudoCode(table, nodeLabels, logicalModel);
+                      const skeleton = generateSkeletonPseudoCode(logicalModel, table, nodeLabels);
                       await navigator.clipboard.writeText(skeleton);
                       setCsvCopyFeedback(EXPORT_MESSAGES.copied);
                       setTimeout(() => setCsvCopyFeedback(null), 2000);

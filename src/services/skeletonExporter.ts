@@ -1,238 +1,391 @@
 /**
- * Skeleton exporter — decision table → program control-structure skeleton.
+ * Skeleton exporter — Cause-Effect Graph → program control-structure skeleton.
  *
- * Mechanically derives a nested `if/else` skeleton (plus action stubs) from a
- * Cause-Effect-Graph decision table. Fully deterministic, no AI. The table is
- * already MC/DC-pruned, so each non-excluded column is a necessary control path;
- * this exporter *renders* the columns as explicitly-guarded paths and factors
- * shared conditions into nesting. It never re-prunes and never lets an effect
- * become the fall-through (the table is a cover — only the default leaf falls
- * through).
+ * Reproduces the CEG's control-flow **topology** and simplifies it under the
+ * **constraint premise**, then **verifies** the result against the CEG over the
+ * whole feasible input space. Fully deterministic, no AI.
  *
- * Node ids stay the code identifiers (labels may contain spaces); the human
- * label of each node is surfaced as a comment — a legend block for causes and
- * intermediate definitions up front, plus an inline comment on each guard/return.
+ *  - Intermediates become topologically-ordered computed variables.
+ *  - Effects are gated by controlling conditions shared in their expressions
+ *    (e.g. `n4` for 1200/1000; `n10` for 600/500); OR-effects are guarded by the
+ *    disjunction. Person-type ONE pairs (n1/n2) stay the innermost discriminator.
+ *  - Constraints are a premise: the skeleton assumes they hold and never defends
+ *    against violations.
+ *  - Self-verification: every constraint-valid input must route to the same
+ *    effect the CEG computes. On mismatch we fall back to explicit per-effect
+ *    guards; a skeleton that cannot be verified is emitted with a warning.
  *
- * See `Doc/Skeleton_Generator_Prototype_Spec.md` §11 for the integration design.
+ * See `Doc/Skeleton_Generator_Prototype_Spec.md` (revised §2–§5, §11).
  */
 
-import type { DecisionTable, TestCondition, TruthValue } from '../types/decisionTable';
-import type { LogicalModel } from '../types/logical';
+import type { DecisionTable } from '../types/decisionTable';
+import type { LogicalModel, Expression } from '../types/logical';
+import { getReferencedNodes } from '../types/logical';
 import { serializeExpression } from './logicalDslSerializer';
-
-// ---------------------------------------------------------------------------
-// Internal model
-// ---------------------------------------------------------------------------
-
-interface Literal {
-  cond: string;
-  value: boolean;
-}
-
-interface ControlPath {
-  columnId: number;
-  /** Effect ids firing on this path (cells at uppercase `T`). */
-  actions: string[];
-  /** Minimal distinguishing conjunction, most-discriminating literal first. */
-  guard: Literal[];
-}
-
-type Node =
-  | { kind: 'guard'; cond: string; then: Node[]; else: Node[] }
-  | { kind: 'return'; actions: string[]; columnId: number };
+import { initWork, deduce, deduceConstraint, applyMask, checkConstr, isPossible } from './cegAlgorithm';
 
 const INDENT = '    ';
+const MAX_VERIFY_CAUSES = 16; // 2^16 = 65536 feasible-space scan upper bound
 
-/** Map a cell to a boolean, or undefined for absent / indeterminate (M/I). */
-function toBool(v: TruthValue | undefined): boolean | undefined {
-  if (v === 'T' || v === 't') return true;
-  if (v === 'F' || v === 'f') return false;
-  return undefined;
+// ---------------------------------------------------------------------------
+// Skeleton tree
+// ---------------------------------------------------------------------------
+
+type Node =
+  | { kind: 'guard'; cond: Expression; then: Node[]; els: Node[] }
+  | { kind: 'return'; effects: string[] };
+
+interface Item {
+  effect: string;
+  conjuncts: Expression[];
 }
 
 // ---------------------------------------------------------------------------
-// Step 1–2: columns → control paths with minimal distinguishing guards
+// Model evaluation (the ground-truth oracle, shared with the rest of the app)
 // ---------------------------------------------------------------------------
 
-function extractControlPaths(table: DecisionTable): { paths: ControlPath[]; skipped: number[] } {
-  const condIds = [...table.causeIds, ...table.intermediateIds];
-  const active = table.conditions.filter((c) => !c.excluded);
+interface Eval {
+  feasible: boolean;
+  effects: Set<string>;
+  /** node id -> boolean (undefined when M/I). */
+  bools: Map<string, boolean>;
+}
 
-  const actionOf = (col: TestCondition): string[] =>
-    table.effectIds.filter((e) => col.values.get(e) === 'T');
-  const actionKey = (col: TestCondition): string => actionOf(col).join('+');
+function evalModel(
+  model: LogicalModel,
+  causeIds: string[],
+  effectIds: string[],
+  assignment: boolean[],
+): Eval {
+  const work = initWork(model);
+  causeIds.forEach((id, i) => work.set(id, assignment[i] ? 'T' : 'F'));
+  for (const c of model.constraints) {
+    if (c.type === 'MASK') applyMask(work, c.trigger, c.targets);
+  }
+  deduce(work, model);
+  for (const c of model.constraints) deduceConstraint(work, c);
 
-  const skipped: number[] = [];
-  const live = active.filter((col) => {
-    if (actionOf(col).length > 0) return true;
-    const indeterminate = table.effectIds.some(
-      (e) => col.values.get(e) === 'M' || col.values.get(e) === 'I',
-    );
-    if (indeterminate) skipped.push(col.id);
-    return false;
-  });
+  const feasible = checkConstr(work, model.constraints) === '' && isPossible(work, model) === '';
 
-  const paths = live.map((col): ControlPath => {
-    const myKey = actionKey(col);
-    let remaining = live.filter((other) => actionKey(other) !== myKey);
-    const guard: Literal[] = [];
-    const used = new Set<string>();
+  const bools = new Map<string, boolean>();
+  for (const [id, v] of work) {
+    if (v === 'T' || v === 't') bools.set(id, true);
+    else if (v === 'F' || v === 'f') bools.set(id, false);
+    // M / I / '' -> undefined
+  }
+  const effects = new Set<string>();
+  for (const id of effectIds) {
+    const v = work.get(id);
+    if (v === 'T' || v === 't') effects.add(id);
+  }
+  return { feasible, effects, bools };
+}
 
-    while (remaining.length > 0) {
-      let best: { cond: string; sep: TestCondition[] } | null = null;
-      for (const cond of condIds) {
-        if (used.has(cond)) continue;
-        const myVal = toBool(col.values.get(cond));
-        if (myVal === undefined) continue;
-        const sep = remaining.filter((other) => {
-          const ov = toBool(other.values.get(cond));
-          return ov !== undefined && ov !== myVal;
-        });
-        if (sep.length === 0) continue;
-        if (best === null || sep.length > best.sep.length) best = { cond, sep };
+// ---------------------------------------------------------------------------
+// Constraint helpers
+// ---------------------------------------------------------------------------
+
+/** Members of a ONE constraint that `id` belongs to (positive membership only). */
+function oneSiblings(model: LogicalModel, id: string): Set<string> {
+  const out = new Set<string>();
+  for (const c of model.constraints) {
+    if (c.type !== 'ONE') continue;
+    const names = c.members.filter((m) => !m.negated).map((m) => m.name);
+    if (names.includes(id)) names.forEach((n) => out.add(n));
+  }
+  return out;
+}
+
+/** Are a and b two members of the same ONE constraint? */
+function sameOne(model: LogicalModel, a: string, b: string): boolean {
+  return a !== b && oneSiblings(model, a).has(b);
+}
+
+// ---------------------------------------------------------------------------
+// Topological order of intermediates
+// ---------------------------------------------------------------------------
+
+function topoIntermediates(model: LogicalModel, intermediateIds: string[]): string[] {
+  const set = new Set(intermediateIds);
+  const ordered: string[] = [];
+  const seen = new Set<string>();
+  const visit = (id: string) => {
+    if (seen.has(id) || !set.has(id)) return;
+    seen.add(id);
+    const expr = model.nodes.get(id)?.expression;
+    if (expr) {
+      for (const ref of getReferencedNodes(expr)) {
+        if (set.has(ref)) visit(ref);
       }
-      if (best === null) break;
-      used.add(best.cond);
-      guard.push({ cond: best.cond, value: toBool(col.values.get(best.cond))! });
-      const sepSet = new Set(best.sep);
-      remaining = remaining.filter((other) => !sepSet.has(other));
     }
-
-    return { columnId: col.id, actions: actionOf(col), guard };
-  });
-
-  return { paths, skipped };
+    ordered.push(id);
+  };
+  for (const id of intermediateIds) visit(id);
+  return ordered;
 }
 
 // ---------------------------------------------------------------------------
-// Step 3: factor paths into a nested if/else tree
+// Build: reproduce topology by factoring effect expressions
 // ---------------------------------------------------------------------------
 
-function build(paths: ControlPath[], depth: number): Node[] {
-  const terminated = paths.filter((p) => p.guard.length <= depth);
-  const activePaths = paths.filter((p) => p.guard.length > depth);
+/** Top-level conjuncts of a conjunction effect, or null for OR / complex. */
+function conjunctsOf(expr: Expression): Expression[] | null {
+  if (expr.type === 'and') return expr.operands;
+  if (expr.type === 'ref' || expr.type === 'not') return [expr];
+  return null; // 'or' (or other) — guarded whole
+}
 
+function refNameOf(expr: Expression): string | null {
+  return expr.type === 'ref' ? expr.name : null;
+}
+
+/** Factor a set of conjunction-items into gated nodes (most-shared first,
+ *  but ONE-pair members are kept as the innermost discriminator). */
+function factor(items: Item[], model: LogicalModel): Node[] {
+  if (items.length === 0) return [];
+
+  // Tally conjunct keys (preserve first-seen order for deterministic ties).
   const order: string[] = [];
-  const byCond = new Map<string, ControlPath[]>();
-  for (const p of activePaths) {
-    const cond = p.guard[depth].cond;
-    if (!byCond.has(cond)) {
-      byCond.set(cond, []);
-      order.push(cond);
+  const count = new Map<string, number>();
+  const exprOf = new Map<string, Expression>();
+  for (const it of items) {
+    for (const c of it.conjuncts) {
+      const k = serializeExpression(c);
+      if (!count.has(k)) {
+        count.set(k, 0);
+        order.push(k);
+        exprOf.set(k, c);
+      }
+      count.set(k, count.get(k)! + 1);
     }
-    byCond.get(cond)!.push(p);
   }
 
-  const guards: Node[] = order.map((cond) => {
-    const group = byCond.get(cond)!;
-    return {
-      kind: 'guard',
-      cond,
-      then: build(group.filter((p) => p.guard[depth].value === true), depth + 1),
-      else: build(group.filter((p) => p.guard[depth].value === false), depth + 1),
-    };
-  });
+  // Candidate gates: shared by >= 2 items. Deprioritise a ref that is a ONE
+  // co-member of another present ref (those are discriminators — keep inner).
+  const present = new Set(
+    order.map((k) => refNameOf(exprOf.get(k)!)).filter((n): n is string => n !== null),
+  );
+  const isDiscriminator = (k: string): boolean => {
+    const n = refNameOf(exprOf.get(k)!);
+    if (!n) return false;
+    for (const other of present) if (sameOne(model, n, other)) return true;
+    return false;
+  };
 
-  const returns: Node[] = terminated.map((p) => ({
-    kind: 'return',
-    actions: p.actions,
-    columnId: p.columnId,
+  let gate: string | null = null;
+  let bestCount = 1;
+  let bestDiscr = true;
+  for (const k of order) {
+    const c = count.get(k)!;
+    if (c < 2) continue;
+    const discr = isDiscriminator(k);
+    // Prefer: higher count; then non-discriminator; then first-seen.
+    if (c > bestCount || (c === bestCount && bestDiscr && !discr)) {
+      gate = k;
+      bestCount = c;
+      bestDiscr = discr;
+    }
+  }
+
+  if (gate === null) {
+    // No useful sharing: emit each item by its remaining conjuncts.
+    return ifElseOpt(items.map((it) => itemToNode(it)), model);
+  }
+
+  const gateExpr = exprOf.get(gate)!;
+  const inGroup = items.filter((it) => it.conjuncts.some((c) => serializeExpression(c) === gate));
+  const outGroup = items.filter((it) => !it.conjuncts.some((c) => serializeExpression(c) === gate));
+  const inner = inGroup.map((it) => ({
+    effect: it.effect,
+    conjuncts: it.conjuncts.filter((c) => serializeExpression(c) !== gate),
   }));
+  const gateNode: Node = { kind: 'guard', cond: gateExpr, then: factor(inner, model), els: [] };
+  return [gateNode, ...factor(outGroup, model)];
+}
 
-  return [...guards, ...returns];
+function itemToNode(it: Item): Node {
+  if (it.conjuncts.length === 0) return { kind: 'return', effects: [it.effect] };
+  const cond: Expression =
+    it.conjuncts.length === 1 ? it.conjuncts[0] : { type: 'and', operands: it.conjuncts };
+  return { kind: 'guard', cond, then: [{ kind: 'return', effects: [it.effect] }], els: [] };
+}
+
+/** Render two single-ref sibling guards as if/else when their refs are a ONE pair. */
+function ifElseOpt(nodes: Node[], model: LogicalModel): Node[] {
+  if (nodes.length !== 2) return nodes;
+  const [a, b] = nodes;
+  if (
+    a.kind === 'guard' && b.kind === 'guard' &&
+    a.els.length === 0 && b.els.length === 0 &&
+    a.cond.type === 'ref' && b.cond.type === 'ref' &&
+    sameOne(model, a.cond.name, b.cond.name)
+  ) {
+    return [{ kind: 'guard', cond: a.cond, then: a.then, els: b.then }];
+  }
+  return nodes;
+}
+
+function buildFactored(model: LogicalModel, effectIds: string[]): Node[] {
+  const conj: Item[] = [];
+  const other: Node[] = [];
+  for (const e of effectIds) {
+    const expr = model.nodes.get(e)?.expression;
+    if (!expr) continue; // effect with no definition — nothing to guard
+    const cs = conjunctsOf(expr);
+    if (cs) conj.push({ effect: e, conjuncts: cs });
+    else other.push({ kind: 'guard', cond: expr, then: [{ kind: 'return', effects: [e] }], els: [] });
+  }
+  return [...factor(conj, model), ...other];
+}
+
+function buildFlat(model: LogicalModel, effectIds: string[]): Node[] {
+  const nodes: Node[] = [];
+  for (const e of effectIds) {
+    const expr = model.nodes.get(e)?.expression;
+    if (!expr) continue;
+    nodes.push({ kind: 'guard', cond: expr, then: [{ kind: 'return', effects: [e] }], els: [] });
+  }
+  return nodes;
 }
 
 // ---------------------------------------------------------------------------
-// Step 4–6: emit pseudo-code
+// Skeleton interpretation + verification
 // ---------------------------------------------------------------------------
 
-function emitNodes(
+function evalExpr(expr: Expression, bools: Map<string, boolean>): boolean {
+  switch (expr.type) {
+    case 'ref':
+      return bools.get(expr.name) ?? false;
+    case 'not':
+      return !evalExpr(expr.operand, bools);
+    case 'and':
+      return expr.operands.every((o) => evalExpr(o, bools));
+    case 'or':
+      return expr.operands.some((o) => evalExpr(o, bools));
+  }
+}
+
+function runSkeleton(nodes: Node[], bools: Map<string, boolean>): string[] | null {
+  for (const node of nodes) {
+    if (node.kind === 'return') return node.effects;
+    const branch = evalExpr(node.cond, bools) ? node.then : node.els;
+    const r = runSkeleton(branch, bools);
+    if (r !== null) return r;
+  }
+  return null;
+}
+
+/** Verify the skeleton equals the CEG over every constraint-valid input. */
+function verify(
+  model: LogicalModel,
+  causeIds: string[],
+  effectIds: string[],
   nodes: Node[],
-  depth: number,
-  label: (id: string) => string,
-  lines: string[],
-): void {
+): { ok: boolean; checked: boolean } {
+  if (causeIds.length > MAX_VERIFY_CAUSES) return { ok: false, checked: false };
+  const total = 1 << causeIds.length;
+  for (let mask = 0; mask < total; mask++) {
+    const assignment = causeIds.map((_, i) => (mask & (1 << i)) !== 0);
+    const ev = evalModel(model, causeIds, effectIds, assignment);
+    if (!ev.feasible) continue;
+    const got = runSkeleton(nodes, ev.bools) ?? [];
+    if (!sameSet(new Set(got), ev.effects)) return { ok: false, checked: true };
+  }
+  return { ok: true, checked: true };
+}
+
+function sameSet(a: Set<string>, b: Set<string>): boolean {
+  if (a.size !== b.size) return false;
+  for (const x of a) if (!b.has(x)) return false;
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// Emit pseudo-code
+// ---------------------------------------------------------------------------
+
+function emitNodes(nodes: Node[], depth: number, label: (id: string) => string, lines: string[]): void {
   const pad = INDENT.repeat(depth);
   for (const node of nodes) {
     if (node.kind === 'return') {
-      const value = node.actions.map(label).join(' + ') || 'None';
-      lines.push(`${pad}return ${value}      # ${node.actions.join('+')} (#${node.columnId})`);
+      const value = node.effects.map(label).join(' + ') || 'None';
+      lines.push(`${pad}return ${value}      # ${node.effects.join('+') || 'none'}`);
       continue;
     }
-    const hasThen = node.then.length > 0;
-    const hasElse = node.else.length > 0;
-    const labelComment = labelOf(node.cond, label);
-    if (hasThen) {
-      lines.push(`${pad}if ${node.cond}:${labelComment}`);
-      emitNodes(node.then, depth + 1, label, lines);
-      if (hasElse) {
-        lines.push(`${pad}else:`);
-        emitNodes(node.else, depth + 1, label, lines);
-      }
-    } else if (hasElse) {
-      lines.push(`${pad}if not ${node.cond}:${labelComment}`);
-      emitNodes(node.else, depth + 1, label, lines);
+    const condText = serializeExpression(node.cond);
+    const condLabel = node.cond.type === 'ref' && label(node.cond.name) !== node.cond.name
+      ? `      # ${label(node.cond.name)}`
+      : '';
+    lines.push(`${pad}if ${condText}:${condLabel}`);
+    emitNodes(node.then, depth + 1, label, lines);
+    if (node.els.length > 0) {
+      lines.push(`${pad}else:`);
+      emitNodes(node.els, depth + 1, label, lines);
     }
   }
-}
-
-/** Inline ` # label` comment when the node has a label distinct from its id. */
-function labelOf(id: string, label: (id: string) => string): string {
-  const l = label(id);
-  return l && l !== id ? `      # ${l}` : '';
 }
 
 /**
- * Generate a pseudo-code skeleton from a decision table.
+ * Generate a pseudo-code skeleton from a Cause-Effect Graph.
  *
- * @param table       The optimized (feasible) decision table.
- * @param nodeLabels  id → human label; used for the legend and effect returns.
- * @param model       Optional logical model; when present, intermediate nodes
- *                    are defined from their expressions (otherwise they appear
- *                    as named conditions).
+ * @param model       The CEG model (expressions + intermediates + constraints) — the topology source.
+ * @param table       The decision table — supplies cause/intermediate/effect ids (and the §8 path cross-check).
+ * @param nodeLabels  id -> human label, for the legend and effect return values.
  */
 export function generateSkeletonPseudoCode(
+  model: LogicalModel,
   table: DecisionTable,
   nodeLabels: Map<string, string>,
-  model?: LogicalModel | null,
 ): string {
   const label = (id: string) => nodeLabels.get(id) ?? id;
-  const { paths, skipped } = extractControlPaths(table);
-  const body = build(paths, 0);
+  const { causeIds, intermediateIds, effectIds } = table;
 
-  const lines: string[] = [];
-  lines.push(`function decide(${table.causeIds.join(', ')}):`);
-
-  // Legend: each cause with a human label.
-  const labelledCauses = table.causeIds.filter((id) => label(id) !== id);
-  if (labelledCauses.length > 0) {
-    lines.push(`${INDENT}# causes:`);
-    for (const id of labelledCauses) {
-      lines.push(`${INDENT}#   ${id} = ${label(id)}`);
-    }
+  // Build the topology skeleton, then verify it; fall back to explicit guards.
+  let body = buildFactored(model, effectIds);
+  let v = verify(model, causeIds, effectIds, body);
+  let note = '';
+  if (v.checked && !v.ok) {
+    body = buildFlat(model, effectIds);
+    v = verify(model, causeIds, effectIds, body);
+    note = v.ok
+      ? '# note: factored form could not be verified; using explicit per-effect guards.'
+      : '# WARNING: skeleton could not be verified equivalent to the CEG — review before use.';
+  } else if (!v.checked) {
+    body = buildFlat(model, effectIds);
+    note = `# note: ${causeIds.length} causes — exhaustive verification skipped; using explicit per-effect guards.`;
   }
 
-  // Intermediates: definitions from expressions when available, else named.
-  if (table.intermediateIds.length > 0) {
-    for (const id of table.intermediateIds) {
-      const expr = model?.nodes.get(id)?.expression;
-      if (expr) {
-        lines.push(`${INDENT}${id} = ${serializeExpression(expr)}${labelOf(id, label)}`);
-      } else {
-        lines.push(`${INDENT}# ${id} (intermediate condition)${labelOf(id, label)}`);
-      }
+  const lines: string[] = [];
+  lines.push(`function decide(${causeIds.join(', ')}):`);
+  if (note) lines.push(`${INDENT}${note}`);
+
+  // Legend: causes with a human label.
+  const labelled = causeIds.filter((id) => label(id) !== id);
+  if (labelled.length > 0) {
+    lines.push(`${INDENT}# causes:`);
+    for (const id of labelled) lines.push(`${INDENT}#   ${id} = ${label(id)}`);
+  }
+
+  // Intermediate definitions (topological order).
+  const intsOrdered = topoIntermediates(model, intermediateIds);
+  if (intsOrdered.length > 0) {
+    for (const id of intsOrdered) {
+      const expr = model.nodes.get(id)?.expression;
+      if (expr) lines.push(`${INDENT}${id} = ${serializeExpression(expr)}` + labelComment(id, label));
+      else lines.push(`${INDENT}# ${id} (intermediate condition)` + labelComment(id, label));
     }
     lines.push('');
-  } else if (labelledCauses.length > 0) {
+  } else if (labelled.length > 0) {
     lines.push('');
   }
 
   emitNodes(body, 1, label, lines);
-
-  for (const col of skipped) {
-    lines.push(`${INDENT}# column #${col} skipped: action is M/I (untestable)`);
-  }
-  lines.push(`${INDENT}return None      # default: reached by no column`);
+  lines.push(`${INDENT}return None      # default: no effect fires`);
 
   return lines.join('\n') + '\n';
+}
+
+function labelComment(id: string, label: (id: string) => string): string {
+  const l = label(id);
+  return l && l !== id ? `      # ${l}` : '';
 }

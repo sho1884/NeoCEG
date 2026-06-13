@@ -9,58 +9,60 @@
 ## 1. Purpose & Scope / 目的と範囲
 
 **EN.** Mechanically derive a program control-structure *skeleton* (nested `if/else` plus action stubs)
-from a Cause-Effect-Graph **decision table**. The transformation is fully **deterministic** and uses
-**no AI/ML** — it is classic "decision table → decision tree → code" compilation.
+from a **Cause-Effect Graph**. Fully **deterministic**, **no AI/ML**. It **reproduces the CEG's control-flow
+topology** and simplifies it **under the constraint premise** — "CEG (topology) → control structure → code" —
+and is **verified equivalent to the CEG over the feasible input space**. (The CEG's decision table is used as
+an MC/DC cross-check, not as the derivation source — see the revised §2/§5.)
 
-**JA.** 原因結果グラフの**デシジョンテーブル**から、プログラムの制御構造**スケルトン**
-（ネストした `if/else` ＋ 動作スタブ）を機械的に導く。変換は完全に**決定論的**であり、
-**AI/ML を一切用いない**。古典的な「デシジョンテーブル → 決定木 → コード」コンパイルである。
+**JA.** **原因結果グラフ**から、プログラムの制御構造**スケルトン**（ネストした `if/else` ＋ 動作スタブ）を
+機械的に導く。完全に**決定論的**、**AI/ML 不使用**。**CEG の制御フロー・トポロジーを再現**し、**制約を前提**
+に単純化する（「CEG（トポロジー）→ 制御構造 → コード」）。そして**実行可能入力空間上で CEG と一致を検証**する。
+（デシジョンテーブルは MC/DC 整合チェックに使い、導出源にはしない — 改訂 §2/§5。）
 
 ### In scope / 対象
-- Decision table (feasible/optimized form) → skeleton text / デシジョンテーブル（実行可能・最適化形）→ スケルトン文字列
-- Deterministic decision-tree construction with don't-care pruning / don't-care 枝刈り付きの決定論的決定木構成
+- CEG model (expressions + intermediates + constraints) → skeleton text / CEG モデル（式＋中間＋制約）→ スケルトン文字列
+- Topology reproduction (intermediates as computed variables; shared controlling conditions as gates), simplified under the constraint premise / トポロジー再現（中間＝計算変数、共有支配条件＝ゲート）、制約前提で単純化
+- Equivalence verification over the feasible input space / 実行可能入力空間での一致検証
 - One pluggable code emitter (default: pseudo-code) / 差し替え可能なコード出力器（既定: 擬似コード）
 
 ### Out of scope / 非対象
 - Action *bodies* (the real implementation of each effect) — emitted as `// TODO` stubs
   / 動作の*本体*（各効果の実装）— `// TODO` スタブとして出力
-- Globally minimal tree (NP-hard) — only "sufficiently simple" is targeted
-  / 大域最小の木（NP困難）— 目標は「十分にシンプル」のみ
-- Integration into NeoCEG UI / NeoCEG UI への組み込み
+- Globally minimal nesting (NP-hard) — only "sufficiently simple" is targeted
+  / 大域最小のネスト（NP困難）— 目標は「十分にシンプル」のみ
+- Constraint-violating inputs (premise, §7) / 制約違反入力（前提・§7）
+- *(Integration into NeoCEG is now specified in §11.)* / *(NeoCEG への統合は §11 で規定。)*
 
 ---
 
 ## 2. Why this is mechanical / 機械化が成立する根拠
 
-**EN.** The decision table is **already pruned with the same principle as MC/DC coverage**
-(admission fee: 256 → 7). Each remaining column is therefore a *necessary control path*, and **the number
-of columns is the number of control paths the program needs**. The pruning is **done**; the converter does
-**not** re-derive it. Building the skeleton = **rendering the existing columns as control paths**,
-optionally factored into a nested `if/else`. Everything needed is in the table:
+**EN.** The skeleton is the CEG's **own control-flow topology**, reproduced under the **constraint premise**.
+Three facts make this mechanical:
 
-| Need / 必要な情報 | Source in decision table / テーブル内の出所 |
+| Fact / 事実 | Consequence / 帰結 |
 |---|---|
-| Control paths (one per column) / 制御パス（列＝1本） | each non-excluded `conditions[]` column |
-| Action that fires on a path / そのパスで起きる動作 | the effect cell at uppercase **`T`** (controlling-true) |
-| Conditions evaluated on a path / パス上で評価される条件 | the column's cell values (causes + intermediates) |
-| Already-minimal path set / 既に最小化されたパス集合 | the table is pre-pruned (MC/DC-style, 256 → 7) |
-| Shared structure for nesting / ネストの共有構造 | conditions shared across columns ↔ shared predecessors in the CEG |
+| The CEG *is* the program's logic / CEG は被試験プログラムの論理そのもの | Effects are boolean functions of causes via intermediates (`e := …`); reproduce them, don't re-derive. |
+| Intermediate nodes *are* the topology / 中間ノードがトポロジー | Shared intermediates/causes become shared gates; multi-level intermediates become topologically-ordered computed variables (depth → prologue, not branch blow-up). |
+| Constraints are a **premise**, not a check / 制約は前提（検査しない） | The skeleton may **assume** `ONE`/`EXCL`/… hold; constraint-violating inputs *cannot occur*, so the skeleton never defends against them. This is what lets it simplify (e.g. `if c1 … else` = the other `ONE` member). |
 
-**EN (on cell case).** The `T`/`F` vs `t`/`f` distinction marks, *per node*, whether a value is
-**controlling (significant)** or **derived**. It explains *why* the table is already minimal and is *how*
-a column's firing effect is identified (its uppercase `T` effect). It is **not** a don't-care signal on
-*inputs*: in a test method every cause is a determined input, so there is no native input don't-care to
-exploit, and the converter performs no further pruning.
+So building the skeleton is **reproducing the topology and simplifying it under the constraint premise** — not
+fitting the decision table. The decision table / MC/DC is used **only as a cross-check** (§8): the generated
+control paths should number the same as the feasible columns.
 
-**JA.** デシジョンテーブルは **MC/DC カバレッジと同じ考え方で既に枝刈り済み**（入館料: 256 → 7）。
-ゆえに残った各列は*必要な制御パス*であり、**列の数 ＝ プログラムに必要な制御パスの数**。枝刈りは
-**完了している**ので、変換器はそれを**やり直さない**。スケルトン構築とは **既存の列を制御パスとして
-レンダリングする**ことであり、必要なら `if/else` のネストに factoring するだけ（上表）。
+**EN (the trap to avoid).** Do **not** derive guards by fitting the decision-table columns (the MC/DC
+representative points). A guard that separates the 7 points can still misroute the *other* constraint-valid
+inputs that are not among those points. Correctness is defined against the CEG functions over the whole
+**feasible input space**, not the columns (§8).
 
-セルの **大文字 `T`/`F`（効いている＝制御値）** と **小文字 `t`/`f`（派生）** の区別は、*ノードごとに*
-値が制御値か派生値かを示す。これは*なぜ*テーブルが既に最小かを説明し、*列の動作*（その列で大文字
-`T` の効果）を特定する手段でもある。**入力の don't-care 信号ではない** — テスト手法では全原因が確定
-入力であり、利用できる入力 don't-care は native に存在せず、変換器は追加の枝刈りを一切行わない。
+**JA.** スケルトンは **CEG 自身の制御フロー・トポロジー**を、**制約を前提**に再現したもの。機械化が成立する根拠は3つ（上表）：
+(1) CEG は被試験プログラムの論理そのもの（効果は原因→中間→効果のブール関数）。再現すればよく、導出し直さない。
+(2) 中間ノードがトポロジー。共有中間/原因が共有ゲートになり、多段中間はトポロジカル順の計算変数になる（深さは分岐爆発でなくプロローグへ）。
+(3) **制約は前提であって検査ではない**。`ONE`/`EXCL`… は**成立を仮定**してよい。制約違反入力は*起こらない*ので防御しない。これが単純化（`if c1 … else` ＝ もう一方の `ONE` メンバ等）を可能にする。
+
+ゆえにスケルトン構築は **トポロジー再現＋制約前提での単純化**であって、デシジョンテーブルへの当てはめではない。テーブル／MC/DC は **整合チェック専用**（§8）：生成された制御パス数は実行可能列数と一致するはず。
+
+**避けるべき罠.** デシジョンテーブルの列（MC/DC 代表点）に**当てはめてガードを導出してはならない**。7点を分けるガードでも、その7点に**含まれない他の実行可能入力**を誤ルートしうる。正しさは列ではなく、**全実行可能入力空間**上で CEG 関数と一致することで定義する（§8）。
 
 ---
 
@@ -77,6 +79,16 @@ converter operates on and the design anchor for future NeoCEG integration (§9).
 **無変換**で接続でき、人間も **Excel / Google スプレッドシート**で同じ形を作れる。
 CSV は内部データモデル（`SkeletonInput`, §3.2）にパースされる。このモデルは*入力形式ではなく*、
 変換器が操作する構造であり、将来の NeoCEG 統合（§9）の設計アンカーでもある。
+
+> **Superseded for correctness (see revised §2/§5).** A CSV decision table alone **cannot** produce a correct
+> skeleton — it only samples MC/DC points and carries no expressions/constraints (the topology). The
+> corrected algorithm derives from the **CEG model** (expressions + intermediates + constraints), so the
+> integrated path (§11, in-memory model) is primary. CSV stays useful for the decision table itself and as
+> the §8 cross-check, not as the skeleton's derivation source.
+> / **正しさの観点で見直し（改訂 §2/§5）.** CSV のデシジョンテーブル単独では正しい骨格を作れない（MC/DC
+> 点のサンプルで、式・制約＝トポロジーを持たない）。改訂アルゴリズムは **CEG モデル**（式＋中間＋制約）
+> から導出するため、統合パス（§11・メモリ上モデル）が主。CSV はデシジョンテーブル自体と §8 整合チェック
+> には有用だが、骨格の導出源ではない。
 
 ### 3.1 CSV format / CSV 形式
 
@@ -176,84 +188,87 @@ Effect leaves become `return <effect>` (or `emit <effect>`); unimplemented actio
 Example shape / 出力形のイメージ:
 
 ```text
-function decide(n1..n8, n9, n10):
-    # n9, n10 are intermediate conditions. Their definitions
-    #   n9 = n5 and n7 ; n10 = n5 and n8
-    # are emitted ONLY when expressions are available (internal model /
-    # future integration). From CSV they stay named conditions.
-    # / 中間条件。定義行は式がある場合のみ出力。CSV からは名前付き条件のまま。
+function decide(n1..n8):
+    # intermediates as computed variables, topological order (defs need expressions)
+    n9  = n5 AND n7      # resident elementary      (feeds Free)
+    n10 = n5 AND n8      # non-resident elementary  (feeds 600/500)
 
-    if n3: return Free        # e1  (column #1)
-    if n6: return Free        # e1  (column #2)
-    if n9: return Free        # e1  (column #3)
-    if n4:                    # shared condition, tested once
-        if n1: return 1200    # e2  (column #4)
-        if n2: return 1000    # e3  (column #5)
-    if n10:
-        if n1: return 600     # e4  (column #6)
-        if n2: return 500     # e5  (column #7)
-    return None               # default: input space reached by no column
-    # 7 explicit guarded paths = 7 columns (no effect is the fall-through)
+    if n4:                    # gate: adult — shared by 1200/1000
+        if n1: return 1200    # e2 = n1 AND n4
+        else:  return 1000    # e3 = n2 AND n4   (else = n2, by ONE(n1,n2))
+    if n10:                   # gate: non-resident elementary — shared by 600/500
+        if n1: return 600     # e4 = n1 AND n10
+        else:  return 500     # e5 = n2 AND n10
+    if n3 OR n6 OR n9:        # Free: 65+, under 6, or resident elementary
+        return Free           # e1   (OR ⇒ 3 MC/DC control paths)
+    return None               # default: no effect fires
+    # 7 control paths (2 + 2 + 3) = 7 feasible columns.
+    # Gates n4 / n10 / (n3,n6,n9) are mutually exclusive under ONE(n3,n4,n5,n6) & ONE(n7,n8),
+    # so ordering is shadow-safe. The else-branches are valid under ONE(n1,n2).
 ```
 
 ---
 
 ## 5. Algorithm / アルゴリズム
 
-**EN.** The pruning is **already done** by the decision table (§2). The converter **renders** each column
-as an **explicitly-guarded** control path; it does **not** re-prune, and — because the table is a *cover* —
-it never lets an effect become the fall-through. Deterministic: a fixed condition ordering gives unique,
-reproducible output.
+**EN.** **Reproduce the CEG topology and simplify it under the constraint premise** (§2). The derivation
+source is the **model** — causes, intermediates *with their expressions*, effects *with their expressions*,
+and the constraints. The decision table is **not** the derivation source; it is the §8 cross-check.
+Deterministic.
 
-**JA.** 枝刈りは §2 のとおり**既に完了**している。変換器は各列を**明示ガード付き**の制御パスとして
-**レンダリング**するだけで、**再枝刈りはしない**。テーブルは*被覆*なので、いかなる効果も
-フォールスルーにはしない。決定論的: 条件順序を固定すれば出力は一意かつ再現可能。
+> Requires expressions + constraints (the in-memory model / §11). A CSV decision table alone is
+> insufficient — it samples MC/DC points and cannot supply the topology, so it cannot yield a correct
+> skeleton on its own (this is exactly the trap in §2).
 
-1. **Read columns as control paths / 列を制御パスとして読む**
-   For each non-excluded column: the **action** = the effect(s) whose cell is uppercase `T`
-   (controlling-true); the **conditions** = the column's cause + intermediate cells. Columns whose action
-   is `M`/`I` are skipped with a comment.
-   各列について、**動作** = セルが大文字 `T` の効果、**条件** = その列の原因・中間セル。動作が `M`/`I` の
-   列はコメント付きでスキップ。
+1. **Intermediates → computed variables / 中間ノード＝計算変数**
+   Emit each intermediate as a named boolean in **topological order** (defined after the nodes it
+   references), from its expression. Multi-level intermediates only add definition lines — they never
+   expand the branch tree (depth → prologue). A node feeding several effects is computed **once**.
+   中間ノードを式から名前付きブールとして**トポロジカル順**に出す（参照先の後に定義）。多段でも定義行が
+   増えるだけで分岐木は膨らまない。複数効果に効くノードも**一度だけ**計算。
 
-2. **Per-column guard (controlling conditions) / 列ごとのガード（制御条件）**
-   For each column, greedily build the **minimal set of conditions** whose values distinguish it from every
-   column with a *different* action (add the condition that separates the most still-tied columns; tie →
-   node order). That conjunction is the column's guard. Conditions are taken from **all rows — causes AND
-   intermediates** (intermediates are first-class conditions, keeping the output close to CEG topology).
-   各列について、*異なる動作*を持つ全列と区別できる**最小の条件集合**を貪欲に作る（最も多くの未分離列を
-   分ける条件を追加。同点 → ノード順）。その連言が列のガード。条件は**全行（原因＋中間）**から取る
-   （中間も一級の条件 → 出力が CEG トポロジーに近づく）。
+2. **Gate by a shared controlling condition / 共有支配条件でゲート化**
+   Group effects by a controlling condition shared in their expressions — a common intermediate or cause
+   (e.g. `e2,e3` share `n4`; `e4,e5` share `n10`). That condition becomes a **gate** tested once; the
+   effects nest beneath it. This reproduces the CEG's convergence (topology).
+   効果を、式中で共有する支配条件（共通の中間/原因。例 `e2,e3`→`n4`、`e4,e5`→`n10`）でグループ化。
+   それを**ゲート**として一度だけテストし、配下にネスト。CEG の合流＝トポロジーを再現する。
 
-3. **Factor into nesting / ネストへの factoring**
-   Group columns by their leading (first-chosen, most-discriminating) guard literal: a shared literal is
-   tested once and its columns nested beneath it. A condition that does not distinguish is never tested
-   (§8 #2). Factoring **never merges two columns into one path** — path count stays = column count (§8 #5).
-   ガードの先頭リテラル（最初に選ばれた最有力条件）で列をグループ化: 共有リテラルは一度だけテストし、
-   その列を下にネストする。区別しない条件は使わない（§8#2）。factoring は**2列を1パスに併合しない** —
-   パス数は列数に等しいまま（§8#5）。
+3. **Discriminate within a gate under the premise / ゲート内は前提を使って識別**
+   Inside a gate, separate the remaining effects by their distinguishing cause using `if c / else`, where a
+   `ONE` (or equivalent) constraint makes the alternatives exhaustive (`else` = the other member).
+   **Assume constraints hold; never test for their violation.**
+   ゲート内は識別原因で `if c / else`。`ONE` 等が網羅を保証するので `else` ＝もう一方のメンバ。
+   **制約は成立を仮定し、違反を検査しない。**
 
-4. **Default leaf / 既定の葉**
-   The table is a *cover*, not a *partition*: every effect is guarded **explicitly**, and only the input
-   space reached by no column falls through to a single trailing `return None`. **No effect is ever the
-   fall-through** (otherwise it would over-fire on unreached inputs).
-   テーブルは*被覆*であり*分割*ではない: 各効果は**明示的に**ガードし、どの列にも到達しない入力空間
-   だけが末尾の単一 `return None` に落ちる。**いかなる効果もフォールスルーにしない**（さもないと未到達
-   入力で誤発火する）。
+4. **Disjunctive effects / 論理和の効果**
+   An effect defined by an OR (e.g. `e1 = n3 OR n6 OR n9`) is guarded by that disjunction; each operand is
+   one MC/DC control path.
+   OR 定義の効果（例 `e1 = n3 OR n6 OR n9`）はその論理和でガード。各項が1つの MC/DC 制御パス。
 
-5. **Intermediates / 中間ノード**
-   Emit each intermediate as a named boolean condition; its **definition** (e.g. `n9 = n5 and n7`) appears
-   **only** when `expressions` are available (internal model / future integration). From CSV it stays a
-   named condition.
-   中間ノードは名前付きブール条件として出す。**定義**（例 `n9 = n5 and n7`）は `expressions` がある場合
-   **のみ**出力（内部モデル／将来統合）。CSV からは名前付き条件のまま。
+5. **Default / 既定**
+   A single trailing `return None` for inputs that fire no effect (under the constraints this may be
+   unreachable; it is never an effect).
+   どの効果も立たない入力のための末尾 `return None`（制約下では到達しないこともある。効果には決してしない）。
 
 6. **Emit / 出力**
-   Walk the structure with the selected emitter to produce text.
-   選択した出力器で構造をたどり、テキスト化する。
+   Walk the structure with the selected emitter.
+   選択した出力器で構造をたどる。
 
-**Complexity / 計算量.** Bounded by table size, which is already pruned (e.g. admission fee: 256 → 7).
-テーブルサイズに比例し、そのテーブルは既に枝刈り済み（例: 入館料 256 → 7）。
+**Correctness is verified, not assumed / 正しさは仮定でなく検証する.** Because steps 2–3 simplify under the
+premise, the generator **must confirm the skeleton agrees with the CEG effect functions over the entire
+feasible input space** (constraint-valid inputs) — **not** the decision-table columns. If any feasible input
+is misrouted, the simplification was unsound → fall back to a more explicit (less-factored) guard for that
+effect. **The generator never emits a skeleton that disagrees with the CEG.** (Verifying against the 7
+columns only — the original mistake — silently misses non-sampled feasible inputs.)
+ステップ2–3は前提下の単純化なので、生成器は**実行可能入力空間の全体で CEG 効果関数と一致するか確認必須**
+（列ではない）。誤ルートがあれば簡約は不当 → 当該効果をより明示的なガードに退避。**CEG と食い違う骨格は
+出さない。**（7列だけの検証＝当初の誤りは、サンプル外の実行可能入力を見逃す。）
+
+**Determinism / complexity / 決定論・計算量.** A fixed gate-ordering policy ⇒ unique output. Optimal
+factoring is NP-hard; a greedy *most-shared-controlling-condition-first* is used (simple-enough, not
+minimal — §7). Verification enumerates the feasible space, which the constraints bound (e.g. `ONE` groups ⇒
+a product of choices: admission fee 2×4×2 = 16).
 
 ---
 
@@ -261,52 +276,69 @@ reproducible output.
 
 | Key / 項目 | Default / 既定 | Alternatives / 代替 |
 |---|---|---|
-| Input format / 入力形式 | `csv` only (tool/Excel-compatible) / CSV のみ | — (internal model = `SkeletonInput`, §3.2) |
+| Derivation source / 導出源 | `model` (expressions + intermediates + constraints) / モデル | — (CSV table alone is insufficient — §3 note) |
 | Emitter / 出力言語 | `pseudo` (language-agnostic) / 擬似コード | `typescript`, `python` |
-| Nesting / ネスト方針 | `tree` (nested `if`, factored paths) / ネスト | `flat` (one guard clause per column) / 列ごとガード節 |
-| Intermediates / 中間変数 | `keep` (named boolean conditions) / 名前付き条件で残す | `inline` (expand into conditions) / 条件に展開 |
-| Condition ordering / 条件順序 | `most-discriminating` (greedy, separates effects) / 効果分離が最大の条件優先 | `input-order`, `topological` |
+| Nesting / ネスト方針 | `tree` (gated nested `if`) / ゲート付きネスト | `flat` (one guard per effect) / 効果ごとガード |
+| Intermediates / 中間変数 | `keep` (named computed variables) / 名前付き計算変数で残す | `inline` (expand into conditions) / 条件に展開 |
+| Gate ordering / ゲート順序 | `most-shared-first` (greedy) / 最共有の支配条件優先 | `topological`, `effect-order` |
 | Default leaf / 既定の葉 | `return None` | configurable string / 文字列指定 |
 
-**EN.** These are command-line flags / config fields; all deterministic. None require AI. `tree` + `keep`
-is the **topology-faithful** combination: it preserves the CEG's intermediate layer as named conditions
-and maps shared predecessors to shared nesting (caveat: the CEG is a DAG, so a node feeding several effects
-is *re-tested*, not shared, in the `if/else` tree).
-**JA.** いずれも CLI フラグ / 設定項目。すべて決定論的で、AI を要しない。`tree` ＋ `keep` が
-**トポロジー忠実**な組み合わせ: CEG の中間層を名前付き条件として残し、共有された前段ノードを共有
-ネストに対応づける（注: CEG は DAG なので、複数効果に効くノードは `if/else` 木では共有されず*再テスト*
-される）。
+**EN.** These are config fields; all deterministic. None require AI. `tree` + `keep` is the
+**topology-faithful** combination. Because intermediates are kept as **computed variables** (`n9 = …`), a
+node feeding several effects is **computed once and shared** — the DAG sharing is preserved (the earlier
+"re-tested in a tree" caveat no longer applies; that was the column-rendering view).
+**JA.** いずれも設定項目。すべて決定論的で AI 不要。`tree` ＋ `keep` が**トポロジー忠実**。中間を
+**計算変数**（`n9 = …`）として残すので、複数効果に効くノードも**一度計算して共有** — DAG の共有が保たれる
+（以前の「木で再テスト」という注は列レンダリング時の話で、もう当てはまらない）。
 
 ---
 
 ## 7. Limitations & non-goals / 制約と非目標
 
 - **Action bodies are stubs / 動作本体はスタブ.** The tool knows *which* effect fires, not *how* to implement it. Bodies are `// TODO`. / どの効果かは分かるが実装方法は不明。本体は `// TODO`。
-- **Not globally optimal / 大域最適ではない.** The greedy condition ordering yields a *simple-enough*, not minimal, nesting. / 貪欲な条件順序は*十分シンプル*なネストであり最小ではない。
-- **Determinacy values (`M`/`I`) / 不定値.** Columns whose action is `M`/`I` (MASK untestable) are skipped with a comment. / 動作が `M`/`I`（MASK でテスト不能）の列はコメント付きでスキップ。
-- **Multiple simultaneous effects / 複数効果同時成立.** A column firing several effects emits all actions at that leaf. / 複数効果が立つ列は、その葉で全動作を出力。
+- **Constraints are a premise / 制約は前提.** The skeleton assumes the constraints hold; constraint-violating inputs are **out of scope** and are never defended against. / スケルトンは制約成立を仮定。制約違反入力は**対象外**で防御しない。
+- **Not globally optimal / 大域最適ではない.** Greedy gate ordering yields a *simple-enough*, not minimal, nesting (optimal factoring is NP-hard). / 貪欲なゲート順序は*十分シンプル*で最小ではない（最適 factoring は NP困難）。
+- **Unverifiable simplification falls back / 検証できない単純化は退避.** If a factored guard cannot be verified equivalent to the CEG over the feasible space, the effect is emitted with a more explicit (less-factored) guard — correct but more verbose. / factoring したガードが実行可能空間で CEG と一致すると検証できなければ、その効果はより明示的なガードで出力（正しいが冗長）。
+- **Determinacy values (`M`/`I`) / 不定値.** Effects that are `M`/`I` (MASK untestable) are skipped with a comment. / `M`/`I`（MASK でテスト不能）の効果はコメント付きでスキップ。
+- **Multiple simultaneous effects / 複数効果同時成立.** A path firing several effects emits all actions at that leaf. / 複数効果が立つパスは、その葉で全動作を出力。
 
 ---
 
 ## 8. Validation / 検証
 
 **EN.** Golden example = the admission-fee graph (`Verification/TDD/graphs/17_admission_fee.nceg`):
-8 causes, 2 intermediates, 5 effects, 3 `ONE` constraints, **7 feasible columns** (test-verified).
-Expected skeleton ≈ §4 example. Acceptance:
+8 causes, 2 intermediates, 5 effects, 3 `ONE` constraints, 7 feasible columns. Expected skeleton ≈ §4.
+Acceptance — **#1 is the real criterion; the rest are structural cross-checks:**
 
 **JA.** 基準例 = 入館料グラフ（`Verification/TDD/graphs/17_admission_fee.nceg`）:
-原因8・中間2・効果5・`ONE` 制約3、**実行可能列7**（テストで保証済み）。
-期待スケルトンは §4 のイメージ。受け入れ基準:
+原因8・中間2・効果5・`ONE` 制約3、実行可能列7。期待スケルトンは §4。
+受け入れ基準 — **#1 が本質。残りは構造の整合チェック:**
 
-1. Every effect appears in ≥1 reachable leaf / すべての効果が到達可能な葉に1回以上現れる。
-2. No branch tests a condition that does not distinguish the columns in its subtree / 部分木の列を区別しない条件を分岐に使わない。
-3. Re-running on the same input yields byte-identical output / 同一入力で再実行するとバイト同一の出力。
-4. The Free branch does **not** test individual/group: once `n3`/`n6`/`n9` determine Free, recursion stops before `n1`/`n2` / 無料は `n3`/`n6`/`n9` で確定した時点で停止し、`n1`/`n2` をテストしない。
-5. Path count = column count: the skeleton realizes exactly the table's control paths (7 for admission fee) / パス数＝列数。スケルトンはテーブルの制御パス（入館料は7）をちょうど実現する。
+1. **Functional equivalence over the whole feasible space (THE criterion) / 全実行可能空間での関数一致（本質基準）.**
+   For **every constraint-valid input**, the skeleton returns exactly what the CEG computes. Enumerate the
+   feasible inputs (constraints bound them; admission fee = 2×4×2 = 16) and compare against the model.
+   **Testing only the 7 columns is insufficient** — it was the original bug (e.g. "group + 65+" must be Free,
+   but it is not one of the 7 MC/DC points).
+   **全ての制約充足入力**で、スケルトンの戻り値が CEG の計算と一致する。実行可能入力を列挙（制約で有界。
+   入館料=2×4×2=16）してモデルと照合。**7列だけの検証は不十分**（当初のバグ。例「団体＋65歳以上」は
+   無料だが7点に含まれない）。
+2. Deterministic: byte-identical on re-run / 同一入力で再実行するとバイト同一。
+3. Path count = feasible column count (7): the topology skeleton realizes the same number of MC/DC control
+   paths as the table (2 + 2 + 3) / パス数＝実行可能列数(7)。トポロジー骨格はテーブルと同数の MC/DC 制御パス(2+2+3)を実現。
+4. No gate tests a condition that does not discriminate its group; a node feeding several effects is computed
+   once / どのゲートも自グループを区別しない条件をテストしない。複数効果に効くノードは一度だけ計算。
+5. Reproduces topology: intermediate definitions present (from expressions); shared conditions are gates
+   tested once / トポロジー再現: 中間定義が（式から）出る。共有条件はゲートとして一度だけテスト。
 
 ---
 
 ## 9. Implementation outline & future integration / 実装概要と将来の統合
+
+> **Superseded.** The standalone CSV/column-based prototype below was the original (incorrect) approach —
+> it fit the decision-table columns. The correct, model-based design lives in **§11** and follows the
+> revised §2–§5. This section is kept for history; new work targets the integrated exporter.
+> / **置き換え済み.** 以下の CSV/列ベースの独立プロトタイプは初版（誤り）— 列に当てはめていた。正しい
+> モデルベース設計は **§11**（改訂 §2–§5 準拠）。本節は記録として残す。新規作業は統合エクスポータが対象。
 
 **EN.** Standalone TypeScript (mirrors NeoCEG types for easy later folding-in). Pure functions, no state,
 no network. Suggested location: `prototype/skeleton-generator/`.
@@ -346,17 +378,26 @@ folds into NeoCEG as a new pure exporter `src/services/skeletonExporter.ts`, alo
 2. Nesting — decision tree (`tree`) or flat guard clauses (`flat`)? / ネスト — 決定木かフラットなガード節か？
 3. Intermediates — keep as variables or inline? / 中間ノード — 変数として残すか展開するか？
 
-*Resolved: input = **CSV only**, matching the tool's existing export and Excel authoring (§3.1). The `SkeletonInput` JSON shape is retained as the internal data model (§3.2), not as an input format.*
-*解決済み: 入力 = **CSV のみ**。ツール既存エクスポートおよび Excel 作成と一致（§3.1）。`SkeletonInput` の JSON 形は入力形式ではなく内部データモデル（§3.2）として保持。*
+*Resolved: derivation source = the **CEG model** (expressions + intermediates + constraints), per the revised
+§2/§5. A CSV decision table alone is insufficient for a correct skeleton (§3 note); CSV remains the decision
+table's format and the §8 cross-check. The integrated path (§11) is primary.*
+*解決済み: 導出源は **CEG モデル**（式＋中間＋制約。改訂 §2/§5）。CSV のデシジョンテーブル単独では正しい
+骨格を作れない（§3 注記）。CSV はデシジョンテーブルの形式と §8 整合チェックに残す。統合パス（§11）が主。*
 
-*Current defaults (§6) let the prototype run without answering 1–3; answers only tune output.*
-*§6 の既定値で 1〜3 未回答のまま動作する。回答は出力の調整のみ。*
+*The confirmed defaults (§6) and §11.7 fix the remaining knobs; 1–3 above default to `pseudo` / `tree` / `keep`.*
+*§6 と §11.7 の確定値で残りは決まる。上記 1〜3 は既定 `pseudo` / `tree` / `keep`。*
 
 ---
 
 ## 11. Integration into NeoCEG — design draft / 本体統合 設計ドラフト
 
-> Status: **design confirmed** (not yet implemented). / 状態: **設計確定**（未実装）。
+> Status: **redesign confirmed; to be reimplemented.** The first implementation derived guards by fitting
+> the decision-table columns and was incorrect for feasible inputs outside the 7 MC/DC points (e.g.
+> "group + 65+" returned a fee instead of Free). The design below follows the revised §2–§5 (reproduce
+> topology, assume constraints, verify over the feasible space).
+> / 状態: **再設計確定・再実装予定。** 初版は列に当てはめてガードを導出し、7点外の実行可能入力で誤って
+> いた（例「団体＋65歳以上」が無料でなく有料）。以下は改訂 §2–§5（トポロジー再現・制約前提・実行可能
+> 空間で検証）に従う。
 
 ### 11.1 Goal / 目的
 **EN.** Surface the skeleton inside the app as **one tab** in the existing decision-table panel,
@@ -366,45 +407,51 @@ no CSV round-trip — so the skeleton updates live with the graph.
 コード＋**コピー**ボタン。メモリ上の `DecisionTable` を直接消費（CSV 往復なし）し、グラフ編集に追従。
 
 ### 11.2 New pure exporter / 新しい純粋エクスポータ
-`src/services/skeletonExporter.ts` — ports the prototype core (`paths` + `buildTree` + `emit/pseudo`),
-adapted from `Record` to the in-memory `Map<string, TruthValue>` cell model. Pure, no DOM, no state.
+`src/services/skeletonExporter.ts` — derives the skeleton from the **CEG model** (topology) per §5, simplifies
+under the constraint premise, and **self-verifies** over the feasible space. Pure, no DOM, no state.
 
 ```ts
 export function generateSkeletonPseudoCode(
-  table: DecisionTable,                 // optimized (feasible) table — NOT the learning-mode 2^n table
-  nodeLabels: Map<string, string>,      // id -> label, for effect return values
-  model?: LogicalModel | null,          // optional; enables intermediate definitions
+  model: LogicalModel,                 // topology source: causes/intermediates/effects + expressions + constraints
+  table: DecisionTable,                // feasible columns — for the §8 path-count / equivalence cross-check
+  nodeLabels: Map<string, string>,     // id -> label, for the legend + effect return values
 ): string
 ```
 
-- Algorithm is unchanged from §2–§5 (table already MC/DC-pruned → render columns as guarded paths).
-- **Intermediate definitions** (the one upgrade over the CSV path): when `model` is given, emit
-  `n9 = n5 AND n7` via `serializeExpression(model.nodes.get(id)?.expression)`. Without `model`, intermediates
-  stay named conditions (as from CSV). / 中間定義は `model` があるときだけ式から出力。
-- **Node legend & labels** (`nodeLabels` covers *every* node): ids stay the code identifiers (labels can
-  contain spaces, e.g. `65+ years old`, so they cannot be identifiers), and the human label is surfaced as
-  a comment — a **legend block** for causes/intermediates up front, plus an inline label comment on each
-  guard/return. / `nodeLabels` は全ノードを網羅。識別子は `n3` のまま（ラベルは空白を含むため識別子に
-  できない）、ラベルはコメントで提示 — 冒頭の**凡例**＋各ガード/戻り値の行内コメント。
+- **Topology, not columns (§2/§5).** Gates come from controlling conditions shared in the effect
+  *expressions* (e.g. `n4` for 1200/1000; `n10` for 600/500); intermediates are topologically-ordered
+  computed variables; OR-effects (`e1 = n3 OR n6 OR n9`) are guarded by the disjunction. `model` is
+  **required** — expressions + constraints are the source; the table alone cannot drive a correct skeleton.
+  / ゲートは効果**式**中の共有支配条件から。中間はトポロジカル順の計算変数。OR 効果は論理和でガード。
+  `model` 必須（式＋制約が源。テーブル単独では正しい骨格を作れない）。
+- **Self-verification (mandatory, §8 #1).** Enumerate the constraint-valid inputs (bounded by the
+  constraints) and confirm the skeleton’s result equals the CEG’s for **every** one. On any mismatch, fall
+  back to a more explicit guard for that effect. / 実行可能入力を列挙し、**全件**で CEG と一致を確認。不一致
+  なら当該効果を明示ガードへ退避。
+- **Node legend & labels.** Ids stay the code identifiers (labels may contain spaces); the human label is a
+  comment — a legend block for causes up front, intermediate definitions carry their label, and each
+  gate/return gets an inline label comment. / 識別子は `n3` のまま、ラベルはコメント（冒頭の原因凡例＋
+  中間定義＋各ゲート/戻り値の行内コメント）。
 
 Output sketch with labels / ラベル付き出力イメージ:
 
 ```text
 function decide(n1, n2, n3, n4, n5, n6, n7, n8):
-    # n1=Individual  n2=Group  n3=65+ years old  n4=Adult
-    # n5=Elementary school  n6=Under 6 years old  n7=Prefecture resident Yes  n8=Prefecture resident No
+    # causes:
+    #   n1 = Individual   n2 = Group   n3 = 65+ years old   n4 = Adult
+    #   n5 = Elementary school   n6 = Under 6 years old
+    #   n7 = Prefecture resident Yes   n8 = Prefecture resident No
     n9  = n5 AND n7      # Prefecture resident elementary
     n10 = n5 AND n8      # Non-resident elementary
 
-    if n3: return Free   # 65+ years old → Free  (#1)
-    if n6: return Free   # Under 6 years old → Free  (#2)
-    if n9: return Free   # Prefecture resident elementary → Free  (#3)
-    if n4:               # Adult
-        if n1: return 1200 yen   # Individual → e2 (#4)
-        if n2: return 1000 yen   # Group → e3 (#5)
-    if n10:              # Non-resident elementary
-        if n1: return 600 yen    # Individual → e4 (#6)
-        if n2: return 500 yen    # Group → e5 (#7)
+    if n4:                       # Adult
+        if n1: return 1200 yen   # e2
+        else:  return 1000 yen   # e3   (else = Group, by ONE(n1,n2))
+    if n10:                      # Non-resident elementary
+        if n1: return 600 yen    # e4
+        else:  return 500 yen    # e5
+    if n3 OR n6 OR n9:           # 65+ / under 6 / resident elementary
+        return Free              # e1
     return None
 ```
 
@@ -431,15 +478,22 @@ function decide(n1, n2, n3, n4, n5, n6, n7, n8):
 - Tab placement (proposal): between **Compare** and **NeoCEG Language**. / タブ位置（案）: Compare と NeoCEG Language の間。
 
 ### 11.5 Testing / テスト
-`src/__tests__/skeletonExporter.test.ts` — build the table from the admission-fee DSL via the in-memory
-pipeline (`parseLogicalDSL` → `generateOptimizedDecisionTableWithState`), then assert the §8 criteria
-**plus** that intermediate definitions (`n9 = n5 AND n7`, `n10 = n5 AND n8`) are present (expressions
-available). Mirrors the prototype golden test.
+`src/__tests__/skeletonExporter.test.ts` — build the model from the admission-fee DSL
+(`parseLogicalDSL` → `generateOptimizedDecisionTableWithState`). The **primary** test (§8 #1) **enumerates
+every constraint-valid input** (the ONE groups ⇒ 2×4×2 = 16) and asserts the generated skeleton returns the
+**same effect as evaluating the CEG model** for each — including non-MC/DC points such as "group + 65+ → Free".
+Then the structural cross-checks: path count = 7, intermediate definitions present, gates reproduce topology.
+(The original test — checking only the 7 columns — is what let the bug ship; it must not be the basis.)
+/ **主テスト**（§8 #1）は**全制約充足入力**（ONE 群 ⇒ 2×4×2=16）を列挙し、各入力で骨格の戻り値が
+**CEG モデル評価と一致**することを表明（「団体＋65歳以上→無料」等の非 MC/DC 点を含む）。続いて構造チェック
+（パス数7・中間定義・ゲートのトポロジー再現）。7列だけの検証はバグを通した原因なので基準にしない。
 
 ### 11.6 Out of scope / 非対象
-- No algorithm change (§2–§5 reused). / アルゴリズム変更なし。
-- Learning-mode (2^n) table is **not** used — the skeleton is built from the optimized feasible table only.
-  / 学習モード（2^n）テーブルは使わない。最適化済み実行可能テーブルのみ。
+- Algorithm follows the **revised** §2–§5 (topology + constraint premise + feasible-space verification). The
+  first column-fitting implementation is replaced. / アルゴリズムは**改訂** §2–§5（トポロジー＋制約前提＋
+  実行可能空間検証）に従う。初版の列当てはめ実装は置き換える。
+- Constraint-violating inputs are out of scope (premise, §7). / 制約違反入力は対象外（前提・§7）。
+- Learning-mode (2^n) table is **not** used. / 学習モード（2^n）テーブルは使わない。
 - Language emitters (TS/Python) and `flat` nesting — deferred (§6 options). / 言語出力器・flat は後回し。
   (Download **is** in scope — see §11.4. / DL は対象内、§11.4 参照。)
 
