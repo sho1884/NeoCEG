@@ -78,7 +78,7 @@ n2 := NOT n1
     }
   });
 
-  it('should parse complex expressions with precedence', () => {
+  it('rejects mixing AND and OR in one node (single-gate rule)', () => {
     const input = `
 n1: "A"
 n2: "B"
@@ -86,11 +86,46 @@ n3: "C"
 n4 := n1 AND n2 OR n3
 `;
     const result = parseLogicalDSL(input);
+    expect(result.success).toBe(false);
+    expect(result.errors.some((e) => /one gate per node/i.test(e.message))).toBe(true);
+  });
 
+  it('rejects parentheses in an expression (single-gate rule)', () => {
+    const input = `
+n1: "A"
+n2: "B"
+n3: "C"
+n4 := n1 AND (n2 OR n3)
+`;
+    const result = parseLogicalDSL(input);
+    expect(result.success).toBe(false);
+    expect(result.errors.some((e) => /parenthes/i.test(e.message))).toBe(true);
+  });
+
+  it('accepts the decomposed single-gate form (a named intermediate node)', () => {
+    const input = `
+n1: "A"
+n2: "B"
+n3: "C"
+m: "B or C"
+m := n2 OR n3
+n4 := n1 AND m
+`;
+    const result = parseLogicalDSL(input);
     expect(result.success).toBe(true);
-    const n4 = result.model.nodes.get('n4');
-    // OR has lower precedence, so this should be: (n1 AND n2) OR n3
-    expect(n4?.expression?.type).toBe('or');
+    expect(result.model.nodes.get('n4')?.expression?.type).toBe('and');
+    expect(result.model.nodes.get('m')?.expression?.type).toBe('or');
+  });
+
+  it('accepts a single gate with negated inputs (NOT on a literal)', () => {
+    const input = `
+n1: "A"
+n2: "B"
+n3 := n1 AND NOT n2
+`;
+    const result = parseLogicalDSL(input);
+    expect(result.success).toBe(true);
+    expect(result.model.nodes.get('n3')?.expression?.type).toBe('and');
   });
 
   it('should parse EXCL constraint', () => {

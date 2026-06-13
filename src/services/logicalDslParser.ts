@@ -359,6 +359,16 @@ class Parser {
       const expr = this.parseExpression();
       if (!expr) return;
 
+      // Single-gate rule: one gate per node (no nesting / no AND-OR mixing).
+      if (!this.isSingleGate(expr)) {
+        this.errors.push({
+          line: nameToken.line,
+          message: `Node '${name}': one gate per node — AND and OR cannot be mixed in a node, and a sub-expression must be its own named node. Split the inner gate into a separate node.`,
+          content: '',
+        });
+        return;
+      }
+
       if (this.nodes.has(name)) {
         // Update existing node with expression
         const node = this.nodes.get(name)!;
@@ -426,12 +436,26 @@ class Parser {
     return this.parsePrimary();
   }
 
+  /** A literal is a node reference, optionally negated (`NOT ref`). */
+  private isLiteralExpr(e: Expression): boolean {
+    return e.type === 'ref' || (e.type === 'not' && e.operand.type === 'ref');
+  }
+
+  /** Single gate: a literal, or an AND/OR whose operands are all literals. */
+  private isSingleGate(e: Expression): boolean {
+    if (this.isLiteralExpr(e)) return true;
+    if (e.type === 'and' || e.type === 'or') return e.operands.every((o) => this.isLiteralExpr(o));
+    return false;
+  }
+
   private parsePrimary(): Expression | null {
     if (this.check('LPAREN')) {
-      this.advance();
-      const expr = this.parseExpression();
-      this.consume('RPAREN', 'Expected )');
-      return expr;
+      this.errors.push({
+        line: this.peek().line,
+        message: `Parentheses are not allowed in an expression — one gate per node. Split the parenthesised sub-expression into its own named node.`,
+        content: '',
+      });
+      return null;
     }
 
     if (this.check('IDENT')) {
