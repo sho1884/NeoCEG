@@ -1742,11 +1742,12 @@ export default function DecisionTablePanel() {
   useEffect(() => {
     if (displayMode === 'learning' && learningTable === null && logicalModel) {
       setDisplayMode('practice');
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: notify user that learning mode was auto-disabled (2^n > 256)
       setWarningMessage(MODE_MESSAGES.learningModeAutoDisabled);
       const timer = setTimeout(() => setWarningMessage(null), 5000);
       return () => clearTimeout(timer);
     }
-  }, [displayMode, learningTable, logicalModel]);
+  }, [displayMode, learningTable, logicalModel, setDisplayMode]);
 
   // Get the table and conditions to display based on mode
   const displayTable = displayMode === 'learning' && learningTable ? learningTable : table;

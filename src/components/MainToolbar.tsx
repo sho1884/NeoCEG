@@ -3,7 +3,7 @@
  * Unified single-row toolbar with file operations, undo/redo, and constraints
  */
 
-import { useCallback, useRef, useState, useEffect, memo } from 'react';
+import { useCallback, useRef, useState, useEffect, memo, createContext, useContext } from 'react';
 import { useGraphStore } from '../stores/graphStore';
 import { graphToLogical, applyLogicalModelToStore } from '../services/modelConverter';
 import { serializeLogicalModel, downloadLogicalDSL, copyLogicalDSLToClipboard } from '../services/logicalDslSerializer';
@@ -96,6 +96,45 @@ const constraintBtnEnabled: React.CSSProperties = {
 // File Dropdown
 // =============================================================================
 
+const menuItemStyle: React.CSSProperties = {
+  padding: '7px 16px',
+  fontSize: '13px',
+  color: '#ddd',
+  cursor: 'pointer',
+  whiteSpace: 'nowrap',
+  backgroundColor: 'transparent',
+  border: 'none',
+  width: '100%',
+  textAlign: 'left',
+};
+
+const menuItemDisabledStyle: React.CSSProperties = {
+  ...menuItemStyle,
+  color: '#999',
+  cursor: 'default',
+};
+
+const divider = <div style={{ height: '1px', backgroundColor: '#444', margin: '4px 0' }} />;
+
+// Lets a module-scope MenuItem close the dropdown without closing over component state.
+const MenuCloseContext = createContext<() => void>(() => {});
+
+function MenuItem({ label, onClick, enabled = true, color }: {
+  label: string; onClick: () => void; enabled?: boolean; color?: string;
+}) {
+  const close = useContext(MenuCloseContext);
+  return (
+    <button
+      onClick={() => { if (enabled) { onClick(); close(); } }}
+      style={enabled ? (color ? { ...menuItemStyle, color } : menuItemStyle) : menuItemDisabledStyle}
+      onMouseEnter={(e) => { if (enabled) e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.08)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+    >
+      {label}
+    </button>
+  );
+}
+
 function FileDropdown({
   onImport,
   onExport,
@@ -125,38 +164,7 @@ function FileDropdown({
     return () => document.removeEventListener('pointerdown', handleClick, true);
   }, [open]);
 
-  const menuItemStyle: React.CSSProperties = {
-    padding: '7px 16px',
-    fontSize: '13px',
-    color: '#ddd',
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
-    backgroundColor: 'transparent',
-    border: 'none',
-    width: '100%',
-    textAlign: 'left',
-  };
-
-  const menuItemDisabledStyle: React.CSSProperties = {
-    ...menuItemStyle,
-    color: '#999',
-    cursor: 'default',
-  };
-
-  const divider = <div style={{ height: '1px', backgroundColor: '#444', margin: '4px 0' }} />;
-
-  const MenuItem = ({ label, onClick, enabled = true, color }: {
-    label: string; onClick: () => void; enabled?: boolean; color?: string;
-  }) => (
-    <button
-      onClick={() => { if (enabled) { onClick(); setOpen(false); } }}
-      style={enabled ? (color ? { ...menuItemStyle, color } : menuItemStyle) : menuItemDisabledStyle}
-      onMouseEnter={(e) => { if (enabled) e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.08)'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-    >
-      {label}
-    </button>
-  );
+  const closeMenu = useCallback(() => setOpen(false), []);
 
   const date = new Date().toISOString().split('T')[0];
 
@@ -172,6 +180,7 @@ function FileDropdown({
         <span style={{ fontSize: '8px', marginLeft: '2px' }}>{open ? '\u25B4' : '\u25BE'}</span>
       </button>
       {open && (
+        <MenuCloseContext.Provider value={closeMenu}>
         <div
           style={{
             position: 'absolute',
@@ -206,6 +215,7 @@ function FileDropdown({
           {divider}
           <MenuItem label="Clear All" onClick={onClear} enabled={hasData} color="#ef9a9a" />
         </div>
+        </MenuCloseContext.Provider>
       )}
     </div>
   );
@@ -401,6 +411,13 @@ export default function MainToolbar() {
     }
   }, [hasData, clear]);
 
+  const applyImport = useCallback((model: LogicalModel) => {
+    applyLogicalModelToStore(model);
+    setShowImportDialog(false);
+    setPendingImport(null);
+    setImportError(null);
+  }, []);
+
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -427,14 +444,7 @@ export default function MainToolbar() {
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  }, [nodes.length, constraints.length]);
-
-  const applyImport = useCallback((model: LogicalModel) => {
-    applyLogicalModelToStore(model);
-    setShowImportDialog(false);
-    setPendingImport(null);
-    setImportError(null);
-  }, []);
+  }, [nodes.length, constraints.length, applyImport]);
 
   const handleImportReplace = useCallback(() => {
     if (pendingImport) applyImport(pendingImport);

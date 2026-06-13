@@ -385,7 +385,7 @@ class Parser {
   }
 
   private parseOr(): Expression | null {
-    let left = this.parseAnd();
+    const left = this.parseAnd();
     if (!left) return null;
 
     const operands: Expression[] = [left];
@@ -401,7 +401,7 @@ class Parser {
   }
 
   private parseAnd(): Expression | null {
-    let left = this.parseUnary();
+    const left = this.parseUnary();
     if (!left) return null;
 
     const operands: Expression[] = [left];

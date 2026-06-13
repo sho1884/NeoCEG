@@ -19,6 +19,7 @@ function App() {
 
     // Security: HTTPS only
     if (!fileUrl.startsWith('https://')) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot mount effect reporting an invalid ?file= URL param
       setFileError('File URL must use HTTPS.');
       return;
     }

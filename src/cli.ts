@@ -204,7 +204,7 @@ function main(): void {
   if (args.inputFile) {
     try {
       input = readFileSync(args.inputFile, 'utf-8');
-    } catch (e) {
+    } catch {
       error(`Cannot read file: ${args.inputFile}`);
     }
   } else {
