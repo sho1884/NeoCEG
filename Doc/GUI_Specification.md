@@ -327,6 +327,26 @@ Observable is the default. Indicators are shown **only for non-observable nodes*
 - Tooltip: "Not Observable (観測不可)".
   ツールチップ：「Not Observable (観測不可)」。
 
+### 7.5 Validity warnings (model health) / 妥当性の警告（モデル健全性）
+
+Warnings appear in an **always-visible banner** at the top of the panel — the **same area** as the
+learning-mode auto-switch notice ([DecisionTablePanel] warning area, rendered **outside** the tab switch
+**and** the expand/collapse block), so it is **independent of the active tab and of collapse state**. Unlike
+the learning-mode notice (which auto-clears after ~5s), validity warnings are **persistent** while the
+condition holds.
+警告はパネル上部の**常時表示バナー**（学習モード自動切替通知と同じ場所。タブ切替の外・開閉ブロックの外に
+描画）に出す。**アクティブなタブにも開閉状態にも依存しない**ので、該当タブを見ていなくても気づける。
+
+| # | Trigger / 条件 | Message intent / 文面の趣旨 |
+|---|---|---|
+| **A** | The generated skeleton could **not be verified** equivalent to the CEG over the feasible input space (skeleton exporter status ≠ `verified`). / スケルトンを実行可能入力全体で CEG と一致と**検証できなかった**（エクスポータ status ≠ `verified`）。 | "The generated skeleton could not be verified against the graph — constraints may be missing or effects overlap. Check your constraints before trusting the result." / 「生成したスケルトンをグラフと照合できませんでした。制約不足や効果の同時成立の可能性。結果を信用する前に制約を確認してください。」 |
+| **B** | A feasible decision-table column fires **two or more effects simultaneously**. / 実行可能な列が**複数の効果を同時に**立てる。 | "Some test cases produce multiple results at once — the graph may be under-constrained. Check your constraints." / 「一部のテストケースが複数の結果を同時に生みます。制約不足の可能性。制約を確認してください。」 |
+
+- Both are **advisory** (amber); they never block editing or export. / いずれも**助言的**（amber）で、編集・出力を妨げない。
+- A and B may show together; both are derived reactively from the current model / decision table. / A と B は同時表示可。現在のモデル／デシジョンテーブルからリアクティブに導出。
+- B is a **heuristic** (some graphs legitimately have co-occurring effects), so it is phrased as a caution, not an error. / B は**ヒューリスティック**（同時成立が正当なグラフもある）ため、エラーでなく注意として表現。
+- Rationale: without constraints the premise breaks — the decision table degenerates (columns merge, one case fires several effects) and the skeleton cannot be uniquely realized. A general user must be told, not left to misread degenerate output as correct. / 根拠: 制約が無いと前提が崩れ、デシジョンテーブルが退化（列がマージ・1ケースで複数効果）し、スケルトンが一意に実現できない。一般ユーザに知らせず誤認させてはならない。
+
 ---
 
 ## 8. Page Leave Warning / ページ離脱警告
@@ -371,10 +391,32 @@ SVG → Canvas → PNG パイプライン。キャプチャした純粋SVGをIma
 
 ---
 
-## 10. History / 変更履歴
+## 10. Skeleton Tab / スケルトンタブ
+
+The bottom panel includes a "Skeleton" tab, between Compare and NeoCEG Language. It shows the program
+control-structure skeleton derived from the graph (see `Skeleton_Generator_Specification.md`).
+下部パネルに、Compare と NeoCEG Language の間に「Skeleton」タブを設ける。グラフから導いた制御構造
+スケルトンを表示する（`Skeleton_Generator_Specification.md` 参照）。
+
+| Element / 要素 | Description / 説明 |
+|---|---|
+| Pseudo-code area / 擬似コード領域 | Read-only monospace textarea showing the generated skeleton, updated reactively / 生成スケルトンを表示する読み取り専用の等幅テキストエリア、リアクティブに更新 |
+| Copy Skeleton / スケルトンコピー | Copy the skeleton text to clipboard. Also in the panel header export menu. / クリップボードへコピー。パネルヘッダの書き出しメニューにもある。 |
+| Download Skeleton / スケルトンDL | Download as `skeleton_<date>.txt`. Also in the panel header export menu. / `skeleton_<date>.txt` でダウンロード。ヘッダメニューにもある。 |
+| Empty state / 空状態 | Placeholder when there is no decision table to render / デシジョンテーブルが無いときはプレースホルダ |
+
+Validity warnings for the skeleton (and the decision table) appear in the always-visible panel banner, not
+inside this tab — see §7.5. / スケルトン（およびデシジョンテーブル）の妥当性警告は、このタブ内ではなく
+常時表示のパネルバナーに出す（§7.5 参照）。
+
+---
+
+## 11. History / 変更履歴
 
 | Date / 日付 | Change / 変更 |
 |---|---|
+| 2026-06-13 | Add Skeleton tab (decision table → pseudo-code; Copy + Download in tab and header menu) / Skeletonタブ追加（デシジョンテーブル→擬似コード、タブとヘッダメニューにコピー＋DL） |
+| 2026-06-13 | Add always-visible validity warnings (§7.5): skeleton-not-verified (A) and multi-effect decision-table columns (B) / 常時表示の妥当性警告を追加（§7.5）：スケルトン未検証(A)・複数効果列(B) |
 | 2026-02-17 | Initial version / 初版作成 |
 | 2026-02-17 | Remove "Reverse Direction" from constraint node menu; direction change via per-edge menu only / 制約ノードメニューから「方向を反転」を削除、エッジメニューのみで方向変更 |
 | 2026-02-28 | Add Decision Table Panel spec: column terminology "rules", section header colors, observable indicator / デシジョンテーブルパネル仕様追加：列用語「ルール」、セクションヘッダー色、観測可能インジケーター |

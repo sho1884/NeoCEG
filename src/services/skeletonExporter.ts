@@ -15,7 +15,7 @@
  *    effect the CEG computes. On mismatch we fall back to explicit per-effect
  *    guards; a skeleton that cannot be verified is emitted with a warning.
  *
- * See `Doc/Skeleton_Generator_Prototype_Spec.md` (revised §2–§5, §11).
+ * See `Doc/Skeleton_Generator_Specification.md` (§2–§5, §11).
  */
 
 import type { DecisionTable } from '../types/decisionTable';
