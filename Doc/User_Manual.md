@@ -613,8 +613,8 @@ The process is: (1) parse the clipboard text, (2) if syntax errors exist, show a
 
 | Type | Method / 方法 | Content / 内容 |
 |---|---|---|
-| Decision Table CSV | File > Download Decision CSV / Copy Decision CSV | Classification, Logical Statement, and truth values per rule / 分類、論理言明、ルール毎の真理値 |
-| Coverage Table CSV | File > Download Coverage CSV / Copy Coverage CSV | Expression coverage data with coverage percentage / 論理式カバレッジデータとカバレッジ率 |
+| Decision Table CSV | File > Download Decision CSV (download a `.csv` file). To copy CSV to the clipboard, use Copy Decision Table — see §11.7. / File > Download Decision CSV（`.csv`保存）。クリップボードへの CSV コピーは Copy Decision Table（§11.7）。 | Classification, Logical Statement, and truth values per rule / 分類、論理言明、ルール毎の真理値 |
+| Coverage Table CSV | File > Download Coverage CSV (download a `.csv` file). To copy CSV to the clipboard, use Copy Coverage Table — see §11.7. / File > Download Coverage CSV（`.csv`保存）。クリップボードへの CSV コピーは Copy Coverage Table（§11.7）。 | Expression coverage data with coverage percentage / 論理式カバレッジデータとカバレッジ率 |
 
 CSV files use UTF-8 encoding.
 
@@ -624,20 +624,20 @@ CSVファイルはUTF-8エンコーディング。
 
 **学習モード Status 行**：デシジョンテーブルに除外された条件が含まれる場合（学習モード）、列番号行の次に Status 行が出力されます。各列に `Adopted`、`Infeasible`、`Redundant`、`Weak`、`Untestable` のいずれかが表示されます。採択された条件のみをエクスポートするプラクティスモードでは、この行は省略されます。
 
-### 11.7 HTML Table Copy / HTMLテーブルコピー
+### 11.7 Copy Table (dual-format clipboard) / 表のコピー（2形式クリップボード）
 
-You can copy decision tables and coverage tables as styled HTML to the clipboard. When pasted into Microsoft PowerPoint, Google Slides, Word, or other Office applications, the table retains its colors, borders, and formatting — unlike CSV which loses all layout.
+A single **Copy** action per table writes **both** representations to the clipboard at once: `text/html` (a styled table) and `text/plain` (CSV). You do not choose a format — the destination decides. Paste into Microsoft PowerPoint, Google Slides, Word, Excel, or Google Sheets and you get the rendered table with colors, borders, and layout; paste into a plain-text editor and you get CSV. This is the same single-Copy behavior as the sister project **NeoCombi**.
 
-デシジョンテーブルとカバレッジテーブルをスタイル付きHTMLとしてクリップボードにコピーできます。Microsoft PowerPoint、Google Slides、Wordなどのオフィスアプリケーションに貼り付けると、色・罫線・書式がそのまま保持されます。CSVではレイアウトが失われますが、HTMLコピーでは見た目を維持したまま貼り付けられます。
+表ごとの単一の **Copy** 操作で、`text/html`（スタイル付き表）と `text/plain`（CSV）の**両方**を一度にクリップボードへ書き込みます。形式を選ぶ必要はなく、貼り付け先が選びます。PowerPoint・Google Slides・Word・Excel・Google スプレッドシートに貼れば色・罫線・レイアウト付きの表、テキストエディタに貼れば CSV。姉妹プロジェクト **NeoCombi** と同じ「単一 Copy」動作です。
 
 | Type | Method / 方法 |
 |---|---|
-| Decision Table HTML | `⎘ HTML` button on Decision/Compare tab header, or File > Copy Decision HTML / Decisionタブヘッダーの`⎘ HTML`ボタン、またはFile > Copy Decision HTML |
-| Coverage Table HTML | `⎘ HTML` button on Coverage/Compare tab header, or File > Copy Coverage HTML / Coverageタブヘッダーの`⎘ HTML`ボタン、またはFile > Copy Coverage HTML |
+| Decision Table | **Copy** button on the Decision/Compare tab header, or File > Copy Decision Table / Decision・Compareタブヘッダーの **Copy** ボタン、または File > Copy Decision Table |
+| Coverage Table | **Copy** button on the Coverage/Compare tab header, or File > Copy Coverage Table / Coverage・Compareタブヘッダーの **Copy** ボタン、または File > Copy Coverage Table |
 
-The clipboard contains both `text/html` (for rich paste) and `text/plain` (CSV fallback). Applications that support HTML paste (PowerPoint, Word, Google Docs) will use the styled table; plain text editors will receive CSV.
+If the browser does not support the multi-format clipboard (`ClipboardItem` / `navigator.clipboard.write`), the Copy falls back to writing the CSV as plain text, so it still works everywhere.
 
-クリップボードには`text/html`（リッチペースト用）と`text/plain`（CSVフォールバック）の両方が含まれます。HTMLペーストに対応するアプリ（PowerPoint、Word、Google Docs）はスタイル付き表を使用し、プレーンテキストエディタにはCSVが貼り付けられます。
+ブラウザが複数形式クリップボード（`ClipboardItem` / `navigator.clipboard.write`）に未対応の場合、Copy は CSV のプレーンテキスト書き込みに降格するため、どの環境でも動作します。
 
 **Learning Mode**: When the decision table includes excluded conditions, the HTML export visually distinguishes them — excluded columns appear with gray background, strikethrough text, and a Status row showing Adopted (green), Infeasible (red), Redundant (gray), Weak (orange), or Untestable (amber). This matches the UI strikethrough display.
 
@@ -654,15 +654,15 @@ The clipboard contains both `text/html` (for rich paste) and `text/plain` (CSV f
 | | Download PNG | Download graph as PNG (2x) / PNG(2倍)でグラフをダウンロード |
 | | Download Decision CSV | Download decision table CSV / デシジョンテーブルCSVダウンロード |
 | | Download Coverage CSV | Download coverage table CSV / カバレッジテーブルCSVダウンロード |
+| | Download Skeleton | Download skeleton as `.txt` / スケルトンを`.txt`でダウンロード |
 | ─ | | |
 | Copy/Paste | Copy CEG Definition | Copy `.nceg` to clipboard / `.nceg`をクリップボードにコピー |
 | | Paste CEG Definition | Import from clipboard (validates first) / クリップボードからインポート（事前バリデーション） |
 | | Copy SVG | Copy SVG to clipboard / SVGをクリップボードにコピー |
 | | Copy PNG | Copy PNG to clipboard / PNGをクリップボードにコピー |
-| | Copy Decision CSV | Copy decision table CSV / デシジョンテーブルCSVコピー |
-| | Copy Coverage CSV | Copy coverage table CSV / カバレッジテーブルCSVコピー |
-| | Copy Decision HTML | Copy decision table as styled HTML (for Office paste) / デシジョンテーブルをスタイル付きHTMLでコピー（Office貼り付け用） |
-| | Copy Coverage HTML | Copy coverage table as styled HTML (for Office paste) / カバレッジテーブルをスタイル付きHTMLでコピー（Office貼り付け用） |
+| | Copy Decision Table | Copy decision table — HTML table + CSV at once (§11.7) / デシジョンテーブルをコピー — HTML表＋CSVを同時（§11.7） |
+| | Copy Coverage Table | Copy coverage table — HTML table + CSV at once (§11.7) / カバレッジテーブルをコピー — HTML表＋CSVを同時（§11.7） |
+| | Copy Skeleton | Copy skeleton text (plain) / スケルトンテキストをコピー（プレーン） |
 | ─ | | |
 | Danger | Clear All | Remove all nodes, edges, and constraints / 全ノード・エッジ・制約を削除 |
 

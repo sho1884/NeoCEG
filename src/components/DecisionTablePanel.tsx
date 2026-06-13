@@ -32,8 +32,8 @@ import {
   downloadText,
 } from '../services/csvExporter';
 import {
-  copyDecisionTableHTMLToClipboard,
-  copyCoverageTableHTMLToClipboard,
+  copyDecisionTableToClipboard,
+  copyCoverageTableToClipboard,
 } from '../services/htmlTableExporter';
 import { generateSkeletonPseudoCode } from '../services/skeletonExporter';
 import type { SkeletonResult } from '../services/skeletonExporter';
@@ -1176,7 +1176,8 @@ function DownloadButton({ onClick, title }: CSVButtonProps) {
   );
 }
 
-function CopyCSVButton({ onClick, title }: CSVButtonProps) {
+// Single dual-format copy button (HTML for Excel/Office, CSV for text editors).
+function CopyButton({ onClick, title }: CSVButtonProps) {
   return (
     <button
       onClick={(e) => {
@@ -1199,33 +1200,6 @@ function CopyCSVButton({ onClick, title }: CSVButtonProps) {
     >
       <span style={{ fontSize: '12px' }}>⎘</span>
       {EXPORT_MESSAGES.csvCopyButtonLabel}
-    </button>
-  );
-}
-
-function CopyHTMLButton({ onClick, title }: CSVButtonProps) {
-  return (
-    <button
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick();
-      }}
-      style={{
-        padding: '4px 8px',
-        border: '1px solid #ccc',
-        borderRadius: '4px',
-        backgroundColor: '#fff',
-        color: '#666',
-        fontSize: '11px',
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '4px',
-      }}
-      title={title}
-    >
-      <span style={{ fontSize: '12px' }}>⎘</span>
-      {EXPORT_MESSAGES.htmlCopyButtonLabel}
     </button>
   );
 }
@@ -1920,22 +1894,13 @@ export default function DecisionTablePanel() {
                     }}
                     title={EXPORT_MESSAGES.downloadDecisionTableCSV}
                   />
-                  <CopyCSVButton
+                  <CopyButton
                     onClick={async () => {
-                      const csv = generateDecisionTableCSV(table, conditions, nodeLabels, sortedCauseIds, sortedIntermediateIds, sortedEffectIds);
-                      await navigator.clipboard.writeText(csv);
+                      await copyDecisionTableToClipboard(table, conditions, nodeLabels, sortedCauseIds, sortedIntermediateIds, sortedEffectIds);
                       setCsvCopyFeedback(EXPORT_MESSAGES.copied);
                       setTimeout(() => setCsvCopyFeedback(null), 2000);
                     }}
-                    title={EXPORT_MESSAGES.copyDecisionTableCSV}
-                  />
-                  <CopyHTMLButton
-                    onClick={async () => {
-                      await copyDecisionTableHTMLToClipboard(table, conditions, nodeLabels, sortedCauseIds, sortedIntermediateIds, sortedEffectIds);
-                      setCsvCopyFeedback(EXPORT_MESSAGES.copied);
-                      setTimeout(() => setCsvCopyFeedback(null), 2000);
-                    }}
-                    title={EXPORT_MESSAGES.copyDecisionTableHTML}
+                    title={EXPORT_MESSAGES.copyDecisionTable}
                   />
                 </>
               )}
@@ -1949,22 +1914,13 @@ export default function DecisionTablePanel() {
                     }}
                     title={EXPORT_MESSAGES.downloadCoverageTableCSV}
                   />
-                  <CopyCSVButton
+                  <CopyButton
                     onClick={async () => {
-                      const csv = generateCoverageTableCSV(coverageTable);
-                      await navigator.clipboard.writeText(csv);
+                      await copyCoverageTableToClipboard(coverageTable);
                       setCsvCopyFeedback(EXPORT_MESSAGES.copied);
                       setTimeout(() => setCsvCopyFeedback(null), 2000);
                     }}
-                    title={EXPORT_MESSAGES.copyCoverageTableCSV}
-                  />
-                  <CopyHTMLButton
-                    onClick={async () => {
-                      await copyCoverageTableHTMLToClipboard(coverageTable);
-                      setCsvCopyFeedback(EXPORT_MESSAGES.copied);
-                      setTimeout(() => setCsvCopyFeedback(null), 2000);
-                    }}
-                    title={EXPORT_MESSAGES.copyCoverageTableHTML}
+                    title={EXPORT_MESSAGES.copyCoverageTable}
                   />
                 </>
               )}
@@ -1977,7 +1933,7 @@ export default function DecisionTablePanel() {
                     }}
                     title={EXPORT_MESSAGES.downloadSkeleton}
                   />
-                  <CopyCSVButton
+                  <CopyButton
                     onClick={async () => {
                       await navigator.clipboard.writeText(skeletonResult.text);
                       setCsvCopyFeedback(EXPORT_MESSAGES.copied);

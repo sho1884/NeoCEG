@@ -7,6 +7,7 @@
  */
 
 import { generateDecisionTableCSV, generateCoverageTableCSV, computeTablesFromGraph } from './csvExporter';
+import { copyTableToClipboard, type CopyResult } from './clipboardWrite';
 import { getCoverageMarkerDisplay } from './coverageTableCalculator';
 import type { DecisionTable, TestCondition, TruthValue } from '../types/decisionTable';
 import type { CoverageTable } from '../types/coverageTable';
@@ -219,48 +220,40 @@ export function generateCoverageTableHTML(table: CoverageTable): string {
 // Clipboard Copy (low-level, used by DecisionTablePanel)
 // =============================================================================
 
-export async function copyDecisionTableHTMLToClipboard(
+// A single "Copy" per table writes BOTH text/html (styled table) and
+// text/plain (CSV) so Excel/Office get the rendered table and plain-text
+// editors get CSV. See GUI §5 / User Manual §11.7. Mirrors NeoCombi.
+
+export async function copyDecisionTableToClipboard(
   table: DecisionTable,
   conditions: TestCondition[],
   nodeLabels: Map<string, string>,
   sortedCauseIds: string[],
   sortedIntermediateIds: string[],
   sortedEffectIds: string[]
-): Promise<void> {
+): Promise<CopyResult> {
   const html = generateDecisionTableHTML(table, conditions, nodeLabels, sortedCauseIds, sortedIntermediateIds, sortedEffectIds);
   const csv = generateDecisionTableCSV(table, conditions, nodeLabels, sortedCauseIds, sortedIntermediateIds, sortedEffectIds);
-
-  await navigator.clipboard.write([
-    new ClipboardItem({
-      'text/html': new Blob([html], { type: 'text/html' }),
-      'text/plain': new Blob([csv], { type: 'text/plain' }),
-    }),
-  ]);
+  return copyTableToClipboard(html, csv);
 }
 
-export async function copyCoverageTableHTMLToClipboard(table: CoverageTable): Promise<void> {
+export async function copyCoverageTableToClipboard(table: CoverageTable): Promise<CopyResult> {
   const html = generateCoverageTableHTML(table);
   const csv = generateCoverageTableCSV(table);
-
-  await navigator.clipboard.write([
-    new ClipboardItem({
-      'text/html': new Blob([html], { type: 'text/html' }),
-      'text/plain': new Blob([csv], { type: 'text/plain' }),
-    }),
-  ]);
+  return copyTableToClipboard(html, csv);
 }
 
 // =============================================================================
 // Standalone Functions (high-level, used by MainToolbar File menu)
 // =============================================================================
 
-export async function copyDecisionTableHTMLFromGraph(): Promise<void> {
+export async function copyDecisionTableFromGraph(): Promise<CopyResult> {
   const { table, conditions, nodeLabels, sortedCauseIds, sortedIntermediateIds, sortedEffectIds } =
     computeTablesFromGraph();
-  await copyDecisionTableHTMLToClipboard(table, conditions, nodeLabels, sortedCauseIds, sortedIntermediateIds, sortedEffectIds);
+  return copyDecisionTableToClipboard(table, conditions, nodeLabels, sortedCauseIds, sortedIntermediateIds, sortedEffectIds);
 }
 
-export async function copyCoverageTableHTMLFromGraph(): Promise<void> {
+export async function copyCoverageTableFromGraph(): Promise<CopyResult> {
   const { coverageTable } = computeTablesFromGraph();
-  await copyCoverageTableHTMLToClipboard(coverageTable);
+  return copyCoverageTableToClipboard(coverageTable);
 }

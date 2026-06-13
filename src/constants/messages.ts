@@ -159,10 +159,11 @@ export const TAB_LABELS = {
 export const EXPORT_MESSAGES = {
   downloadDecisionTableCSV: 'Download Decision Table as CSV',
   downloadCoverageTableCSV: 'Download Coverage Table as CSV',
-  copyDecisionTableCSV: 'Copy Decision Table as CSV',
-  copyCoverageTableCSV: 'Copy Coverage Table as CSV',
   csvButtonLabel: 'CSV',
   csvCopyButtonLabel: 'Copy',
+  // Single dual-format copy per table: HTML for Excel/Office, CSV for text editors.
+  copyDecisionTable: 'Copy Decision Table (HTML for Excel, CSV for text)',
+  copyCoverageTable: 'Copy Coverage Table (HTML for Excel, CSV for text)',
   copySkeleton: 'Copy Skeleton',
   downloadSkeleton: 'Download Skeleton',
   copyCegDefinition: 'Copy CEG Definition',
@@ -175,13 +176,9 @@ export const EXPORT_MESSAGES = {
   copyPng: 'Copy PNG',
   downloadDecisionCsv: 'Download Decision CSV',
   downloadCoverageCsv: 'Download Coverage CSV',
-  copyDecisionCsv: 'Copy Decision CSV',
-  copyCoverageCsv: 'Copy Coverage CSV',
-  copyDecisionTableHTML: 'Copy Decision Table (HTML)',
-  copyCoverageTableHTML: 'Copy Coverage Table (HTML)',
-  copyDecisionHtml: 'Copy Decision HTML',
-  copyCoverageHtml: 'Copy Coverage HTML',
-  htmlCopyButtonLabel: 'HTML',
+  // File menu labels for the dual-format table copy.
+  copyDecisionTableMenu: 'Copy Decision Table',
+  copyCoverageTableMenu: 'Copy Coverage Table',
   copied: 'Copied!',
 } as const;
 

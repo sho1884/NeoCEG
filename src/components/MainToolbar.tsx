@@ -11,13 +11,13 @@ import { parseLogicalDSL, readFileAsText } from '../services/logicalDslParser';
 import { downloadGraphSVG, copyGraphSVGToClipboard, downloadGraphPNG, copyGraphPNGToClipboard } from '../services/svgExporter';
 import {
   downloadDecisionTableCSVFromGraph,
-  copyDecisionTableCSVToClipboard,
   downloadCoverageTableCSVFromGraph,
-  copyCoverageTableCSVToClipboard,
+  downloadSkeletonFromGraph,
+  copySkeletonToClipboard,
 } from '../services/csvExporter';
 import {
-  copyDecisionTableHTMLFromGraph,
-  copyCoverageTableHTMLFromGraph,
+  copyDecisionTableFromGraph,
+  copyCoverageTableFromGraph,
 } from '../services/htmlTableExporter';
 import { EXPORT_MESSAGES } from '../constants/messages';
 import type { LogicalModel } from '../types/logical';
@@ -203,15 +203,15 @@ function FileDropdown({
           <MenuItem label="Download PNG" onClick={() => downloadGraphPNG(`graph_${date}.png`)} enabled={hasData} />
           <MenuItem label={EXPORT_MESSAGES.downloadDecisionCsv} onClick={() => downloadDecisionTableCSVFromGraph(`decision_table_${date}.csv`)} enabled={hasData} />
           <MenuItem label={EXPORT_MESSAGES.downloadCoverageCsv} onClick={() => downloadCoverageTableCSVFromGraph(`coverage_table_${date}.csv`)} enabled={hasData} />
+          <MenuItem label={EXPORT_MESSAGES.downloadSkeleton} onClick={() => downloadSkeletonFromGraph(`skeleton_${date}.txt`)} enabled={hasData} />
           {divider}
           <MenuItem label={EXPORT_MESSAGES.copyCegDefinition} onClick={onCopyDsl} enabled={hasData} />
           <MenuItem label={EXPORT_MESSAGES.pasteCegDefinition} onClick={onPasteDsl} />
           <MenuItem label="Copy SVG" onClick={() => copyGraphSVGToClipboard()} enabled={hasData} />
           <MenuItem label="Copy PNG" onClick={() => copyGraphPNGToClipboard()} enabled={hasData} />
-          <MenuItem label={EXPORT_MESSAGES.copyDecisionCsv} onClick={() => copyDecisionTableCSVToClipboard()} enabled={hasData} />
-          <MenuItem label={EXPORT_MESSAGES.copyCoverageCsv} onClick={() => copyCoverageTableCSVToClipboard()} enabled={hasData} />
-          <MenuItem label={EXPORT_MESSAGES.copyDecisionHtml} onClick={() => copyDecisionTableHTMLFromGraph()} enabled={hasData} />
-          <MenuItem label={EXPORT_MESSAGES.copyCoverageHtml} onClick={() => copyCoverageTableHTMLFromGraph()} enabled={hasData} />
+          <MenuItem label={EXPORT_MESSAGES.copyDecisionTableMenu} onClick={() => copyDecisionTableFromGraph()} enabled={hasData} />
+          <MenuItem label={EXPORT_MESSAGES.copyCoverageTableMenu} onClick={() => copyCoverageTableFromGraph()} enabled={hasData} />
+          <MenuItem label={EXPORT_MESSAGES.copySkeleton} onClick={() => copySkeletonToClipboard()} enabled={hasData} />
           {divider}
           <MenuItem label="Clear All" onClick={onClear} enabled={hasData} color="#ef9a9a" />
         </div>

@@ -15,6 +15,7 @@ import {
   getNodeLabel,
 } from './decisionTableCalculator';
 import { generateCoverageTableFromState } from './coverageTableCalculator';
+import { generateSkeletonPseudoCode } from './skeletonExporter';
 import type { TestCondition } from '../types/decisionTable';
 
 // Re-export pure CSV generation functions from csvGenerator.ts
@@ -95,6 +96,7 @@ export function computeTablesFromGraph() {
   }
 
   return {
+    logicalModel,
     table,
     coverageTable,
     nodeLabels,
@@ -112,21 +114,32 @@ export function downloadDecisionTableCSVFromGraph(filename: string): void {
   downloadCSV(csv, filename);
 }
 
-export async function copyDecisionTableCSVToClipboard(): Promise<void> {
-  const { table, conditions, nodeLabels, sortedCauseIds, sortedIntermediateIds, sortedEffectIds } =
-    computeTablesFromGraph();
-  const csv = generateDecisionTableCSV(table, conditions, nodeLabels, sortedCauseIds, sortedIntermediateIds, sortedEffectIds);
-  await navigator.clipboard.writeText(csv);
-}
-
 export function downloadCoverageTableCSVFromGraph(filename: string): void {
   const { coverageTable } = computeTablesFromGraph();
   const csv = generateCoverageTableCSV(coverageTable);
   downloadCSV(csv, filename);
 }
 
-export async function copyCoverageTableCSVToClipboard(): Promise<void> {
-  const { coverageTable } = computeTablesFromGraph();
-  const csv = generateCoverageTableCSV(coverageTable);
-  await navigator.clipboard.writeText(csv);
+// =============================================================================
+// Skeleton (graph-bound wrappers for the toolbar File menu)
+// =============================================================================
+
+/** Skeleton text for the current graph, or null when there is nothing to render. */
+function computeSkeletonText(): string | null {
+  const { logicalModel, table, nodeLabels } = computeTablesFromGraph();
+  // Mirror DecisionTablePanel's guard: no causes / no feasible conditions => nothing to emit.
+  if (table.causeIds.length === 0 || !table.conditions.some((c) => !c.excluded)) return null;
+  return generateSkeletonPseudoCode(logicalModel, table, nodeLabels).text;
+}
+
+export function downloadSkeletonFromGraph(filename: string): void {
+  const text = computeSkeletonText();
+  if (text === null) return;
+  downloadText(text, filename);
+}
+
+export async function copySkeletonToClipboard(): Promise<void> {
+  const text = computeSkeletonText();
+  if (text === null) return;
+  await navigator.clipboard.writeText(text);
 }
