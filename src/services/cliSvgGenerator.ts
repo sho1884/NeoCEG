@@ -256,7 +256,7 @@ function svgPolygon(points: number[][], fill: string): string {
 // =============================================================================
 
 function renderCEGNode(info: NodeInfo): string {
-  const { x, y, w, h, lines, labelStartXOffset, role, operator, node } = info;
+  const { x, y, w, h, lines, labelStartXOffset, role, operator } = info;
   const colors = NODE_COLORS[role];
   const hasBadge = role !== 'cause' && operator;
   const parts: string[] = [];
@@ -290,20 +290,6 @@ function renderCEGNode(info: NodeInfo): string {
     parts.push(svgText(lines[i], labelStartX, textStartY + i * lineHeight, {
       fontSize, fontWeight: 500, fill: '#333',
     }));
-  }
-
-  // Non-observable indicator
-  if (node.observable === false) {
-    const dotR = 8;
-    const dotCx = x + w - 1;
-    const dotCy = y + 1;
-    parts.push(svgCircle(dotCx, dotCy, dotR, { fill: '#ffa726', stroke: 'white', 'stroke-width': 2 }));
-    parts.push(`<g transform="translate(${dotCx - 5}, ${dotCy - 5})">`);
-    parts.push(svgPath('M1 5 Q5 2 9 5', { stroke: 'white', 'stroke-width': 1.5, fill: 'none' }));
-    parts.push(svgLine(3, 5, 2.5, 7, { stroke: 'white', 'stroke-width': 1 }));
-    parts.push(svgLine(5, 4.5, 5, 7, { stroke: 'white', 'stroke-width': 1 }));
-    parts.push(svgLine(7, 5, 7.5, 7, { stroke: 'white', 'stroke-width': 1 }));
-    parts.push('</g>');
   }
 
   parts.push('</g>');

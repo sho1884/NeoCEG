@@ -209,7 +209,6 @@ export const useGraphStore = create<GraphStore>()(
           data: {
             label,
             operator,
-            observable: true,
           },
         };
         set((state) => ({

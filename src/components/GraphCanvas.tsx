@@ -428,8 +428,7 @@ function GraphCanvasInner() {
 
       if (node.type === 'cegNode') {
         // CEG Node menu items
-        const nodeData = node.data as { observable?: boolean; operator?: 'AND' | 'OR' };
-        const isObservable = nodeData.observable ?? true; // Default is true (ON)
+        const nodeData = node.data as { operator?: 'AND' | 'OR' };
 
         // Check if node has incoming edges (can set label to expression)
         const hasIncoming = storeEdges.some(
@@ -453,10 +452,6 @@ function GraphCanvasInner() {
           });
         }
 
-        items.push({
-          label: isObservable ? 'Mark as Non-Observable' : 'Mark as Observable',
-          onClick: () => updateNode(node.id, { observable: !isObservable }),
-        });
         items.push({
           label: 'Delete Node',
           onClick: () => deleteNode(node.id),

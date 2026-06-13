@@ -208,25 +208,6 @@ function renderCEGNode(
     }));
   }
 
-  // Non-observable warning indicator (amber dot, top-right)
-  if (node.data.observable === false) {
-    const dotR = 8;
-    const dotCx = x + w - 1;
-    const dotCy = y + 1;
-    g.appendChild(createSvgElement('circle', {
-      cx: dotCx, cy: dotCy, r: dotR,
-      fill: '#ffa726', stroke: 'white', 'stroke-width': 2,
-    }));
-    // Closed eye: arc + lashes
-    const eye = createSvgElement('g', { transform: `translate(${dotCx - 5}, ${dotCy - 5})` });
-    eye.appendChild(createSvgElement('path', {
-      d: 'M1 5 Q5 2 9 5', stroke: 'white', 'stroke-width': 1.5, fill: 'none',
-    }));
-    eye.appendChild(createSvgElement('line', { x1: 3, y1: 5, x2: 2.5, y2: 7, stroke: 'white', 'stroke-width': 1 }));
-    eye.appendChild(createSvgElement('line', { x1: 5, y1: 4.5, x2: 5, y2: 7, stroke: 'white', 'stroke-width': 1 }));
-    eye.appendChild(createSvgElement('line', { x1: 7, y1: 5, x2: 7.5, y2: 7, stroke: 'white', 'stroke-width': 1 }));
-    g.appendChild(eye);
-  }
 
   return g;
 }

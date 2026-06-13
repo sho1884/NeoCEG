@@ -411,61 +411,6 @@ n2 := n1
   });
 });
 
-describe('Observable flag', () => {
-  it('should parse [unobservable] flag on cause nodes', () => {
-    const input = `
-n1: "入力A" [unobservable]
-n2: "入力B"
-`;
-    const result = parseLogicalDSL(input);
-
-    expect(result.success).toBe(true);
-    expect(result.model.nodes.get('n1')?.observable).toBe(false);
-    expect(result.model.nodes.get('n2')?.observable).toBeUndefined();
-  });
-
-  it('should accept [observable] for backward compatibility', () => {
-    const input = `
-n1: "入力A" [observable]
-n2: "入力B"
-`;
-    const result = parseLogicalDSL(input);
-
-    expect(result.success).toBe(true);
-    expect(result.model.nodes.get('n1')?.observable).toBe(true);
-    expect(result.model.nodes.get('n2')?.observable).toBeUndefined();
-  });
-
-  it('should serialize [unobservable] for non-observable nodes', () => {
-    const input = `
-n1: "入力A" [unobservable]
-n2: "入力B"
-`;
-    const result = parseLogicalDSL(input);
-    expect(result.success).toBe(true);
-
-    const dsl = serializeLogicalModel(result.model, { includeComments: false, includeLayout: false });
-    expect(dsl).toContain('n1: "入力A" [unobservable]');
-    expect(dsl).not.toContain('n2: "入力B" [unobservable]');
-  });
-
-  it('should NOT serialize [observable] (backward compat input round-trips without tag)', () => {
-    const input = `
-n1: "入力A" [observable]
-n2: "入力B"
-`;
-    const result = parseLogicalDSL(input);
-    expect(result.success).toBe(true);
-
-    const dsl = serializeLogicalModel(result.model, { includeComments: false, includeLayout: false });
-    // [observable] from old files should not be re-serialized
-    expect(dsl).not.toContain('[observable]');
-    // Both nodes are observable (default), so no tags
-    expect(dsl).toContain('n1: "入力A"');
-    expect(dsl).toContain('n2: "入力B"');
-  });
-});
-
 describe('Constraint positions', () => {
   it('should parse constraint positions from layout', () => {
     const input = `

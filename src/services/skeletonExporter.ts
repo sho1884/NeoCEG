@@ -326,7 +326,7 @@ function emitNodes(nodes: Node[], depth: number, label: (id: string) => string, 
 }
 
 /**
- * Verification status of a generated skeleton (drives GUI §7.5 warning A).
+ * Verification status of a generated skeleton (drives GUI §7.4 warning A).
  *  - verified   : the factored topology skeleton was verified equivalent to the CEG over the feasible space.
  *  - explicit   : the factored form was not verifiable, but the explicit per-effect fallback IS verified
  *                 equivalent — still correct, just less compact (no warning needed).
@@ -338,7 +338,7 @@ export type SkeletonStatus = 'verified' | 'explicit' | 'unverified';
 export interface SkeletonResult {
   text: string;
   status: SkeletonStatus;
-  /** A feasible decision-table column fires >= 2 effects (GUI §7.5 warning B). */
+  /** A feasible decision-table column fires >= 2 effects (GUI §7.4 warning B). */
   multiEffect: boolean;
 }
 

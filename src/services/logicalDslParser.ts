@@ -76,8 +76,6 @@ type TokenType =
   | 'COMMA'      // ,
   | 'NUMBER'     // For positions
   | 'ONE' | 'EXCL' | 'INCL' | 'REQ' | 'MASK'
-  | 'OBSERVABLE' // observable flag (backward compat)
-  | 'UNOBSERVABLE' // unobservable flag
   | 'LAYOUT'     // @layout
   | 'LBRACE'     // {
   | 'RBRACE'     // }
@@ -237,10 +235,6 @@ function tokenize(input: string): { tokens: Token[]; errors: ParseError[] } {
           tokens.push({ type: 'REQ', value: ident, line: lineNum + 1, column: col + 1 });
         } else if (upper === 'MASK') {
           tokens.push({ type: 'MASK', value: ident, line: lineNum + 1, column: col + 1 });
-        } else if (upper === 'OBSERVABLE') {
-          tokens.push({ type: 'OBSERVABLE', value: ident, line: lineNum + 1, column: col + 1 });
-        } else if (upper === 'UNOBSERVABLE') {
-          tokens.push({ type: 'UNOBSERVABLE', value: ident, line: lineNum + 1, column: col + 1 });
         } else {
           tokens.push({ type: 'IDENT', value: ident, line: lineNum + 1, column: col + 1 });
         }
@@ -333,24 +327,18 @@ class Parser {
 
     // Check for : (cause definition) or := (effect definition)
     if (this.check('COLON')) {
-      // Cause definition: name: "label" [unobservable]
+      // Cause definition: name: "label"
       this.advance(); // consume :
       const labelToken = this.consume('STRING', 'Expected label string after :');
       if (!labelToken) return;
 
-      // Check for [observable] or [unobservable] flag
-      const observable = this.parseObservableFlag();
-
       if (this.nodes.has(name)) {
-        // Update existing node with label and observable
         const node = this.nodes.get(name)!;
         node.label = labelToken.value;
-        if (observable !== undefined) node.observable = observable;
       } else {
         this.nodes.set(name, {
           name,
           label: labelToken.value,
-          observable,
         });
       }
     } else if (this.check('ASSIGN')) {
@@ -555,32 +543,6 @@ class Parser {
     return { name: nameToken.value, negated };
   }
 
-  private parseObservableFlag(): boolean | undefined {
-    if (this.check('LBRACKET')) {
-      this.advance(); // consume [
-      if (this.check('OBSERVABLE')) {
-        this.advance(); // consume observable
-        this.consume('RBRACKET', 'Expected ] after observable');
-        return true; // backward compat: [observable] → true
-      } else if (this.check('UNOBSERVABLE')) {
-        this.advance(); // consume unobservable
-        this.consume('RBRACKET', 'Expected ] after unobservable');
-        return false; // [unobservable] → false
-      } else {
-        this.errors.push({
-          line: this.peek().line,
-          message: `Expected 'observable' or 'unobservable' after [`,
-          content: '',
-        });
-        // Try to recover by consuming until ]
-        while (!this.check('RBRACKET') && !this.isAtEnd()) {
-          this.advance();
-        }
-        if (this.check('RBRACKET')) this.advance();
-      }
-    }
-    return undefined; // no flag specified → default (observable)
-  }
 
   private parseLayout(): void {
     this.advance(); // consume @layout

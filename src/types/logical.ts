@@ -80,13 +80,6 @@ export interface LogicalNode {
    */
   expression?: Expression;
 
-  /**
-   * Whether this node is observable (can be directly tested/measured).
-   * Default is true (observable). Only set to false for non-observable nodes.
-   * In DSL: omitted when true/undefined (default), written as [unobservable] when false.
-   */
-  observable?: boolean;
-
   /** Optional position for graph layout */
   position?: { x: number; y: number };
 

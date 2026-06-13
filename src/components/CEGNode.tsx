@@ -260,33 +260,6 @@ const CEGNode = memo(({ id, data, selected }: CEGNodeProps) => {
             top: 'calc(50% + 8px)',
           }}
         />
-
-        {/* Non-observable warning indicator - shown only when node is NOT observable */}
-        {data.observable === false && (
-          <div
-            style={{
-              position: 'absolute',
-              top: -7,
-              right: -7,
-              width: 16,
-              height: 16,
-              borderRadius: '50%',
-              backgroundColor: '#ffa726',
-              border: '2px solid white',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            title="Not Observable (観測不可)"
-          >
-            <svg width="10" height="10" viewBox="0 0 10 10">
-              <path d="M1 5 Q5 2 9 5" stroke="white" strokeWidth="1.5" fill="none" />
-              <line x1="3" y1="5" x2="2.5" y2="7" stroke="white" strokeWidth="1" />
-              <line x1="5" y1="4.5" x2="5" y2="7" stroke="white" strokeWidth="1" />
-              <line x1="7" y1="5" x2="7.5" y2="7" stroke="white" strokeWidth="1" />
-            </svg>
-          </div>
-        )}
       </div>
     </>
   );

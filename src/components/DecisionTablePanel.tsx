@@ -75,35 +75,9 @@ interface DecisionTableViewProps {
   conditions: TestCondition[];
   nodeLabels: Map<string, string>;
   mode: DisplayMode;
-  observableFlags: Map<string, boolean>;
   sortedCauseIds: string[];
   sortedIntermediateIds: string[];
   sortedEffectIds: string[];
-}
-
-/**
- * Observable icon component
- */
-function ObservableIcon({ observable, isCause }: { observable: boolean; isCause: boolean }) {
-  if (isCause) return null;
-  if (observable) return null; // Default state, no indicator needed
-
-  // Non-observable warning indicator
-  return (
-    <span
-      style={{
-        display: 'inline-block',
-        width: '8px',
-        height: '8px',
-        marginLeft: '4px',
-        borderRadius: '50%',
-        backgroundColor: '#ffa726',
-        border: '1px solid #f57c00',
-        verticalAlign: 'middle',
-      }}
-      title="Not Observable (観測不可)"
-    />
-  );
 }
 
 /**
@@ -177,7 +151,7 @@ function ExclusionBadge({ reason }: { reason: TestCondition['exclusionReason'] }
   );
 }
 
-function DecisionTableView({ table: _table, conditions, nodeLabels, mode, observableFlags, sortedCauseIds, sortedIntermediateIds, sortedEffectIds }: DecisionTableViewProps) {
+function DecisionTableView({ table: _table, conditions, nodeLabels, mode, sortedCauseIds, sortedIntermediateIds, sortedEffectIds }: DecisionTableViewProps) {
   if (conditions.length === 0) {
     return (
       <div style={{ padding: '16px', color: '#666', textAlign: 'center' }}>
@@ -366,9 +340,7 @@ function DecisionTableView({ table: _table, conditions, nodeLabels, mode, observ
                 }}
                 title={getLabel(nodeId)}
               >
-                {getLabel(nodeId)}
-                <ObservableIcon observable={observableFlags.get(nodeId) ?? true} isCause={false} />
-              </td>
+                {getLabel(nodeId)}              </td>
               {conditions.map((c) => (
                 <ValueCellWithExclusion
                   key={c.id}
@@ -428,9 +400,7 @@ function DecisionTableView({ table: _table, conditions, nodeLabels, mode, observ
                 }}
                 title={getLabel(nodeId)}
               >
-                {getLabel(nodeId)}
-                <ObservableIcon observable={observableFlags.get(nodeId) ?? true} isCause={false} />
-              </td>
+                {getLabel(nodeId)}              </td>
               {conditions.map((c) => (
                 <ValueCellWithExclusion
                   key={c.id}
@@ -786,7 +756,6 @@ interface CompareViewProps {
   nodeLabels: Map<string, string>;
   coverageTable: CoverageTable;
   mode: DisplayMode;
-  observableFlags: Map<string, boolean>;
   sortedCauseIds: string[];
   sortedIntermediateIds: string[];
   sortedEffectIds: string[];
@@ -798,7 +767,6 @@ function CompareView({
   nodeLabels,
   coverageTable,
   mode,
-  observableFlags,
   sortedCauseIds,
   sortedIntermediateIds,
   sortedEffectIds,
@@ -944,9 +912,7 @@ function CompareView({
                 }}
                 title={getLabel(nodeId)}
               >
-                {getLabel(nodeId)}
-                <ObservableIcon observable={observableFlags.get(nodeId) ?? true} isCause={false} />
-              </td>
+                {getLabel(nodeId)}              </td>
               {conditions.map((c) => (
                 <ValueCellWithExclusion
                   key={c.id}
@@ -991,9 +957,7 @@ function CompareView({
                 }}
                 title={getLabel(nodeId)}
               >
-                {getLabel(nodeId)}
-                <ObservableIcon observable={observableFlags.get(nodeId) ?? true} isCause={false} />
-              </td>
+                {getLabel(nodeId)}              </td>
               {conditions.map((c) => (
                 <ValueCellWithExclusion
                   key={c.id}
@@ -1659,15 +1623,9 @@ export default function DecisionTablePanel() {
   const edges = useGraphStore((state) => state.edges);
   const constraints = useGraphStore((state) => state.constraints);
 
-  // Generate decision table, coverage table, node labels, and observable flags.
+  // Generate decision table, coverage table, and node labels.
   // Wrapped in try-catch: graph may be in an incomplete state during editing.
-  const { table, coverageTable, nodeLabels, observableFlags, logicalModel } = useMemo(() => {
-    // Build observable flags map from graph nodes (always needed)
-    const observableFlags = new Map<string, boolean>();
-    for (const node of nodes) {
-      observableFlags.set(node.id, node.data.observable ?? true);
-    }
-
+  const { table, coverageTable, nodeLabels, logicalModel } = useMemo(() => {
     try {
       // Convert graph to logical model
       const logicalModel = graphToLogical({
@@ -1689,7 +1647,7 @@ export default function DecisionTablePanel() {
         nodeLabels.set(name, getNodeLabel(logicalModel, name));
       }
 
-      return { table, coverageTable, nodeLabels, observableFlags, logicalModel, error: null };
+      return { table, coverageTable, nodeLabels, logicalModel, error: null };
     } catch (e) {
       // Graph is in an incomplete/invalid state during editing — return empty table
       const emptyTable: DecisionTable = {
@@ -1711,7 +1669,6 @@ export default function DecisionTablePanel() {
         table: emptyTable,
         coverageTable: emptyCoverage,
         nodeLabels: new Map<string, string>(),
-        observableFlags,
         logicalModel: null as LogicalModel | null,
         error: e instanceof Error ? e.message : String(e),
       };
@@ -1726,7 +1683,7 @@ export default function DecisionTablePanel() {
   }, [displayMode, logicalModel, table]);
 
   // Skeleton + validity status, computed at panel level so the validity warning
-  // banner is always visible regardless of the active tab (GUI §7.5).
+  // banner is always visible regardless of the active tab (GUI §7.4).
   const skeletonResult: SkeletonResult | null = useMemo(() => {
     if (!logicalModel) return null;
     if (table.causeIds.length === 0 || !table.conditions.some((c) => !c.excluded)) return null;
@@ -1957,7 +1914,7 @@ export default function DecisionTablePanel() {
                 <>
                   <DownloadButton
                     onClick={() => {
-                      const csv = generateDecisionTableCSV(table, conditions, nodeLabels, observableFlags, sortedCauseIds, sortedIntermediateIds, sortedEffectIds);
+                      const csv = generateDecisionTableCSV(table, conditions, nodeLabels, sortedCauseIds, sortedIntermediateIds, sortedEffectIds);
                       const date = new Date().toISOString().split('T')[0];
                       downloadCSV(csv, `decision_table_${date}.csv`);
                     }}
@@ -1965,7 +1922,7 @@ export default function DecisionTablePanel() {
                   />
                   <CopyCSVButton
                     onClick={async () => {
-                      const csv = generateDecisionTableCSV(table, conditions, nodeLabels, observableFlags, sortedCauseIds, sortedIntermediateIds, sortedEffectIds);
+                      const csv = generateDecisionTableCSV(table, conditions, nodeLabels, sortedCauseIds, sortedIntermediateIds, sortedEffectIds);
                       await navigator.clipboard.writeText(csv);
                       setCsvCopyFeedback(EXPORT_MESSAGES.copied);
                       setTimeout(() => setCsvCopyFeedback(null), 2000);
@@ -1974,7 +1931,7 @@ export default function DecisionTablePanel() {
                   />
                   <CopyHTMLButton
                     onClick={async () => {
-                      await copyDecisionTableHTMLToClipboard(table, conditions, nodeLabels, observableFlags, sortedCauseIds, sortedIntermediateIds, sortedEffectIds);
+                      await copyDecisionTableHTMLToClipboard(table, conditions, nodeLabels, sortedCauseIds, sortedIntermediateIds, sortedEffectIds);
                       setCsvCopyFeedback(EXPORT_MESSAGES.copied);
                       setTimeout(() => setCsvCopyFeedback(null), 2000);
                     }}
@@ -2069,7 +2026,7 @@ export default function DecisionTablePanel() {
         </div>
       )}
 
-      {/* Validity warnings (model health) — always visible, persistent (GUI §7.5) */}
+      {/* Validity warnings (model health) — always visible, persistent (GUI §7.4) */}
       {skeletonResult && (skeletonResult.status === 'unverified' || skeletonResult.multiEffect) && (
         <div
           style={{
@@ -2097,7 +2054,6 @@ export default function DecisionTablePanel() {
               conditions={conditions}
               nodeLabels={nodeLabels}
               mode={displayMode}
-              observableFlags={observableFlags}
               sortedCauseIds={sortedCauseIds}
               sortedIntermediateIds={sortedIntermediateIds}
               sortedEffectIds={sortedEffectIds}
@@ -2117,7 +2073,6 @@ export default function DecisionTablePanel() {
               nodeLabels={nodeLabels}
               coverageTable={coverageTable}
               mode={displayMode}
-              observableFlags={observableFlags}
               sortedCauseIds={sortedCauseIds}
               sortedIntermediateIds={sortedIntermediateIds}
               sortedEffectIds={sortedEffectIds}

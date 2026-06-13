@@ -32,7 +32,6 @@ export function generateDecisionTableCSV(
   _table: DecisionTable,
   conditions: TestCondition[],
   nodeLabels: Map<string, string>,
-  observableFlags: Map<string, boolean>,
   sortedCauseIds: string[],
   sortedIntermediateIds: string[],
   sortedEffectIds: string[]
@@ -44,7 +43,6 @@ export function generateDecisionTableCSV(
   const header = [
     'ID',
     DECISION_TABLE_MESSAGES.csvClassificationHeader,
-    DECISION_TABLE_MESSAGES.csvObservableHeader,
     DECISION_TABLE_MESSAGES.csvLogicalStatementHeader,
     ...conditions.map((_, i) => `#${i + 1}`),
   ];
@@ -56,7 +54,6 @@ export function generateDecisionTableCSV(
     const statusRow = [
       '',
       'Status',
-      '',
       '',
       ...conditions.map((c) => {
         if (!c.excluded) return 'Adopted';
@@ -71,43 +68,17 @@ export function generateDecisionTableCSV(
     lines.push(statusRow.map(escapeCSV).join(','));
   }
 
-  // Causes section
-  for (const nodeId of sortedCauseIds) {
-    const row = [
+  const section = (nodeId: string, classification: string): string =>
+    [
       nodeId,
-      DECISION_TABLE_MESSAGES.classificationCause,
-      DECISION_TABLE_MESSAGES.observableFixed,
+      classification,
       escapeCSV(getLabel(nodeId)),
       ...conditions.map((c) => c.values.get(nodeId) || ''),
-    ];
-    lines.push(row.join(','));
-  }
+    ].join(',');
 
-  // Intermediates section
-  for (const nodeId of sortedIntermediateIds) {
-    const isObservable = observableFlags.get(nodeId) ?? true;
-    const row = [
-      nodeId,
-      DECISION_TABLE_MESSAGES.classificationIntermediate,
-      isObservable ? DECISION_TABLE_MESSAGES.observableYes : DECISION_TABLE_MESSAGES.observableNo,
-      escapeCSV(getLabel(nodeId)),
-      ...conditions.map((c) => c.values.get(nodeId) || ''),
-    ];
-    lines.push(row.join(','));
-  }
-
-  // Effects section
-  for (const nodeId of sortedEffectIds) {
-    const isObservable = observableFlags.get(nodeId) ?? true;
-    const row = [
-      nodeId,
-      DECISION_TABLE_MESSAGES.classificationEffect,
-      isObservable ? DECISION_TABLE_MESSAGES.observableYes : DECISION_TABLE_MESSAGES.observableNo,
-      escapeCSV(getLabel(nodeId)),
-      ...conditions.map((c) => c.values.get(nodeId) || ''),
-    ];
-    lines.push(row.join(','));
-  }
+  for (const nodeId of sortedCauseIds) lines.push(section(nodeId, DECISION_TABLE_MESSAGES.classificationCause));
+  for (const nodeId of sortedIntermediateIds) lines.push(section(nodeId, DECISION_TABLE_MESSAGES.classificationIntermediate));
+  for (const nodeId of sortedEffectIds) lines.push(section(nodeId, DECISION_TABLE_MESSAGES.classificationEffect));
 
   return lines.join('\r\n');
 }

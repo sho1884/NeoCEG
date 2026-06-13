@@ -28,8 +28,6 @@ export interface CEGNodeData {
   expressionText?: string;
   /** Node display width in pixels (default: 150, min: 80, max: 400) */
   width?: number;
-  /** Observable flag - default true. Set to false for non-observable nodes */
-  observable?: boolean;
 }
 
 /** Node rendering constants per requirements specification */

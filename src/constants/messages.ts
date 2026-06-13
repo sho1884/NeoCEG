@@ -92,17 +92,11 @@ export const DECISION_TABLE_MESSAGES = {
   // CSV column headers
   csvClassificationHeader: 'Classification (分類)',
   csvLogicalStatementHeader: 'Logical Statement (論理言明)',
-  csvObservableHeader: 'Observable (観測可能)',
 
   // Classification labels (for CSV)
   classificationCause: 'Cause (原因)',
   classificationIntermediate: 'Intermediate (中間)',
   classificationEffect: 'Effect (結果)',
-
-  // Observable labels
-  observableYes: 'Yes',
-  observableNo: 'No',
-  observableFixed: '-',  // For causes (always observable)
 
   // Status text
   testConditions: (count: number) => `${count} rules`,
@@ -134,7 +128,7 @@ export const MODE_MESSAGES = {
 } as const;
 
 // =============================================================================
-// Validity Warnings (model health) — GUI §7.5
+// Validity Warnings (model health) — GUI §7.4
 // =============================================================================
 
 export const VALIDITY_MESSAGES = {
@@ -216,5 +210,4 @@ export const TOOLBAR_MESSAGES = {
   clearAllTooltip: 'Clear all',
   clickToToggleNot: 'Click to toggle NOT',
   clickToToggleAndOr: 'Click to toggle AND/OR',
-  nonObservableTooltip: 'Not Observable - cannot be directly tested (観測不可)',
 } as const;

@@ -64,7 +64,6 @@ export function generateDecisionTableHTML(
   _table: DecisionTable,
   conditions: TestCondition[],
   nodeLabels: Map<string, string>,
-  observableFlags: Map<string, boolean>,
   sortedCauseIds: string[],
   sortedIntermediateIds: string[],
   sortedEffectIds: string[]
@@ -125,7 +124,6 @@ export function generateDecisionTableHTML(
     nodeIds: string[],
     sectionLabel: string,
     sectionKey: keyof typeof SECTION_COLORS,
-    isCause: boolean,
   ): void => {
     if (nodeIds.length === 0) return;
 
@@ -141,18 +139,16 @@ export function generateDecisionTableHTML(
 
     // Data rows
     for (const nodeId of nodeIds) {
-      const isObservable = observableFlags.get(nodeId) ?? true;
-      const obsMarker = !isCause && !isObservable ? ' *' : '';
       const idCell = `<td style="${CELL_STYLE} background:${colors.row}; font-size:10px; color:#aaa;">${nodeId}</td>`;
-      const labelCell = `<td style="${CELL_STYLE} background:${colors.row};">${getLabel(nodeId)}${obsMarker}</td>`;
+      const labelCell = `<td style="${CELL_STYLE} background:${colors.row};">${getLabel(nodeId)}</td>`;
       const valueCells = conditions.map((c) => valueCell(c.values.get(nodeId), !!c.excluded)).join('');
       rows.push(`  <tr>${idCell}${labelCell}${valueCells}</tr>`);
     }
   };
 
-  renderSection(sortedCauseIds, DECISION_TABLE_MESSAGES.causesSectionHeader, 'cause', true);
-  renderSection(sortedIntermediateIds, DECISION_TABLE_MESSAGES.intermediatesSectionHeader, 'intermediate', false);
-  renderSection(sortedEffectIds, DECISION_TABLE_MESSAGES.effectsSectionHeader, 'effect', false);
+  renderSection(sortedCauseIds, DECISION_TABLE_MESSAGES.causesSectionHeader, 'cause');
+  renderSection(sortedIntermediateIds, DECISION_TABLE_MESSAGES.intermediatesSectionHeader, 'intermediate');
+  renderSection(sortedEffectIds, DECISION_TABLE_MESSAGES.effectsSectionHeader, 'effect');
 
   return `<table style="${TABLE_STYLE}">\n${rows.join('\n')}\n</table>`;
 }
@@ -227,13 +223,12 @@ export async function copyDecisionTableHTMLToClipboard(
   table: DecisionTable,
   conditions: TestCondition[],
   nodeLabels: Map<string, string>,
-  observableFlags: Map<string, boolean>,
   sortedCauseIds: string[],
   sortedIntermediateIds: string[],
   sortedEffectIds: string[]
 ): Promise<void> {
-  const html = generateDecisionTableHTML(table, conditions, nodeLabels, observableFlags, sortedCauseIds, sortedIntermediateIds, sortedEffectIds);
-  const csv = generateDecisionTableCSV(table, conditions, nodeLabels, observableFlags, sortedCauseIds, sortedIntermediateIds, sortedEffectIds);
+  const html = generateDecisionTableHTML(table, conditions, nodeLabels, sortedCauseIds, sortedIntermediateIds, sortedEffectIds);
+  const csv = generateDecisionTableCSV(table, conditions, nodeLabels, sortedCauseIds, sortedIntermediateIds, sortedEffectIds);
 
   await navigator.clipboard.write([
     new ClipboardItem({
@@ -260,9 +255,9 @@ export async function copyCoverageTableHTMLToClipboard(table: CoverageTable): Pr
 // =============================================================================
 
 export async function copyDecisionTableHTMLFromGraph(): Promise<void> {
-  const { table, conditions, nodeLabels, observableFlags, sortedCauseIds, sortedIntermediateIds, sortedEffectIds } =
+  const { table, conditions, nodeLabels, sortedCauseIds, sortedIntermediateIds, sortedEffectIds } =
     computeTablesFromGraph();
-  await copyDecisionTableHTMLToClipboard(table, conditions, nodeLabels, observableFlags, sortedCauseIds, sortedIntermediateIds, sortedEffectIds);
+  await copyDecisionTableHTMLToClipboard(table, conditions, nodeLabels, sortedCauseIds, sortedIntermediateIds, sortedEffectIds);
 }
 
 export async function copyCoverageTableHTMLFromGraph(): Promise<void> {

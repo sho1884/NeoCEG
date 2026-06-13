@@ -58,7 +58,6 @@ export function graphToLogical(graph: GraphData): LogicalModel {
       label: node.data.label,
       position: node.position,
       width: node.data.width,
-      observable: node.data.observable,
     });
   }
 
@@ -219,9 +218,8 @@ export function logicalToGraph(model: LogicalModel): GraphData {
         label: logicalNode.label ?? '',
         operator,
         width: logicalNode.width,
-        // Note: expressionText is NOT imported here - it's computed dynamically in GraphCanvas
-        // using node labels instead of node names (n1, n2, etc.)
-        observable: logicalNode.observable,
+        // Note: expressionText is computed dynamically in GraphCanvas (from edges/labels),
+        // not stored here.
       },
     });
   }
@@ -416,9 +414,6 @@ export function applyLogicalModelToStore(model: LogicalModel): void {
 
     if (node.position.x !== 0 || node.position.y !== 0) {
       state.updateNodePosition(actualId, node.position);
-    }
-    if (node.data.observable !== undefined) {
-      state.updateNode(actualId, { observable: node.data.observable });
     }
     if (node.data.width !== undefined) {
       state.updateNode(actualId, { width: node.data.width });

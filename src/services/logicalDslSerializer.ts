@@ -130,7 +130,7 @@ function escapeLabel(label: string): string {
  * Serialize LogicalModel to DSL string
  *
  * Format:
- * 1. Propositions - symbol: "label" [unobservable] mappings
+ * 1. Propositions - symbol: "label" mappings
  * 2. Logical Relations - symbol := expression definitions
  * 3. Constraints
  * 4. Layout (optional)
@@ -162,12 +162,7 @@ export function serializeLogicalModel(
       // Label (use name as fallback if null/empty)
       const label = node.label && node.label.trim() !== '' ? node.label : node.name;
       const escapedLabel = escapeLabel(label);
-      let line = `${node.name}: "${escapedLabel}"`;
-
-      // Add unobservable flag when explicitly non-observable
-      if (node.observable === false) {
-        line += ' [unobservable]';
-      }
+      const line = `${node.name}: "${escapedLabel}"`;
       lines.push(line);
     }
     lines.push('');

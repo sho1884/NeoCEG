@@ -77,12 +77,6 @@ export function computeTablesFromGraph() {
     nodeLabels.set(name, getNodeLabel(logicalModel, name));
   }
 
-  // Build observable flags
-  const observableFlags = new Map<string, boolean>();
-  for (const node of nodes) {
-    observableFlags.set(node.id, node.data.observable ?? true);
-  }
-
   // Sort by Y position
   const sortById = (ids: string[]) =>
     [...ids].sort((a, b) => {
@@ -104,7 +98,6 @@ export function computeTablesFromGraph() {
     table,
     coverageTable,
     nodeLabels,
-    observableFlags,
     conditions,
     sortedCauseIds: sortById(table.causeIds),
     sortedIntermediateIds: sortById(table.intermediateIds),
@@ -113,16 +106,16 @@ export function computeTablesFromGraph() {
 }
 
 export function downloadDecisionTableCSVFromGraph(filename: string): void {
-  const { table, conditions, nodeLabels, observableFlags, sortedCauseIds, sortedIntermediateIds, sortedEffectIds } =
+  const { table, conditions, nodeLabels, sortedCauseIds, sortedIntermediateIds, sortedEffectIds } =
     computeTablesFromGraph();
-  const csv = generateDecisionTableCSV(table, conditions, nodeLabels, observableFlags, sortedCauseIds, sortedIntermediateIds, sortedEffectIds);
+  const csv = generateDecisionTableCSV(table, conditions, nodeLabels, sortedCauseIds, sortedIntermediateIds, sortedEffectIds);
   downloadCSV(csv, filename);
 }
 
 export async function copyDecisionTableCSVToClipboard(): Promise<void> {
-  const { table, conditions, nodeLabels, observableFlags, sortedCauseIds, sortedIntermediateIds, sortedEffectIds } =
+  const { table, conditions, nodeLabels, sortedCauseIds, sortedIntermediateIds, sortedEffectIds } =
     computeTablesFromGraph();
-  const csv = generateDecisionTableCSV(table, conditions, nodeLabels, observableFlags, sortedCauseIds, sortedIntermediateIds, sortedEffectIds);
+  const csv = generateDecisionTableCSV(table, conditions, nodeLabels, sortedCauseIds, sortedIntermediateIds, sortedEffectIds);
   await navigator.clipboard.writeText(csv);
 }
 

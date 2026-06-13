@@ -23,11 +23,11 @@ n5 := NOT n2 OR NOT n3
 // New format with proposition symbols
 const newFormatDSL = `
 # Propositions (命題)
-p1: "ユーザーがログインボタンをクリック" [observable]
-p2: "ネットワーク接続あり" [observable]
+p1: "ユーザーがログインボタンをクリック"
+p2: "ネットワーク接続あり"
 p3: "認証サーバー応答"
 p4: "ログイン成功"
-p5: "エラーメッセージ表示" [observable]
+p5: "エラーメッセージ表示"
 
 # Logical Relations (論理式)
 p4 := p1 AND p2 AND p3

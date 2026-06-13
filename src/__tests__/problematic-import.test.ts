@@ -8,11 +8,11 @@ const problematicDSL = `# NeoCEG Graph Definition
 # Exported: 2026-02-04T11:10:56.248Z
 
 # Propositions (命題)
-p1: "あ" [observable]
-p2: "い" [observable]
-p3: "う" [observable]
-p4: "\\"あ\\" OR \\"い\\"" [observable]
-p5: "\\"う\\" AND \\"\\"あ\\" OR \\"い\\"\\"\\"" [observable]
+p1: "あ"
+p2: "い"
+p3: "う"
+p4: "\\"あ\\" OR \\"い\\""
+p5: "\\"う\\" AND \\"\\"あ\\" OR \\"い\\"\\"\\""
 
 # Logical Relations (論理式)
 p4 := p1 OR p4 OR p2
@@ -56,8 +56,8 @@ describe('Problematic Import', () => {
 
   test('should allow valid non-circular references', () => {
     const validDSL = `
-      p1: "cause 1" [observable]
-      p2: "cause 2" [observable]
+      p1: "cause 1"
+      p2: "cause 2"
       p3 := p1 AND p2
       p4 := p3 OR p1
     `;

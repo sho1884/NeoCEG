@@ -166,14 +166,6 @@ function buildNodeLabels(model: LogicalModel): Map<string, string> {
   return labels;
 }
 
-function buildObservableFlags(model: LogicalModel): Map<string, boolean> {
-  const flags = new Map<string, boolean>();
-  for (const [name, node] of model.nodes) {
-    flags.set(name, node.observable ?? true);
-  }
-  return flags;
-}
-
 function sortByY(ids: string[], model: LogicalModel): string[] {
   return [...ids].sort((a, b) => {
     const ay = model.nodes.get(a)?.position?.y ?? 0;
@@ -223,12 +215,10 @@ function main(): void {
     const { table } = generateOptimizedDecisionTableWithState(model);
     const conditions = getFeasibleConditions(table);
     const nodeLabels = buildNodeLabels(model);
-    const observableFlags = buildObservableFlags(model);
     const csv = generateDecisionTableCSV(
       table,
       conditions,
       nodeLabels,
-      observableFlags,
       sortByY(table.causeIds, model),
       sortByY(table.intermediateIds, model),
       sortByY(table.effectIds, model),

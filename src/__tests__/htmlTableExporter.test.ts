@@ -48,9 +48,8 @@ describe('generateDecisionTableHTML', () => {
       makeCondition(1, { c1: 'T', c2: 'F', e1: 'f' }),
     ];
     const nodeLabels = new Map([['c1', 'Valid user'], ['c2', 'Password OK'], ['e1', 'Login success']]);
-    const observableFlags = new Map([['c1', true], ['c2', true], ['e1', true]]);
 
-    const html = generateDecisionTableHTML(table, conditions, nodeLabels, observableFlags, ['c1', 'c2'], [], ['e1']);
+    const html = generateDecisionTableHTML(table, conditions, nodeLabels, ['c1', 'c2'], [], ['e1']);
 
     // Should be a valid table
     expect(html).toContain('<table');
@@ -82,9 +81,8 @@ describe('generateDecisionTableHTML', () => {
       makeCondition(1, { c1: 'F', e1: 'f' }),
     ];
     const nodeLabels = new Map([['c1', 'Cause'], ['e1', 'Effect']]);
-    const observableFlags = new Map<string, boolean>();
 
-    const html = generateDecisionTableHTML(table, conditions, nodeLabels, observableFlags, ['c1'], [], ['e1']);
+    const html = generateDecisionTableHTML(table, conditions, nodeLabels, ['c1'], [], ['e1']);
 
     // T value: green background
     expect(html).toContain('#c8e6c9'); // T bg
@@ -105,33 +103,19 @@ describe('generateDecisionTableHTML', () => {
     const table = makeDecisionTable(['c1'], ['e1'], ['i1']);
     const conditions = [makeCondition(0, { c1: 'T', i1: 't', e1: 't' })];
     const nodeLabels = new Map([['c1', 'C'], ['i1', 'I'], ['e1', 'E']]);
-    const observableFlags = new Map<string, boolean>();
 
-    const html = generateDecisionTableHTML(table, conditions, nodeLabels, observableFlags, ['c1'], ['i1'], ['e1']);
+    const html = generateDecisionTableHTML(table, conditions, nodeLabels, ['c1'], ['i1'], ['e1']);
 
     expect(html).toContain('#3949ab'); // Intermediate header indigo
     expect(html).toContain('#e8eaf6'); // Intermediate row bg
-  });
-
-  it('should mark non-observable nodes', () => {
-    const table = makeDecisionTable(['c1'], ['e1'], ['i1']);
-    const conditions = [makeCondition(0, { c1: 'T', i1: 't', e1: 't' })];
-    const nodeLabels = new Map([['c1', 'C'], ['i1', 'Hidden'], ['e1', 'E']]);
-    const observableFlags = new Map([['c1', true], ['i1', false], ['e1', true]]);
-
-    const html = generateDecisionTableHTML(table, conditions, nodeLabels, observableFlags, ['c1'], ['i1'], ['e1']);
-
-    // Non-observable intermediate should have marker
-    expect(html).toContain('Hidden *');
   });
 
   it('should handle empty sections gracefully', () => {
     const table = makeDecisionTable(['c1'], ['e1']);
     const conditions = [makeCondition(0, { c1: 'T', e1: 't' })];
     const nodeLabels = new Map([['c1', 'C'], ['e1', 'E']]);
-    const observableFlags = new Map<string, boolean>();
 
-    const html = generateDecisionTableHTML(table, conditions, nodeLabels, observableFlags, ['c1'], [], ['e1']);
+    const html = generateDecisionTableHTML(table, conditions, nodeLabels, ['c1'], [], ['e1']);
 
     // No intermediate section
     expect(html).not.toContain('Intermediate');
