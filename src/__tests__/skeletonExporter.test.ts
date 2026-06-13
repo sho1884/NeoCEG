@@ -120,7 +120,8 @@ function runSkeletonText(text: string, vals: Map<string, boolean>): string[] {
 
 describe('skeletonExporter — feasible-space equivalence (§8 #1)', () => {
   const { model, table, nodeLabels } = build();
-  const skeleton = generateSkeletonPseudoCode(model, table, nodeLabels);
+  const result = generateSkeletonPseudoCode(model, table, nodeLabels);
+  const skeleton = result.text;
   const { causeIds, effectIds } = table;
 
   test('intermediate values agree, and EVERY feasible input routes like the CEG', () => {
@@ -169,11 +170,29 @@ describe('skeletonExporter — feasible-space equivalence (§8 #1)', () => {
     expect(skeleton).toMatch(/if n3 OR n6 OR n9:/);
   });
 
-  test('verified clean: no fallback/warning note emitted', () => {
+  test('status verified, no multi-effect (with constraints)', () => {
+    expect(result.status).toBe('verified');
+    expect(result.multiEffect).toBe(false);
     expect(skeleton).not.toMatch(/WARNING|could not be verified|verification skipped|note:/);
   });
 
   test('deterministic: byte-identical on re-run', () => {
-    expect(generateSkeletonPseudoCode(model, table, nodeLabels)).toBe(skeleton);
+    expect(generateSkeletonPseudoCode(model, table, nodeLabels).text).toBe(skeleton);
+  });
+});
+
+describe('skeletonExporter — constraints removed (premise broken)', () => {
+  // Removing constraints breaks the premise: test cases fire multiple effects at
+  // once, so the skeleton cannot be verified equivalent. The exporter must say so
+  // (status 'unverified' → warning A; multiEffect → warning B), not pretend it is OK.
+  const { model, nodeLabels } = build();
+  model.constraints = [];
+  const { table } = generateOptimizedDecisionTableWithState(model);
+  const result = generateSkeletonPseudoCode(model, table, nodeLabels);
+
+  test('status is unverified and multiEffect is flagged', () => {
+    expect(result.status).toBe('unverified');
+    expect(result.multiEffect).toBe(true);
+    expect(result.text).toMatch(/WARNING/);
   });
 });

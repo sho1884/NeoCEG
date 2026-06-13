@@ -36,6 +36,7 @@ import {
   copyCoverageTableHTMLToClipboard,
 } from '../services/htmlTableExporter';
 import { generateSkeletonPseudoCode } from '../services/skeletonExporter';
+import type { SkeletonResult } from '../services/skeletonExporter';
 import type { DecisionTable, TestCondition, TruthValue, DisplayMode } from '../types/decisionTable';
 import type { LogicalModel } from '../types/logical';
 import type { CoverageTable, CoverageMarker, CoverageRow } from '../types/coverageTable';
@@ -45,6 +46,7 @@ import {
   MODE_MESSAGES,
   TAB_LABELS,
   EXPORT_MESSAGES,
+  VALIDITY_MESSAGES,
 } from '../constants/messages';
 
 type TabType = 'decision' | 'coverage' | 'compare' | 'skeleton' | 'ncegLanguage';
@@ -1268,28 +1270,10 @@ function CopyHTMLButton({ onClick, title }: CSVButtonProps) {
 // Export View
 // =============================================================================
 
-function PseudoCodeView({
-  table,
-  nodeLabels,
-  logicalModel,
-}: {
-  table: DecisionTable;
-  nodeLabels: Map<string, string>;
-  logicalModel: LogicalModel | null;
-}) {
+function PseudoCodeView({ skeletonText }: { skeletonText: string | null }) {
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
 
-  const hasTable =
-    logicalModel !== null &&
-    table.causeIds.length > 0 &&
-    table.conditions.some((c) => !c.excluded);
-
-  const skeleton = useMemo(
-    () => (hasTable && logicalModel ? generateSkeletonPseudoCode(logicalModel, table, nodeLabels) : ''),
-    [hasTable, table, nodeLabels, logicalModel],
-  );
-
-  if (!hasTable) {
+  if (skeletonText === null) {
     return (
       <div style={{ padding: '16px', color: '#666', textAlign: 'center' }}>
         {DECISION_TABLE_MESSAGES.skeletonEmpty}
@@ -1297,6 +1281,7 @@ function PseudoCodeView({
     );
   }
 
+  const skeleton = skeletonText;
   const showFeedback = (msg: string) => {
     setCopyFeedback(msg);
     setTimeout(() => setCopyFeedback(null), 2000);
@@ -1740,6 +1725,14 @@ export default function DecisionTablePanel() {
     return generateLearningModeTable(logicalModel, table);
   }, [displayMode, logicalModel, table]);
 
+  // Skeleton + validity status, computed at panel level so the validity warning
+  // banner is always visible regardless of the active tab (GUI §7.5).
+  const skeletonResult: SkeletonResult | null = useMemo(() => {
+    if (!logicalModel) return null;
+    if (table.causeIds.length === 0 || !table.conditions.some((c) => !c.excluded)) return null;
+    return generateSkeletonPseudoCode(logicalModel, table, nodeLabels);
+  }, [logicalModel, table, nodeLabels]);
+
   // Auto-switch to Practice Mode when 2^n > 256
   useEffect(() => {
     if (displayMode === 'learning' && learningTable === null && logicalModel) {
@@ -2018,20 +2011,18 @@ export default function DecisionTablePanel() {
                   />
                 </>
               )}
-              {activeTab === 'skeleton' && logicalModel && (
+              {activeTab === 'skeleton' && skeletonResult && (
                 <>
                   <DownloadButton
                     onClick={() => {
-                      const skeleton = generateSkeletonPseudoCode(logicalModel, table, nodeLabels);
                       const date = new Date().toISOString().split('T')[0];
-                      downloadText(skeleton, `skeleton_${date}.txt`);
+                      downloadText(skeletonResult.text, `skeleton_${date}.txt`);
                     }}
                     title={EXPORT_MESSAGES.downloadSkeleton}
                   />
                   <CopyCSVButton
                     onClick={async () => {
-                      const skeleton = generateSkeletonPseudoCode(logicalModel, table, nodeLabels);
-                      await navigator.clipboard.writeText(skeleton);
+                      await navigator.clipboard.writeText(skeletonResult.text);
                       setCsvCopyFeedback(EXPORT_MESSAGES.copied);
                       setTimeout(() => setCsvCopyFeedback(null), 2000);
                     }}
@@ -2078,6 +2069,25 @@ export default function DecisionTablePanel() {
         </div>
       )}
 
+      {/* Validity warnings (model health) — always visible, persistent (GUI §7.5) */}
+      {skeletonResult && (skeletonResult.status === 'unverified' || skeletonResult.multiEffect) && (
+        <div
+          style={{
+            padding: '6px 16px',
+            backgroundColor: '#fff3e0',
+            color: '#bf360c',
+            fontSize: '12px',
+            borderBottom: '1px solid #ffccbc',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '2px',
+          }}
+        >
+          {skeletonResult.status === 'unverified' && <span>{VALIDITY_MESSAGES.skeletonUnverified}</span>}
+          {skeletonResult.multiEffect && <span>{VALIDITY_MESSAGES.multiEffect}</span>}
+        </div>
+      )}
+
       {/* Table content */}
       {isExpanded && (
         <div style={{ flex: 1, overflow: 'auto', padding: '8px' }}>
@@ -2114,11 +2124,7 @@ export default function DecisionTablePanel() {
             />
           )}
           {activeTab === 'skeleton' && (
-            <PseudoCodeView
-              table={table}
-              nodeLabels={nodeLabels}
-              logicalModel={logicalModel}
-            />
+            <PseudoCodeView skeletonText={skeletonResult ? skeletonResult.text : null} />
           )}
           {activeTab === 'ncegLanguage' && (
             <ExportView dslText={dslText} />

@@ -326,6 +326,23 @@ function emitNodes(nodes: Node[], depth: number, label: (id: string) => string, 
 }
 
 /**
+ * Verification status of a generated skeleton (drives GUI §7.5 warning A).
+ *  - verified   : the factored topology skeleton was verified equivalent to the CEG over the feasible space.
+ *  - explicit   : the factored form was not verifiable, but the explicit per-effect fallback IS verified
+ *                 equivalent — still correct, just less compact (no warning needed).
+ *  - unverified : equivalence could not be established (e.g. simultaneous effects / missing constraints, or
+ *                 too many causes for exhaustive checking) — correctness NOT guaranteed → warning A.
+ */
+export type SkeletonStatus = 'verified' | 'explicit' | 'unverified';
+
+export interface SkeletonResult {
+  text: string;
+  status: SkeletonStatus;
+  /** A feasible decision-table column fires >= 2 effects (GUI §7.5 warning B). */
+  multiEffect: boolean;
+}
+
+/**
  * Generate a pseudo-code skeleton from a Cause-Effect Graph.
  *
  * @param model       The CEG model (expressions + intermediates + constraints) — the topology source.
@@ -336,24 +353,39 @@ export function generateSkeletonPseudoCode(
   model: LogicalModel,
   table: DecisionTable,
   nodeLabels: Map<string, string>,
-): string {
+): SkeletonResult {
   const label = (id: string) => nodeLabels.get(id) ?? id;
   const { causeIds, intermediateIds, effectIds } = table;
 
   // Build the topology skeleton, then verify it; fall back to explicit guards.
   let body = buildFactored(model, effectIds);
-  let v = verify(model, causeIds, effectIds, body);
+  const v = verify(model, causeIds, effectIds, body);
   let note = '';
-  if (v.checked && !v.ok) {
+  let status: SkeletonStatus;
+  if (v.checked && v.ok) {
+    status = 'verified';
+  } else if (v.checked && !v.ok) {
     body = buildFlat(model, effectIds);
-    v = verify(model, causeIds, effectIds, body);
-    note = v.ok
-      ? '# note: factored form could not be verified; using explicit per-effect guards.'
-      : '# WARNING: skeleton could not be verified equivalent to the CEG — review before use.';
-  } else if (!v.checked) {
+    const v2 = verify(model, causeIds, effectIds, body);
+    if (v2.ok) {
+      status = 'explicit';
+      note = '# note: factored form could not be verified; using explicit per-effect guards.';
+    } else {
+      status = 'unverified';
+      note = '# WARNING: skeleton could not be verified equivalent to the CEG — review before use.';
+    }
+  } else {
+    // Verification skipped (too many causes): cannot claim equivalence.
     body = buildFlat(model, effectIds);
-    note = `# note: ${causeIds.length} causes — exhaustive verification skipped; using explicit per-effect guards.`;
+    status = 'unverified';
+    note = `# WARNING: ${causeIds.length} causes — exhaustive verification skipped; correctness not confirmed.`;
   }
+
+  // Warning B signal: a feasible column firing two or more effects.
+  const fires = (v: string | undefined) => v === 'T' || v === 't';
+  const multiEffect = table.conditions.some(
+    (c) => !c.excluded && effectIds.filter((e) => fires(c.values.get(e))).length >= 2,
+  );
 
   const lines: string[] = [];
   lines.push(`function decide(${causeIds.join(', ')}):`);
@@ -382,7 +414,7 @@ export function generateSkeletonPseudoCode(
   emitNodes(body, 1, label, lines);
   lines.push(`${INDENT}return None      # default: no effect fires`);
 
-  return lines.join('\n') + '\n';
+  return { text: lines.join('\n') + '\n', status, multiEffect };
 }
 
 function labelComment(id: string, label: (id: string) => string): string {

@@ -134,6 +134,19 @@ export const MODE_MESSAGES = {
 } as const;
 
 // =============================================================================
+// Validity Warnings (model health) — GUI §7.5
+// =============================================================================
+
+export const VALIDITY_MESSAGES = {
+  // A: generated skeleton could not be verified equivalent to the graph.
+  skeletonUnverified:
+    '⚠ The generated skeleton could not be verified against the graph — constraints may be missing or effects overlap. Check your constraints before trusting the result.',
+  // B: a feasible test case produces multiple results at once.
+  multiEffect:
+    '⚠ Some test cases produce multiple results at once — the graph may be under-constrained. Check your constraints.',
+} as const;
+
+// =============================================================================
 // Tab Labels
 // =============================================================================
 
