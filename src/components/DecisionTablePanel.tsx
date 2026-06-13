@@ -29,11 +29,13 @@ import {
   generateDecisionTableCSV,
   generateCoverageTableCSV,
   downloadCSV,
+  downloadText,
 } from '../services/csvExporter';
 import {
   copyDecisionTableHTMLToClipboard,
   copyCoverageTableHTMLToClipboard,
 } from '../services/htmlTableExporter';
+import { generateSkeletonPseudoCode } from '../services/skeletonExporter';
 import type { DecisionTable, TestCondition, TruthValue, DisplayMode } from '../types/decisionTable';
 import type { LogicalModel } from '../types/logical';
 import type { CoverageTable, CoverageMarker, CoverageRow } from '../types/coverageTable';
@@ -45,7 +47,7 @@ import {
   EXPORT_MESSAGES,
 } from '../constants/messages';
 
-type TabType = 'decision' | 'coverage' | 'compare' | 'ncegLanguage';
+type TabType = 'decision' | 'coverage' | 'compare' | 'skeleton' | 'ncegLanguage';
 
 // =============================================================================
 // Value Display
@@ -1266,6 +1268,85 @@ function CopyHTMLButton({ onClick, title }: CSVButtonProps) {
 // Export View
 // =============================================================================
 
+function PseudoCodeView({
+  table,
+  nodeLabels,
+  logicalModel,
+}: {
+  table: DecisionTable;
+  nodeLabels: Map<string, string>;
+  logicalModel: LogicalModel | null;
+}) {
+  const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
+
+  const hasTable =
+    table.causeIds.length > 0 && table.conditions.some((c) => !c.excluded);
+
+  const skeleton = useMemo(
+    () => (hasTable ? generateSkeletonPseudoCode(table, nodeLabels, logicalModel) : ''),
+    [hasTable, table, nodeLabels, logicalModel],
+  );
+
+  if (!hasTable) {
+    return (
+      <div style={{ padding: '16px', color: '#666', textAlign: 'center' }}>
+        {DECISION_TABLE_MESSAGES.skeletonEmpty}
+      </div>
+    );
+  }
+
+  const showFeedback = (msg: string) => {
+    setCopyFeedback(msg);
+    setTimeout(() => setCopyFeedback(null), 2000);
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '8px' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <textarea
+          readOnly
+          value={skeleton}
+          spellCheck={false}
+          style={{
+            flex: 1,
+            fontFamily: 'monospace',
+            fontSize: '12px',
+            whiteSpace: 'pre',
+            padding: '8px',
+            border: '1px solid #ddd',
+            borderRadius: '4px',
+            resize: 'none',
+            backgroundColor: '#fafafa',
+            color: '#333',
+            minHeight: 0,
+          }}
+        />
+      </div>
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <ExportButton
+          label={EXPORT_MESSAGES.copySkeleton}
+          onClick={async () => {
+            await navigator.clipboard.writeText(skeleton);
+            showFeedback(EXPORT_MESSAGES.copied);
+          }}
+        />
+        <ExportButton
+          label={EXPORT_MESSAGES.downloadSkeleton}
+          onClick={() => {
+            const date = new Date().toISOString().split('T')[0];
+            downloadText(skeleton, `skeleton_${date}.txt`);
+          }}
+        />
+        {copyFeedback && (
+          <span style={{ fontSize: '12px', color: '#2e7d32', fontWeight: 600 }}>
+            {copyFeedback}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ExportView({ dslText }: { dslText: string }) {
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
@@ -1795,6 +1876,12 @@ export default function DecisionTablePanel() {
               {TAB_LABELS.compare}
             </TabButton>
             <TabButton
+              active={activeTab === 'skeleton'}
+              onClick={() => setActiveTab('skeleton')}
+            >
+              {TAB_LABELS.skeleton}
+            </TabButton>
+            <TabButton
               active={activeTab === 'ncegLanguage'}
               onClick={() => setActiveTab('ncegLanguage')}
             >
@@ -1928,6 +2015,27 @@ export default function DecisionTablePanel() {
                   />
                 </>
               )}
+              {activeTab === 'skeleton' && (
+                <>
+                  <DownloadButton
+                    onClick={() => {
+                      const skeleton = generateSkeletonPseudoCode(table, nodeLabels, logicalModel);
+                      const date = new Date().toISOString().split('T')[0];
+                      downloadText(skeleton, `skeleton_${date}.txt`);
+                    }}
+                    title={EXPORT_MESSAGES.downloadSkeleton}
+                  />
+                  <CopyCSVButton
+                    onClick={async () => {
+                      const skeleton = generateSkeletonPseudoCode(table, nodeLabels, logicalModel);
+                      await navigator.clipboard.writeText(skeleton);
+                      setCsvCopyFeedback(EXPORT_MESSAGES.copied);
+                      setTimeout(() => setCsvCopyFeedback(null), 2000);
+                    }}
+                    title={EXPORT_MESSAGES.copySkeleton}
+                  />
+                </>
+              )}
               {csvCopyFeedback && (
                 <span style={{ fontSize: '11px', color: '#2e7d32', fontWeight: 600 }}>
                   {csvCopyFeedback}
@@ -2000,6 +2108,13 @@ export default function DecisionTablePanel() {
               sortedCauseIds={sortedCauseIds}
               sortedIntermediateIds={sortedIntermediateIds}
               sortedEffectIds={sortedEffectIds}
+            />
+          )}
+          {activeTab === 'skeleton' && (
+            <PseudoCodeView
+              table={table}
+              nodeLabels={nodeLabels}
+              logicalModel={logicalModel}
             />
           )}
           {activeTab === 'ncegLanguage' && (

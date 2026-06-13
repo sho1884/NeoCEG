@@ -33,7 +33,16 @@ import { generateCoverageTableCSV } from './csvGenerator';
 // =============================================================================
 
 export function downloadCSV(content: string, filename: string): void {
-  const blob = new Blob([content], { type: 'text/csv;charset=utf-8' });
+  downloadBlob(content, filename, 'text/csv;charset=utf-8');
+}
+
+/** Download arbitrary text content (e.g. a pseudo-code skeleton) as a file. */
+export function downloadText(content: string, filename: string): void {
+  downloadBlob(content, filename, 'text/plain;charset=utf-8');
+}
+
+function downloadBlob(content: string, filename: string, mime: string): void {
+  const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;

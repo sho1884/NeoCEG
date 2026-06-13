@@ -76,6 +76,7 @@ export const DECISION_TABLE_MESSAGES = {
   // Empty states
   noFeasibleConditions: 'No feasible rules',
   noConditions: 'No rules',
+  skeletonEmpty: 'No decision table to render',
 
   // Section headers
   causesSectionHeader: 'Causes (原因)',
@@ -140,6 +141,7 @@ export const TAB_LABELS = {
   decision: 'Decision',
   coverage: 'Coverage',
   compare: 'Compare',
+  skeleton: 'Skeleton',
   ncegLanguage: 'NeoCEG Language {.nceg}',
 } as const;
 
@@ -154,6 +156,8 @@ export const EXPORT_MESSAGES = {
   copyCoverageTableCSV: 'Copy Coverage Table as CSV',
   csvButtonLabel: 'CSV',
   csvCopyButtonLabel: 'Copy',
+  copySkeleton: 'Copy Skeleton',
+  downloadSkeleton: 'Download Skeleton',
   copyCegDefinition: 'Copy CEG Definition',
   pasteCegDefinition: 'Paste CEG Definition',
   saveCegDefinition: 'Save CEG Definition',
