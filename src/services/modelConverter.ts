@@ -48,13 +48,19 @@ export function graphToLogical(graph: GraphData): LogicalModel {
   const idToName = new Map<string, string>();
   let propCounter = 0;
 
-  // First pass: Create all nodes with proposition names
+  // First pass: Create all nodes, preserving each node's identifier as its
+  // logical identity (Internal_Design_Specification INV-2). A generated
+  // proposition name (p1, p2, ...) is only a fallback for a node that somehow
+  // carries no identifier; conversion never reassigns an existing one.
   for (const node of graph.nodes) {
-    const propName = `p${++propCounter}`;
-    idToName.set(node.id, propName);
+    const name =
+      node.data.name && node.data.name.trim() !== ''
+        ? node.data.name
+        : `p${++propCounter}`;
+    idToName.set(node.id, name);
 
-    logicalNodes.set(propName, {
-      name: propName,
+    logicalNodes.set(name, {
+      name,
       label: node.data.label,
       position: node.position,
       width: node.data.width,
@@ -216,6 +222,8 @@ export function logicalToGraph(model: LogicalModel): GraphData {
       position: logicalNode.position || { x: 0, y: 0 },
       data: {
         label: logicalNode.label ?? '',
+        // Carry the identifier as the node's identity (Internal_Design_Specification §2).
+        name,
         operator,
         width: logicalNode.width,
         // Note: expressionText is computed dynamically in GraphCanvas (from edges/labels),
@@ -408,7 +416,7 @@ export function applyLogicalModelToStore(model: LogicalModel): void {
     const logicalNode = logicalNodes[i];
     const name = logicalNode?.name || node.id;
 
-    const actualId = state.addNode(node.data.label, node.position, node.data.operator);
+    const actualId = state.addNode(node.data.label, node.position, node.data.operator, name);
     nameToId.set(name, actualId);
     nameToId.set(node.id, actualId);
 

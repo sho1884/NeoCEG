@@ -22,6 +22,14 @@ export type NodeRole = 'cause' | 'intermediate' | 'effect';
 export interface CEGNodeData {
   /** Display label (Unicode allowed, e.g., Japanese) */
   label: string;
+  /**
+   * Node identifier = the node's stable identity (Internal_Design_Specification §2).
+   * Assigned once at creation and preserved across all conversions/exports; never
+   * silently regenerated. Distinct from `label` (optional, display) and from the
+   * React Flow element `id` (a UI artifact). For DSL-imported nodes this is the
+   * author's identifier (e.g. "結果_無料"); for GUI-created nodes it is auto-generated.
+   */
+  name?: string;
   /** Logical operator for combining inputs (undefined for cause nodes) */
   operator?: LogicalOperator;
   /** Logical expression text (from inputs) shown as a hover tooltip; not the display name */
