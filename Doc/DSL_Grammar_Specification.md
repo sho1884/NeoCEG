@@ -64,11 +64,13 @@ effect_def      = ":=" expression ;
 (* The factor = level text is the node's quoted LABEL; reference it by a short  *)
 (* identifier that mirrors it (no spaces/'='):  天候_雨 : "天候 = 雨".          *)
 (* Levels of one factor are mutually exclusive -> usually a ONE(...) constraint.*)
-(* ❌ name by a downstream consequence:  "umbrella needed" / 要傘              *)
-(* ✅ name by the attribute the input has: 天候 = 雨 ; 気温 = 低               *)
-(* English only: keep a level short and single-concept; do NOT put the words   *)
-(* or / and / not, or a raw comparison, inside a level (they read as logic).    *)
-(* ❌ wind = strong or gusty   ❌ temp > 30   ✅ wind = strong   ✅ temp = high  *)
+(* Name a CAUSE/INTERMEDIATE by its attribute, not a downstream consequence:    *)
+(*   ❌ cause 要傘 (a conclusion)      ✅ cause 天候 = 雨 (the attribute)         *)
+(* An EFFECT *is* the conclusion, so name it by the outcome (output factor=level)*)
+(*   ✅ effect 傘 = 必要 / umbrella = needed                                     *)
+(* English only: don't put or / and / not or a raw comparison in a level — name  *)
+(* the SAME class with one word, so ✅ and ❌ mean the same thing:                *)
+(*   ❌ wind = strong or gusty  ✅ wind = rough     ❌ temp > 30  ✅ temp = hot   *)
 (* --------------------------------------------------------------------------- *)
 
 (* ============================================================================= *)
@@ -252,9 +254,13 @@ present the expression as a **naming aid**, not silently adopt it as the name.
 **Name by the attribute the group has / その集合が持つ属性で名づける.** Model attribute-first: first
 recognise the condition — *"there are situations that are both rainy and cold"* → "冷雨 (cold rain)" — then
 decide the downstream effects (umbrella, coat, …) for it. A name that describes the condition itself stays
-meaningful however those effects are later defined.
+meaningful however those effects are later defined. **This applies to causes and intermediates only — an
+effect node *is* the outcome, so naming it by the conclusion is correct** (as an output `factor = level`, e.g.
+`傘 = 必要` / umbrella = needed).
 属性ファーストで考える：まず集合を捉え（「雨かつ寒い状況がある」）→ その集合に対する下流の効果
-（傘・上着など）を決める。集合そのものを表す名前は、効果の決め方が後で変わっても意味が保たれる。
+（傘・上着など）を決める。集合そのものを表す名前は、効果の決め方が後で変わっても意味が保たれる。**これは
+原因・中間ノードの話。結果ノードは帰結そのものだから、結論で名づけてよい**（出力 `factor = level`、例
+`傘 = 必要`）。
 
 ### P4. Prefer a real concept name; expression-as-name is a fallback / 概念名を優先、式の代用は予備
 Always aim for a genuine concept name (P3). Only when none can be found, the expression itself may serve as
@@ -297,9 +303,9 @@ P3「属性で名づける」の具体形。**原因**は原子命題＝**属性
   NeoCombi では因子＝パラメータで、`factor = level` は原子比較 `[factor] = "level"` に、因子の水準全体は
   パラメータ宣言に対応。表記は**読みやすさ優先**（素の `因子 = 水準`、括弧・引用なし）、変換側が補う。
 - **English only — avoid logical words and raw comparisons in a level.** Keep a level short and single-concept;
-  do **not** put `or` / `and` / `not`, or a comparison, inside a level — they read as logic and break the
-  equivalence-class discipline. ❌ `wind = strong or gusty`, `temp > 30`　✅ `wind = strong`, `temp = high`.
-  （英語のみの注意。日本語の水準では起きない。）
+  do **not** put `or` / `and` / `not`, or a comparison, inside a level — give the **same class one name**, so the
+  ✅ and ❌ forms denote the *same thing*. ❌ `wind = strong or gusty` → ✅ `wind = rough`;　❌ `temp > 30` → ✅
+  `temp = hot`. （英語のみの注意。日本語では起きない。同じ意味を1つのクラス名にする。）
 - A genuinely **compound** concept is still its own named proposition per P1–P3 (e.g. `冷雨 :=
   天候_雨 AND 気温_低`), built **from** `factor = level` causes — it is not itself a `factor = level`. /
   本当に**複合**の概念は P1–P3 どおり独立の命題として名づけ（`factor = level` の原因から組み立てる）、それ
