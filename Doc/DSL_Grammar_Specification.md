@@ -480,7 +480,6 @@ MASK(NOT A -> B, C)   # If A=F then B=M and C=M
 
 ### Parser / パーサー
 
-- Location: [`src/services/logicalDslParser.ts`](../src/services/logicalDslParser.ts)
 - Tokenizer supports Unicode identifiers for node names
 - トークナイザーはノード名のUnicode識別子をサポート
 - Keywords are case-insensitive (converted to uppercase during tokenization)
@@ -488,7 +487,6 @@ MASK(NOT A -> B, C)   # If A=F then B=M and C=M
 
 ### Serializer / シリアライザー
 
-- Location: [`src/services/logicalDslSerializer.ts`](../src/services/logicalDslSerializer.ts)
 - Generates canonical DSL format
 - 正規DSL形式を生成
 - Optional layout section can be included
@@ -544,9 +542,6 @@ This DSL format is **NOT compatible** with CEGTest 1.6's CSV format.
 
 ## References / 参照
 
-- [Requirements Specification](./Requirements_Specification.md)
-- [Modernization Goals and Design](./Modernization_Goals_and_Design.md)
-- [CEGTest 1.6 Feature Analysis](./CEGTest_1.6_Feature_Analysis.md)
 - Myers, Badgett, Sandler, "The Art of Software Testing", 3rd Ed., Chapter 4
 
 ---
