@@ -134,10 +134,10 @@ export const MODE_MESSAGES = {
 export const VALIDITY_MESSAGES = {
   // A: generated skeleton could not be verified equivalent to the graph.
   skeletonUnverified:
-    '⚠ The generated skeleton could not be verified against the graph — constraints may be missing or effects overlap. Check your constraints before trusting the result.',
-  // B: a feasible test case produces multiple results at once.
+    "ℹ This skeleton couldn't be automatically verified against the graph — that's expected when constraints are intentionally omitted or effects can occur together. Review the constraints if this isn't what you intended.",
+  // B: a feasible test case produces multiple effects at once.
   multiEffect:
-    '⚠ Some test cases produce multiple results at once — the graph may be under-constrained. Check your constraints.',
+    "ℹ Some test cases produce more than one effect at once. That's fine if intended; if the results should be mutually exclusive, add constraints.",
 } as const;
 
 // =============================================================================

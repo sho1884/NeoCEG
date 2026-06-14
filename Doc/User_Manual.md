@@ -407,17 +407,17 @@ Within each section, rows are sorted by the Y-coordinate of the corresponding no
 
 ### 7.6 Validity Warnings / 妥当性の警告
 
-When the model may produce results you should not trust, a **warning banner is shown above the panel tabs at all times** — independent of the active tab and of whether the panel is collapsed. The two warnings are:
+When a result might not be what you intend, a **notice banner is shown above the panel tabs at all times** — independent of the active tab and of whether the panel is collapsed. The two notices are:
 
-モデルが信頼できない結果を出しうるとき、**パネルのタブの上に常時、警告バナー**が表示されます（アクティブなタブや折りたたみ状態に依存しません）。警告は2種類：
+結果が意図どおりでないかもしれないとき、**パネルのタブの上に常時、お知らせバナー**が表示されます（アクティブなタブや折りたたみ状態に依存しません）。お知らせは2種類：
 
-| Warning / 警告 | When / 条件 | Meaning / 意味 |
+| Notice / お知らせ | When / 条件 | What it means / 意味 |
 |---|---|---|
-| **Skeleton not verified** / スケルトン未検証 | The generated skeleton could not be verified equivalent to the graph over the feasible input space (e.g. missing constraints, effects that fire together) / 生成スケルトンを実行可能入力全体でグラフと一致と検証できない（制約不足・効果の同時成立など） | The skeleton (and likely the decision table) may be wrong — check your constraints before trusting the output / スケルトン（そして恐らくデシジョンテーブル）が誤りの可能性。出力を信用する前に制約を確認 |
-| **Multiple effects in one rule** / 1ルールで複数効果 | A feasible decision-table column fires two or more effects at once / 実行可能な列で2つ以上の効果が同時に成立 | Usually a sign of missing constraints; the cases are not cleanly separated / 多くは制約不足の兆候。ケースが分離できていない |
+| **Skeleton not verified** / スケルトン未検証 | The skeleton could not be automatically verified equivalent to the graph over the feasible input space (e.g. when constraints are omitted, or effects can hold together) / 生成スケルトンを実行可能入力全体でグラフと一致と自動検証できない（制約を省いた・効果が同時成立しうる等） | Expected if you left constraints out on purpose. If it is unintended, review the constraints. / 制約を意図的に省いたなら正常。意図と異なるなら制約を確認 |
+| **Multiple effects in one rule** / 1ルールで複数効果 | A feasible decision-table column produces two or more effects at once / 実行可能な列で2つ以上の効果が同時に成立 | Fine if intended; if the results should be mutually exclusive, add constraints / 意図的なら問題なし。排他にしたいなら制約を追加 |
 
-These are advisories, not errors — the tool still works, but the results need review.
-これらはエラーでなく注意喚起です。ツールは動きますが、結果の見直しが必要です。
+These are advisories, not errors — the tool works normally; they just invite a second look at the constraints.
+これらはエラーでなく注意喚起です。ツールは通常どおり動作し、制約を見直すきっかけを示すだけです。
 
 ### 7.7 Skeleton Tab / スケルトンタブ
 
