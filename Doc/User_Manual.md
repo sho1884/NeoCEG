@@ -34,7 +34,7 @@ NeoCEGは、原因結果グラフ（CEG）によるテスト設計のためのWe
 10. [NeoCEG DSL Reference / DSLリファレンス](#10-neoceg-dsl-reference--dslリファレンス)
 11. [Import and Export / インポートとエクスポート](#11-import-and-export--インポートとエクスポート)
 12. [Keyboard Shortcuts / キーボードショートカット](#12-keyboard-shortcuts--キーボードショートカット)
-13. [Troubleshooting / トラブルシューティング](#13-troubleshooting--トラブルシューティング)
+13. [FAQ / よくある質問](#13-faq--よくある質問)
 14. [Glossary / 用語集](#14-glossary--用語集)
 
 ---
@@ -109,16 +109,20 @@ The main graph editing area. Double-click to create nodes, drag handles to conne
 
 ### 3.3 Bottom Panel / 下部パネル
 
-Four tabs below the canvas:
+Five tabs below the canvas:
 
-キャンバスの下に4つのタブ：
+キャンバスの下に5つのタブ：
 
 | Tab / タブ | Purpose / 用途 |
 |---|---|
 | **Decision** | Generated decision table with test rules (see [§7](#7-decision-table--デシジョンテーブル)) / テストルールを含むデシジョンテーブル |
 | **Coverage** | Expression coverage analysis (see [§8](#8-coverage-table--カバレッジテーブル)) / 論理式カバレッジ分析 |
 | **Compare** | Side-by-side decision + coverage view (see [§9](#9-compare-view--比較ビュー)) / デシジョン＋カバレッジの並列表示 |
-| **NeoCEG Language {.nceg}** | Live DSL text view with copy/paste/save/import buttons / DSLテキストのリアルタイム表示（コピー・貼り付け・保存・インポートボタン付き） |
+| **Skeleton** | Program control-structure skeleton derived from the decision table (see [§7.7](#77-skeleton-tab--スケルトンタブ)) / デシジョンテーブルから導いた制御構造スケルトン |
+| **NeoCEG Language {.nceg}** | Live DSL text view with Copy/Paste/Save/Import buttons, plus **Copy/Download DSL Grammar** (see [§11.9](#119-copydownload-dsl-grammar--dsl文法のコピーダウンロード)) / DSLテキストのリアルタイム表示（コピー・貼付・保存・インポート、加えて **Copy/Download DSL Grammar**） |
+
+A persistent **validity-warning banner** (see [§7.6](#76-validity-warnings--妥当性の警告)) appears above the tabs when the model may be incomplete — it is visible on every tab.
+モデルが不完全かもしれないとき、タブの上に常時表示の**妥当性警告バナー**（[§7.6](#76-validity-warnings--妥当性の警告)）が出る（どのタブでも見える）。
 
 ---
 
@@ -158,6 +162,9 @@ When you connect an edge to a cause node, it automatically becomes an intermedia
 Labels support Unicode characters including Japanese. Node width auto-adjusts and can be manually resized by dragging the node border when selected (range: 80-400px, default: 150px).
 
 ラベルは日本語を含むUnicode文字に対応。ノード幅は自動調整され、選択時にノード枠をドラッグして手動リサイズも可能（範囲：80-400px、デフォルト：150px）。
+
+**What a node displays / ノードの表示内容.** A node is a **proposition**, so it shows its **label** (or, if unlabeled, its identifier) — *not* its logical expression. Hover the node to see the expression as a **tooltip**. A node still carrying a placeholder name ("Logical Statement 3") or its bare identifier is **not yet fully modelled**, so name the concept it represents. The expression is **not** auto-adopted as the name (it would go stale when you edit the graph). For how to name well, see the `factor = level` convention in [§10.4](#104-naming-convention-factor--level--命名規約factor--level).
+ノードは**命題**なので、表示されるのは**ラベル**（無ければ識別子）で、論理式ではない。式はノードにマウスを重ねると**ツールチップ**で見える。プレースホルダ名（「Logical Statement 3」）や素の識別子のままのノードは**モデリング途上**なので、表す概念を命名する。式を名前に自動採用は**しない**（グラフ編集で陳腐化するため）。良い命名は [§10.4](#104-naming-convention-factor--level--命名規約factor--level) の `factor = level` 規約参照。
 
 ### 4.4 AND/OR Operator / AND/OR演算子
 
@@ -398,6 +405,29 @@ Within each section, rows are sorted by the Y-coordinate of the corresponding no
 
 各セクション内の行は、キャンバス上のノードのY座標の昇順（上→下）でソートされます。これは表示層のみのソートで、ノード識別子やDSLエクスポート順には影響しません。
 
+### 7.6 Validity Warnings / 妥当性の警告
+
+When the model may produce results you should not trust, a **warning banner is shown above the panel tabs at all times** — independent of the active tab and of whether the panel is collapsed. The two warnings are:
+
+モデルが信頼できない結果を出しうるとき、**パネルのタブの上に常時、警告バナー**が表示されます（アクティブなタブや折りたたみ状態に依存しません）。警告は2種類：
+
+| Warning / 警告 | When / 条件 | Meaning / 意味 |
+|---|---|---|
+| **Skeleton not verified** / スケルトン未検証 | The generated skeleton could not be verified equivalent to the graph over the feasible input space (e.g. missing constraints, effects that fire together) / 生成スケルトンを実行可能入力全体でグラフと一致と検証できない（制約不足・効果の同時成立など） | The skeleton (and likely the decision table) may be wrong — check your constraints before trusting the output / スケルトン（そして恐らくデシジョンテーブル）が誤りの可能性。出力を信用する前に制約を確認 |
+| **Multiple effects in one rule** / 1ルールで複数効果 | A feasible decision-table column fires two or more effects at once / 実行可能な列で2つ以上の効果が同時に成立 | Usually a sign of missing constraints; the cases are not cleanly separated / 多くは制約不足の兆候。ケースが分離できていない |
+
+These are advisories, not errors — the tool still works, but the results need review. See also [GUI_Specification.md §7.4](./GUI_Specification.md).
+これらはエラーでなく注意喚起です。ツールは動きますが、結果の見直しが必要です。
+
+### 7.7 Skeleton Tab / スケルトンタブ
+
+The **Skeleton** tab shows a program control-structure skeleton (pseudo-code) derived from the decision table — the nested `if`/`else` shape an implementation would take to realize the same cause→effect behavior. It is read-only and updates as you edit the graph.
+
+**Skeleton** タブは、デシジョンテーブルから導いた制御構造スケルトン（擬似コード）——同じ原因→結果の振る舞いを実装するときに取る `if`/`else` のネスト構造——を表示します。読み取り専用で、グラフ編集に追随します。
+
+- **Copy** / **Download** in the tab header (and File menu) export the skeleton as plain text (`skeleton_<date>.txt`). / タブヘッダ（および File メニュー）の **Copy** / **Download** で擬似コードをプレーンテキスト出力（`skeleton_<date>.txt`）。
+- The skeleton assumes the constraints hold and is verified equivalent to the graph over the feasible input space; when that cannot be guaranteed, the validity banner (§7.6) warns you. / スケルトンは制約成立を前提とし、実行可能入力全体でグラフと一致することを検証する。保証できないときは妥当性バナー（§7.6）が知らせる。
+
 ---
 
 ## 8. Coverage Table / カバレッジテーブル
@@ -529,7 +559,17 @@ All keywords are **case-insensitive** but conventionally written in UPPERCASE.
 | `REQ` | Requires constraint / 要求制約 |
 | `MASK` | Masking constraint / マスク制約 |
 
-### 10.4 One gate per node / 1ノード＝1ゲート
+### 10.4 Naming convention (factor = level) / 命名規約（factor = level）
+
+Name a **cause** by an attribute and its value — `factor = level` — where the level is an **equivalence class**, not a raw value (e.g. `天候 = 雨` / `weather = rainy`, `気温 = 低` / `temperature = low`). Name an **effect** as an output `factor = level` too (e.g. `料金 = 無料` / `fee = free`). The logic (AND/OR/NOT) lives in the graph, **never inside a node name**. Levels of one factor are mutually exclusive — usually a `ONE`/`EXCL` constraint. This matches the sibling tool **NeoCombi**'s factor/level model, so a graph converts cleanly to a combination-testing model.
+
+原因は**属性とその値** `factor = level` で名づける（水準は生値でなく**同値クラス**。例 `天候 = 雨`、`気温 = 低`）。結果も出力 `factor = level` で名づける（例 `料金 = 無料`）。論理（AND/OR/NOT）は**グラフ**が担い、ノード名には入れない。同一因子の水準は相互排他＝ふつう `ONE`/`EXCL` 制約。姉妹ツール **NeoCombi** の因子/水準モデルと一致し、組合せテストモデルへ素直に変換できる。
+
+The `factor = level` text is the node's **label**; reference it by a short identifier that mirrors it (no spaces or `=`), e.g. `天候_雨: "天候 = 雨"`. For the full rules — including the English-only caution to keep operator symbols (`>` `<` `=` `+` `-`) and the words `or`/`and`/`not` out of a level — see [DSL_Grammar_Specification.md §P6](./DSL_Grammar_Specification.md).
+
+`factor = level` はノードの**ラベル**。参照は空白や `=` を含まない、それを写した短い識別子で行う（例 `天候_雨: "天候 = 雨"`）。完全な規則（演算子記号 `>` `<` `=` `+` `-` と語 `or`/`and`/`not` を水準に入れない英語限定の注意を含む）は [DSL_Grammar_Specification.md §P6](./DSL_Grammar_Specification.md) 参照。
+
+### 10.5 One gate per node / 1ノード＝1ゲート
 
 Each node body is a **single gate**: an `AND` of references, an `OR` of references, or a single reference,
 where each reference may be negated with `NOT`. There are **no parentheses and no AND/OR mixing** in one node
@@ -546,7 +586,7 @@ either23 := p2 OR p3
 result   := p1 AND either23
 ```
 
-### 10.5 Formal Grammar / 正式文法
+### 10.6 Formal Grammar / 正式文法
 
 For the complete EBNF grammar definition, see [DSL_Grammar_Specification.md](./DSL_Grammar_Specification.md).
 
@@ -668,6 +708,25 @@ If the browser does not support the multi-format clipboard (`ClipboardItem` / `n
 
 ---
 
+### 11.9 Copy/Download DSL Grammar / DSL文法のコピー・ダウンロード
+
+You can hand the **DSL grammar** to an AI assistant so it can generate `.nceg` graphs from natural-language requirements. Copy or download it from the **NeoCEG Language tab** or the **Help (?) popup**.
+
+**DSL 文法**を AI アシスタントに渡し、自然言語の要求から `.nceg` グラフを生成させられます。**NeoCEG Language タブ**または **Help（?）ポップアップ**からコピー／ダウンロードできます。
+
+| Aspect / 観点 | Detail / 内容 |
+|---|---|
+| Copy / コピー | Copies the grammar text to the clipboard (plain text) / 文法テキストをクリップボードへ（プレーンテキスト） |
+| Download / ダウンロード | Saves `NeoCEG_DSL_Grammar.txt` / `NeoCEG_DSL_Grammar.txt` を保存 |
+| Content / 内容 | The EBNF grammar block — productions, examples, and the `factor = level` naming guidance — a self-contained brief for an AI / EBNF 文法ブロック（生産規則・例・`factor = level` 命名指針）。AI 向けの自己完結ブリーフ |
+| Offline / オフライン | Embedded in the app; works with no network connection / アプリに埋め込み済み。ネット未接続でも動作 |
+| Version match / 版一致 | Always matches the installed app version; the Help popup shows it (e.g. `v1.5`) / インストール済みアプリの版と常に一致。Help に版表示（例 `v1.5`） |
+
+Because the grammar is embedded at build time, the version you copy always corresponds to the app you are running — no online lookup, no mismatch.
+文法はビルド時に埋め込まれるため、コピーする版は実行中のアプリと常に対応します（オンライン参照なし・不整合なし）。
+
+---
+
 ## 12. Keyboard Shortcuts / キーボードショートカット
 
 | Shortcut / ショートカット | Action / 動作 |
@@ -784,3 +843,4 @@ This warning appears when you have unsaved changes. Your work is still in the br
 | Date / 日付 | Change / 変更 |
 |---|---|
 | 2026-03-01 | Initial version / 初版作成 |
+| 2026-06-14 | Update for current app: node display = proposition + expression tooltip (§4.3); `factor = level` naming convention (§10.4); Validity Warnings (§7.6) and Skeleton tab (§7.7); dual-format table Copy (§11.7); offline Copy/Download DSL Grammar (§3.3, §11.9); five bottom-panel tabs / 現行アプリへ更新：ノード表示＝命題＋式ツールチップ（§4.3）、`factor = level` 命名規約（§10.4）、妥当性警告（§7.6）・Skeleton タブ（§7.7）、表の2形式コピー（§11.7）、オフライン Copy/Download DSL Grammar（§3.3・§11.9）、下部パネル5タブ |
