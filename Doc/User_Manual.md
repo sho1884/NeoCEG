@@ -416,7 +416,7 @@ When the model may produce results you should not trust, a **warning banner is s
 | **Skeleton not verified** / スケルトン未検証 | The generated skeleton could not be verified equivalent to the graph over the feasible input space (e.g. missing constraints, effects that fire together) / 生成スケルトンを実行可能入力全体でグラフと一致と検証できない（制約不足・効果の同時成立など） | The skeleton (and likely the decision table) may be wrong — check your constraints before trusting the output / スケルトン（そして恐らくデシジョンテーブル）が誤りの可能性。出力を信用する前に制約を確認 |
 | **Multiple effects in one rule** / 1ルールで複数効果 | A feasible decision-table column fires two or more effects at once / 実行可能な列で2つ以上の効果が同時に成立 | Usually a sign of missing constraints; the cases are not cleanly separated / 多くは制約不足の兆候。ケースが分離できていない |
 
-These are advisories, not errors — the tool still works, but the results need review. See also [GUI_Specification.md §7.4](./GUI_Specification.md).
+These are advisories, not errors — the tool still works, but the results need review.
 これらはエラーでなく注意喚起です。ツールは動きますが、結果の見直しが必要です。
 
 ### 7.7 Skeleton Tab / スケルトンタブ
@@ -833,8 +833,6 @@ This warning appears when you have unsaved changes. Your work is still in the br
 - Myers, G.J., Badgett, T., Sandler, C. "The Art of Software Testing", 3rd Edition, Chapter 4
 - ISO/IEC/IEEE 29119-4:2021 "Software and systems engineering — Software testing — Part 4: Test techniques"
 - [DSL Grammar Specification](./DSL_Grammar_Specification.md) — Formal EBNF grammar for `.nceg` files
-- [GUI Specification](./GUI_Specification.md) — Complete GUI operations specification
-- [Algorithm Design](./Algorithm_Design.md) — CEG algorithm implementation details
 
 ---
 
