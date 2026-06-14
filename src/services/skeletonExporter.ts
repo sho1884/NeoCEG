@@ -374,13 +374,13 @@ export function generateSkeletonPseudoCode(
       note = '# note: factored form could not be verified; using explicit per-effect guards.';
     } else {
       status = 'unverified';
-      note = '# WARNING: skeleton could not be verified equivalent to the CEG — review before use.';
+      note = '# note: this skeleton does not exactly match the graph (a difference was found in at least one case) — use as a rough reference only.';
     }
   } else {
     // Verification skipped (too many causes): cannot claim equivalence (no mismatch found, just unchecked).
     body = buildFlat(model, effectIds);
     status = 'unchecked';
-    note = `# WARNING: ${causeIds.length} causes — exhaustive verification skipped; correctness not confirmed.`;
+    note = `# note: ${causeIds.length} causes — too many to verify exhaustively; exact equivalence is unconfirmed. Use as a guide.`;
   }
 
   // Warning B signal: a feasible column firing two or more effects.

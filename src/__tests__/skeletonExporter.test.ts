@@ -173,7 +173,7 @@ describe('skeletonExporter — feasible-space equivalence (§8 #1)', () => {
   test('status verified, no multi-effect (with constraints)', () => {
     expect(result.status).toBe('verified');
     expect(result.multiEffect).toBe(false);
-    expect(skeleton).not.toMatch(/WARNING|could not be verified|verification skipped|note:/);
+    expect(skeleton).not.toMatch(/note:/);
   });
 
   test('deterministic: byte-identical on re-run', () => {
@@ -184,7 +184,7 @@ describe('skeletonExporter — feasible-space equivalence (§8 #1)', () => {
 describe('skeletonExporter — constraints removed (premise broken)', () => {
   // Removing constraints breaks the premise: test cases fire multiple effects at
   // once, so the skeleton cannot be verified equivalent. The exporter must say so
-  // (status 'unverified' → warning A; multiEffect → warning B), not pretend it is OK.
+  // (status 'unverified' → warning A1 mismatch; multiEffect → warning B), not pretend it is OK.
   const { model, nodeLabels } = build();
   model.constraints = [];
   const { table } = generateOptimizedDecisionTableWithState(model);
@@ -193,6 +193,6 @@ describe('skeletonExporter — constraints removed (premise broken)', () => {
   test('status is unverified and multiEffect is flagged', () => {
     expect(result.status).toBe('unverified');
     expect(result.multiEffect).toBe(true);
-    expect(result.text).toMatch(/WARNING/);
+    expect(result.text).toMatch(/does not exactly match the graph/);
   });
 });
