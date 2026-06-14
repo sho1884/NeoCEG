@@ -166,6 +166,8 @@ export const EXPORT_MESSAGES = {
   copyCoverageTable: 'Copy Coverage Table (HTML for Excel, CSV for text)',
   copySkeleton: 'Copy Skeleton',
   downloadSkeleton: 'Download Skeleton',
+  copyGrammar: 'Copy DSL Grammar',
+  downloadGrammar: 'Download DSL Grammar',
   copyCegDefinition: 'Copy CEG Definition',
   pasteCegDefinition: 'Paste CEG Definition',
   saveCegDefinition: 'Save CEG Definition',

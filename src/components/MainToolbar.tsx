@@ -14,7 +14,9 @@ import {
   downloadCoverageTableCSVFromGraph,
   downloadSkeletonFromGraph,
   copySkeletonToClipboard,
+  downloadText,
 } from '../services/csvExporter';
+import { getGrammarText, getGrammarVersion, GRAMMAR_FILENAME } from '../services/grammarSpec';
 import {
   copyDecisionTableFromGraph,
   copyCoverageTableFromGraph,
@@ -57,6 +59,16 @@ const btnBase: React.CSSProperties = {
 };
 
 const btnHoverBg = 'rgba(255,255,255,0.1)';
+
+// Link-styled button used inside the Help (?) popup (e.g. Copy/Download DSL Grammar).
+const grammarLinkStyle: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  padding: 0,
+  fontSize: '12px',
+  color: '#6ea8fe',
+  cursor: 'pointer',
+};
 
 const btnDisabled: React.CSSProperties = {
   ...btnBase,
@@ -227,7 +239,9 @@ function FileDropdown({
 
 function HelpTooltip() {
   const [open, setOpen] = useState(false);
+  const [grammarCopied, setGrammarCopied] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const grammarVersion = getGrammarVersion();
 
   useEffect(() => {
     if (!open) return;
@@ -306,6 +320,29 @@ function HelpTooltip() {
             >
               Documentation / ドキュメント
             </a>
+          </div>
+          <div style={{ borderTop: '1px solid #444', marginTop: '6px', paddingTop: '6px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '11px', color: '#888' }}>
+              DSL Grammar{grammarVersion ? ` ${grammarVersion}` : ''}
+            </span>
+            <button
+              type="button"
+              style={grammarLinkStyle}
+              onClick={async () => {
+                await navigator.clipboard.writeText(getGrammarText());
+                setGrammarCopied(true);
+                setTimeout(() => setGrammarCopied(false), 1500);
+              }}
+            >
+              {grammarCopied ? 'Copied!' : EXPORT_MESSAGES.copyGrammar}
+            </button>
+            <button
+              type="button"
+              style={grammarLinkStyle}
+              onClick={() => { downloadText(getGrammarText(), GRAMMAR_FILENAME); setOpen(false); }}
+            >
+              {EXPORT_MESSAGES.downloadGrammar}
+            </button>
           </div>
         </div>
       )}

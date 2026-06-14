@@ -37,6 +37,7 @@ import {
 } from '../services/htmlTableExporter';
 import { generateSkeletonPseudoCode } from '../services/skeletonExporter';
 import type { SkeletonResult } from '../services/skeletonExporter';
+import { getGrammarText, GRAMMAR_FILENAME } from '../services/grammarSpec';
 import type { DecisionTable, TestCondition, TruthValue, DisplayMode } from '../types/decisionTable';
 import type { LogicalModel } from '../types/logical';
 import type { CoverageTable, CoverageMarker, CoverageRow } from '../types/coverageTable';
@@ -1379,6 +1380,17 @@ function ExportView({ dslText }: { dslText: string }) {
         <ExportButton
           label={EXPORT_MESSAGES.importCegDefinition}
           onClick={() => fileInputRef.current?.click()}
+        />
+        <ExportButton
+          label={EXPORT_MESSAGES.copyGrammar}
+          onClick={async () => {
+            await navigator.clipboard.writeText(getGrammarText());
+            showFeedback(EXPORT_MESSAGES.copied);
+          }}
+        />
+        <ExportButton
+          label={EXPORT_MESSAGES.downloadGrammar}
+          onClick={() => downloadText(getGrammarText(), GRAMMAR_FILENAME)}
         />
         {copyFeedback && (
           <span style={{ fontSize: '12px', color: '#2e7d32', fontWeight: 600 }}>
