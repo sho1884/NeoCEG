@@ -138,6 +138,48 @@ fixtures). A DSL-built graph round-trips with its **original** identifiers.
 GUIで作ったグラフは `n1: "年齢 = 小学生"` …（従来の*識別子＋引用ラベル*形、既存フィクスチャと同形）で
 出力。DSLで作ったグラフは**元の**識別子のまま往復する。
 
+## 6. An author-given symbol IS the statement (label = identifier) / 作者が書いた記号が言明（label = identifier）
+
+When a node is defined by an identifier and an expression with **no separate quoted
+label** (e.g. `結果_無料 := …`), the **identifier itself is the author's logical
+statement**. Writing a proposition as a short symbol is normal and complete in logic; it
+is **not** a missing label, an incomplete / "to-be-named" node, or a display-only fallback.
+The tool must **respect the author's string and never rewrite it** — rewriting would turn
+it into a different expression (the author's wording is lost) and obscure the
+identifier ↔ statement correspondence.
+
+ラベル行を書かずに識別子＋論理式でノードを定義したとき（例 `結果_無料 := …`）、**識別子そのものが
+作者の論理言明**。命題を短い記号で書くのは論理学では正規かつ完全で、「ラベル欠落」「未命名」「表示だけの
+代替」ではない。ツールは**作者の文字列を尊重し、勝手に書き換えない**（書き換えると別表現になり作者の表現が
+失われ、識別子↔言明の対応も不明瞭になる）。
+
+**Rules / 規則**:
+
+- For a node whose statement was given **only as the identifier** (no separate label),
+  assign the **same string to both `name` (identifier) and `label`**, at parse time. Both
+  fields hold the author's one string. / 言明が識別子だけで与えられたノードは、**`name` と `label`
+  の両方に同じ文字列**を代入（パース時）。両フィールドが作者の同一文字列を持つ。
+- The serializer **emits both** the proposition line (`name: "label"`) and the `:=` line,
+  **consistently** — it does **not** try to reconstruct the author's original minimal DSL.
+  Once the identifier is adopted as the statement there is nothing to hide; and the label
+  may be **edited on the graph later**, after which it diverges from the identifier — so any
+  "suppress when `label === name`" rule would be inconsistent, and the original identifier
+  could even become noise. Export reflects the **current model state**, not the original input.
+  シリアライザは命題行（`name: "label"`）と `:=` 行を**両方・一貫して出力**し、作者の元の最小DSLを
+  復元しようとはしない。識別子を言明として採用した以上隠す必要はなく、ラベルは後で**グラフ上で編集**され
+  うる（編集後は識別子と乖離する）。よって「`label === name` なら省略」は一貫性を欠き、元の識別子はノイズに
+  なりうる。出力は**現在のモデルの状態**を反映する（元の入力ではない）。
+- This copy applies **only to author-given identifiers**. A system-auto-generated GUI id
+  (`n1`, see §5) is not an author statement: it is **not** copied into the label and still
+  reads as "to be named". / この代入は**作者が与えた識別子のみ**。GUI自動採番 (`n1`, §5) は作者の
+  言明ではないので**代入せず**、「命名を促す」対象のまま。
+
+**Net effect / 帰結**: the author's symbol shows on screen as the statement; export reflects
+the current model (both the identifier and its label — equal until the user edits the label);
+the identifier ↔ label correspondence is explicit.
+作者の記号が画面に言明として表示され、出力は現在のモデルを反映（識別子とそのラベル＝編集前は同一）。
+識別子↔ラベルの対応は明示。
+
 ---
 
 ## References / 参照

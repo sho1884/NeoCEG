@@ -362,10 +362,13 @@ class Parser {
         const node = this.nodes.get(name)!;
         node.expression = expr;
       } else {
-        // Create new node (label = null for auto mode)
+        // Create new node. With no separate quoted label, the author's
+        // identifier IS the logical statement, so it serves as the label too
+        // (Internal_Design_Specification §6). A later `name: "..."` line, if any,
+        // overwrites this with the explicit label.
         this.nodes.set(name, {
           name,
-          label: null,
+          label: name,
           expression: expr,
         });
       }
