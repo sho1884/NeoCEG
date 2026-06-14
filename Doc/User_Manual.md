@@ -1,8 +1,8 @@
 # NeoCEG User Manual / NeoCEG ユーザーマニュアル
 
-**Version**: 1.0
-**Date**: 2026-03-01
-**Status**: Initial release / 初版
+**Version**: 1.1
+**Date**: 2026-06-14
+**Status**: Updated for current release / 現行リリースに更新
 
 ---
 

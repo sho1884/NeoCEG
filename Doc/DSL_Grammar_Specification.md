@@ -1,6 +1,6 @@
 # NeoCEG DSL Grammar Specification v1.5
 
-**Status**: Finalized (2026-02-08)
+**Status**: Finalized; latest revision v1.5 (2026-06-14) / 確定済み・最新改訂 v1.5（2026-06-14）
 **Language**: English (primary) / 日本語 (説明)
 
 ---
