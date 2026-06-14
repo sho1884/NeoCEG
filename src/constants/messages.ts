@@ -137,7 +137,7 @@ export const VALIDITY_MESSAGES = {
     "ℹ This skeleton couldn't be automatically verified against the graph — that's expected when constraints are intentionally omitted or effects can occur together. Review the constraints if this isn't what you intended.",
   // B: a feasible test case produces multiple effects at once.
   multiEffect:
-    "ℹ Some test cases produce more than one effect at once. That's fine if intended; if the results should be mutually exclusive, add constraints.",
+    "ℹ Some test cases produce more than one effect at once. That's fine if intended; otherwise, some constraint definitions may be missing.",
 } as const;
 
 // =============================================================================

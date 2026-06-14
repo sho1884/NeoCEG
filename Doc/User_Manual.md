@@ -414,7 +414,7 @@ When a result might not be what you intend, a **notice banner is shown above the
 | Notice / お知らせ | When / 条件 | What it means / 意味 |
 |---|---|---|
 | **Skeleton not verified** / スケルトン未検証 | The skeleton could not be automatically verified equivalent to the graph over the feasible input space (e.g. when constraints are omitted, or effects can hold together) / 生成スケルトンを実行可能入力全体でグラフと一致と自動検証できない（制約を省いた・効果が同時成立しうる等） | Expected if you left constraints out on purpose. If it is unintended, review the constraints. / 制約を意図的に省いたなら正常。意図と異なるなら制約を確認 |
-| **Multiple effects in one rule** / 1ルールで複数効果 | A feasible decision-table column produces two or more effects at once / 実行可能な列で2つ以上の効果が同時に成立 | Fine if intended; if the results should be mutually exclusive, add constraints / 意図的なら問題なし。排他にしたいなら制約を追加 |
+| **Multiple effects in one rule** / 1ルールで複数効果 | A feasible decision-table column produces two or more effects at once / 実行可能な列で2つ以上の効果が同時に成立 | Fine if intended; otherwise some constraint definitions may be missing / 意図的なら問題なし。そうでなければ制約定義が不足しているかもしれません |
 
 These are advisories, not errors — the tool works normally; they just invite a second look at the constraints.
 これらはエラーでなく注意喚起です。ツールは通常どおり動作し、制約を見直すきっかけを示すだけです。

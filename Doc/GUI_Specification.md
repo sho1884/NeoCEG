@@ -336,7 +336,7 @@ condition holds.
 | # | Trigger / 条件 | Message intent / 文面の趣旨 |
 |---|---|---|
 | **A** | The generated skeleton could **not be verified** equivalent to the CEG over the feasible input space (skeleton exporter status ≠ `verified`). / スケルトンを実行可能入力全体で CEG と一致と**検証できなかった**（エクスポータ status ≠ `verified`）。 | "ℹ This skeleton couldn't be automatically verified against the graph — that's expected when constraints are intentionally omitted or effects can occur together. Review the constraints if this isn't what you intended." / 「ℹ このスケルトンはグラフと自動照合できませんでした。制約を意図的に省いた場合や効果が同時に成立しうる場合は正常です。意図と異なるなら制約を確認してください。」 |
-| **B** | A feasible decision-table column fires **two or more effects simultaneously**. / 実行可能な列が**複数の効果を同時に**立てる。 | "ℹ Some test cases produce more than one effect at once. That's fine if intended; if the results should be mutually exclusive, add constraints." / 「ℹ 一部のテストケースで複数の効果が同時に成立します。意図的なら問題ありません。排他にしたい場合は制約を追加してください。」 |
+| **B** | A feasible decision-table column fires **two or more effects simultaneously**. / 実行可能な列が**複数の効果を同時に**立てる。 | "ℹ Some test cases produce more than one effect at once. That's fine if intended; otherwise, some constraint definitions may be missing." / 「ℹ 一部のテストケースで複数の効果が同時に成立します。意図的なら問題ありません。そうでなければ制約定義が不足しているかもしれません。」 |
 
 - Both are **advisory** (amber); they never block editing or export. / いずれも**助言的**（amber）で、編集・出力を妨げない。
 - A and B may show together; both are derived reactively from the current model / decision table. / A と B は同時表示可。現在のモデル／デシジョンテーブルからリアクティブに導出。
