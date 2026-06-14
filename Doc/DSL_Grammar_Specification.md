@@ -68,9 +68,12 @@ effect_def      = ":=" expression ;
 (*   ❌ cause 要傘 (a conclusion)      ✅ cause 天候 = 雨 (the attribute)         *)
 (* An EFFECT *is* the conclusion, so name it by the outcome (output factor=level)*)
 (*   ✅ effect 傘 = 必要 / umbrella = needed                                     *)
-(* English only: don't put or / and / not or a raw comparison in a level — name  *)
-(* the SAME class with one word, so ✅ and ❌ mean the same thing:                *)
-(*   ❌ wind = strong or gusty  ✅ wind = rough     ❌ temp > 30  ✅ temp = hot   *)
+(* A level is an equivalence class — keep it FAITHFUL to the requirement.        *)
+(* Logic goes in the graph: spec "strong or gusty" -> two levels 風=強い,        *)
+(* 風=突風 OR-ed in the graph, not one level "wind = strong or gusty".           *)
+(* A threshold keeps its boundary IN the class name (the test needs it):         *)
+(*   spec ">30°"  ✅ 気温 = 30度超 / temp = over-30   ❌ temp = hot (drops 30)    *)
+(* English: a level is one short concept; never the bare words or / and / not.   *)
 (* --------------------------------------------------------------------------- *)
 
 (* ============================================================================= *)
@@ -302,10 +305,15 @@ P3「属性で名づける」の具体形。**原因**は原子命題＝**属性
   no brackets or quotes; mechanical / AI conversion adds NeoCombi's `[ ]` and `" "`. / 姉妹ツール共通語彙。
   NeoCombi では因子＝パラメータで、`factor = level` は原子比較 `[factor] = "level"` に、因子の水準全体は
   パラメータ宣言に対応。表記は**読みやすさ優先**（素の `因子 = 水準`、括弧・引用なし）、変換側が補う。
-- **English only — avoid logical words and raw comparisons in a level.** Keep a level short and single-concept;
-  do **not** put `or` / `and` / `not`, or a comparison, inside a level — give the **same class one name**, so the
-  ✅ and ❌ forms denote the *same thing*. ❌ `wind = strong or gusty` → ✅ `wind = rough`;　❌ `temp > 30` → ✅
-  `temp = hot`. （英語のみの注意。日本語では起きない。同じ意味を1つのクラス名にする。）
+- **A level is an equivalence class — keep it faithful to the requirement.** Logic belongs in the graph, and a
+  numeric boundary belongs *in the class name*. A spec phrase like "strong or gusty" becomes two levels
+  (`風 = 強い`, `風 = 突風`) OR-ed in the graph — not one level `wind = strong or gusty` (the `or` is logic). A
+  threshold keeps its **boundary** (it is the boundary value the test needs): spec ">30°" → ✅ `気温 = 30度超` /
+  `temp = over-30` (sibling `temp = 30-or-below`), **not** ❌ `temp = hot` — "hot" drops the 30° the requirement
+  gave and invents an interpretation. (English only: a level is one short concept; never the bare words `or` /
+  `and` / `not`.) / 水準は同値クラス。要求に忠実に——論理はグラフへ、数値の境界は水準名に残す。「strong or
+  gusty」は二水準にしてグラフで OR（`or` は論理）。「>30℃」は境界を残して ✅ `気温 = 30度超`、❌ `temp = hot`
+  （30 を捨て解釈を混入）にしない。境界値はテストに必要。
 - A genuinely **compound** concept is still its own named proposition per P1–P3 (e.g. `冷雨 :=
   天候_雨 AND 気温_低`), built **from** `factor = level` causes — it is not itself a `factor = level`. /
   本当に**複合**の概念は P1–P3 どおり独立の命題として名づけ（`factor = level` の原因から組み立てる）、それ
