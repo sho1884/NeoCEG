@@ -68,9 +68,11 @@ effect_def      = ":=" expression ;
 (*   ❌ cause 要傘 (a conclusion)      ✅ cause 天候 = 雨 (the attribute)         *)
 (* An EFFECT *is* the conclusion, so name it by the outcome (output factor=level)*)
 (*   ✅ effect 傘 = 必要 / umbrella = needed                                     *)
-(* A level is a plain value — don't embed the grammar's operator tokens in it:   *)
-(*   comparison > < = (any language):           ❌ temp > 30   ✅ temp = over-30  *)
-(*   logical keywords or / and / not (English): ❌ age = 65 or older  ✅ age = 65+ *)
+(* A level is a plain value — write it in words; no operator-like symbols and no *)
+(* grammar keywords (inside a value they read as operators):                      *)
+(*   symbols > < = + - (any language):     ❌ temp > 30        ✅ temp = over 30   *)
+(*     (also ❌ over-30: the - reads as minus)                                    *)
+(*   keywords or / and / not (English):    ❌ age = 65 or older ✅ age = at least 65*)
 (* --------------------------------------------------------------------------- *)
 
 (* ============================================================================= *)
@@ -302,12 +304,14 @@ P3「属性で名づける」の具体形。**原因**は原子命題＝**属性
   no brackets or quotes; mechanical / AI conversion adds NeoCombi's `[ ]` and `" "`. / 姉妹ツール共通語彙。
   NeoCombi では因子＝パラメータで、`factor = level` は原子比較 `[factor] = "level"` に、因子の水準全体は
   パラメータ宣言に対応。表記は**読みやすさ優先**（素の `因子 = 水準`、括弧・引用なし）、変換側が補う。
-- **A level is a plain value — keep the grammar's operator tokens out of it**, or they read as operators inside
-  the value. Two cases: **(1) comparison operators `>` `<` `=`** (any language) — ❌ `temp > 30` → ✅
-  `temp = over-30`; **(2) the logical keywords `or` / `and` / `not`** (English only, as they are English words) —
-  ❌ `age = 65 or older` → ✅ `age = 65+`. / 水準は素の値——文法の演算子トークンを名前に混ぜない（値の中で演算
-  子と読めてしまう）。(1) 比較演算子 `>` `<` `=`（言語不問）❌ `温度 > 30` → ✅ `気温 = 30度越え`、(2) 論理
-  キーワード `or` / `and` / `not`（英語のみ＝英単語のため）❌ `age = 65 or older` → ✅ `age = 65+`。
+- **A level is a plain value — write it in words; keep operator-like symbols and grammar keywords out of it**
+  (inside a value they read as operators). **(1) Symbols `>` `<` `=` `+` `-`** (any language) — ❌ `temp > 30` →
+  ✅ `temp = over 30`; note `over-30` is also poor because the `-` reads as a minus sign (and `+` as plus). **(2)
+  The keywords `or` / `and` / `not`** (English only, as they are English words) — ❌ `age = 65 or older` → ✅
+  `age = at least 65`. / 水準は素の値——記号でなく語で書き、演算子に見える記号や文法キーワードを名前に入れない
+  （値の中で演算子と読めてしまう）。(1) 記号 `>` `<` `=` `+` `-`（言語不問）❌ `温度 > 30` → ✅ `気温 = 30度越え`
+  （`over-30` も不可＝`-` がマイナスに見える、`+` はプラス）、(2) キーワード `or` / `and` / `not`（英語のみ）
+  ❌ `age = 65 or older` → ✅ `age = at least 65`。
 - A genuinely **compound** concept is still its own named proposition per P1–P3 (e.g. `冷雨 :=
   天候_雨 AND 気温_低`), built **from** `factor = level` causes — it is not itself a `factor = level`. /
   本当に**複合**の概念は P1–P3 どおり独立の命題として名づけ（`factor = level` の原因から組み立てる）、それ
