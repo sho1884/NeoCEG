@@ -407,13 +407,14 @@ Within each section, rows are sorted by the Y-coordinate of the corresponding no
 
 ### 7.6 Validity Warnings / 妥当性の警告
 
-When a result might not be what you intend, a **notice banner is shown above the panel tabs at all times** — independent of the active tab and of whether the panel is collapsed. The two notices are:
+When a result might not be what you intend, a **notice banner is shown above the panel tabs at all times** — independent of the active tab and of whether the panel is collapsed. The notices are:
 
-結果が意図どおりでないかもしれないとき、**パネルのタブの上に常時、お知らせバナー**が表示されます（アクティブなタブや折りたたみ状態に依存しません）。お知らせは2種類：
+結果が意図どおりでないかもしれないとき、**パネルのタブの上に常時、お知らせバナー**が表示されます（アクティブなタブや折りたたみ状態に依存しません）。お知らせは次のとおり：
 
 | Notice / お知らせ | When / 条件 | What it means / 意味 |
 |---|---|---|
-| **Skeleton not verified** / スケルトン未検証 | The skeleton could not be automatically verified equivalent to the graph over the feasible input space (e.g. when constraints are omitted, or effects can hold together) / 生成スケルトンを実行可能入力全体でグラフと一致と自動検証できない（制約を省いた・効果が同時成立しうる等） | Expected if you left constraints out on purpose. If it is unintended, review the constraints. / 制約を意図的に省いたなら正常。意図と異なるなら制約を確認 |
+| **Skeleton differs from the graph** / スケルトンがグラフと不一致 | A check found the generated skeleton produces a different result from the graph in at least one case / 照合の結果、少なくとも1ケースでスケルトンの結果がグラフと異なる | Use the skeleton as a rough reference only / 参考程度の目安としてのみ利用 |
+| **Skeleton not fully checked** / スケルトン未照合 | Too many inputs to verify exhaustively, so exact equivalence is unconfirmed / 入力が多く全数照合できず、厳密な一致は未確認 | Use it as a guide / 目安として利用 |
 | **Multiple effects in one rule** / 1ルールで複数効果 | A feasible decision-table column produces two or more effects at once / 実行可能な列で2つ以上の効果が同時に成立 | Fine if intended; otherwise some constraint definitions may be missing / 意図的なら問題なし。そうでなければ制約定義が不足しているかもしれません |
 
 These are advisories, not errors — the tool works normally; they just invite a second look at the constraints.

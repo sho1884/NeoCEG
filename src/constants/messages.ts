@@ -132,9 +132,12 @@ export const MODE_MESSAGES = {
 // =============================================================================
 
 export const VALIDITY_MESSAGES = {
-  // A: generated skeleton could not be verified equivalent to the graph.
-  skeletonUnverified:
-    "ℹ This skeleton couldn't be automatically verified against the graph — that's expected when constraints are intentionally omitted or effects can occur together. Review the constraints if this isn't what you intended.",
+  // A1: the skeleton was checked and a difference from the graph was found.
+  skeletonMismatch:
+    "ℹ The generated skeleton doesn't exactly match the graph — a difference was found in at least one case. Use it as a rough reference only.",
+  // A2: too many inputs to verify exhaustively; equivalence is unconfirmed.
+  skeletonUnchecked:
+    "ℹ The generated skeleton couldn't be fully checked against the graph (too many inputs to verify exhaustively), so its exact equivalence is unconfirmed. Use it as a guide.",
   // B: a feasible test case produces multiple effects at once.
   multiEffect:
     "ℹ Some test cases produce more than one effect at once. That's fine if intended; otherwise, some constraint definitions may be missing.",

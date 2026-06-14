@@ -326,14 +326,16 @@ function emitNodes(nodes: Node[], depth: number, label: (id: string) => string, 
 }
 
 /**
- * Verification status of a generated skeleton (drives GUI §7.4 warning A).
+ * Verification status of a generated skeleton (drives GUI §7.4 warnings A1/A2).
  *  - verified   : the factored topology skeleton was verified equivalent to the CEG over the feasible space.
  *  - explicit   : the factored form was not verifiable, but the explicit per-effect fallback IS verified
  *                 equivalent — still correct, just less compact (no warning needed).
- *  - unverified : equivalence could not be established (e.g. simultaneous effects / missing constraints, or
- *                 too many causes for exhaustive checking) — correctness NOT guaranteed → warning A.
+ *  - unverified : the skeleton WAS checked and a difference from the CEG was found on a feasible input
+ *                 → warning A1 (mismatch).
+ *  - unchecked  : too many causes to verify exhaustively, so equivalence is unconfirmed (no mismatch was
+ *                 found — it simply could not be checked) → warning A2 (unconfirmed).
  */
-export type SkeletonStatus = 'verified' | 'explicit' | 'unverified';
+export type SkeletonStatus = 'verified' | 'explicit' | 'unverified' | 'unchecked';
 
 export interface SkeletonResult {
   text: string;
@@ -375,9 +377,9 @@ export function generateSkeletonPseudoCode(
       note = '# WARNING: skeleton could not be verified equivalent to the CEG — review before use.';
     }
   } else {
-    // Verification skipped (too many causes): cannot claim equivalence.
+    // Verification skipped (too many causes): cannot claim equivalence (no mismatch found, just unchecked).
     body = buildFlat(model, effectIds);
-    status = 'unverified';
+    status = 'unchecked';
     note = `# WARNING: ${causeIds.length} causes — exhaustive verification skipped; correctness not confirmed.`;
   }
 

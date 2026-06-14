@@ -1995,7 +1995,7 @@ export default function DecisionTablePanel() {
       )}
 
       {/* Validity warnings (model health) — always visible, persistent (GUI §7.4) */}
-      {skeletonResult && (skeletonResult.status === 'unverified' || skeletonResult.multiEffect) && (
+      {skeletonResult && (skeletonResult.status === 'unverified' || skeletonResult.status === 'unchecked' || skeletonResult.multiEffect) && (
         <div
           style={{
             padding: '6px 16px',
@@ -2008,7 +2008,8 @@ export default function DecisionTablePanel() {
             gap: '2px',
           }}
         >
-          {skeletonResult.status === 'unverified' && <span>{VALIDITY_MESSAGES.skeletonUnverified}</span>}
+          {skeletonResult.status === 'unverified' && <span>{VALIDITY_MESSAGES.skeletonMismatch}</span>}
+          {skeletonResult.status === 'unchecked' && <span>{VALIDITY_MESSAGES.skeletonUnchecked}</span>}
           {skeletonResult.multiEffect && <span>{VALIDITY_MESSAGES.multiEffect}</span>}
         </div>
       )}

@@ -335,11 +335,12 @@ condition holds.
 
 | # | Trigger / 条件 | Message intent / 文面の趣旨 |
 |---|---|---|
-| **A** | The generated skeleton could **not be verified** equivalent to the CEG over the feasible input space (skeleton exporter status ≠ `verified`). / スケルトンを実行可能入力全体で CEG と一致と**検証できなかった**（エクスポータ status ≠ `verified`）。 | "ℹ This skeleton couldn't be automatically verified against the graph — that's expected when constraints are intentionally omitted or effects can occur together. Review the constraints if this isn't what you intended." / 「ℹ このスケルトンはグラフと自動照合できませんでした。制約を意図的に省いた場合や効果が同時に成立しうる場合は正常です。意図と異なるなら制約を確認してください。」 |
+| **A1** | The skeleton was checked and **differs from the CEG** on at least one feasible input (skeleton exporter status `unverified`). / 照合の結果、少なくとも1つの実行可能入力で **CEG と差異**（status `unverified`）。 | "ℹ The generated skeleton doesn't exactly match the graph — a difference was found in at least one case. Use it as a rough reference only." / 「ℹ 生成されたスケルトンはグラフと完全には一致しません（少なくとも1ケースで差異が見つかりました）。参考程度の目安としてのみご利用ください。」 |
+| **A2** | Too many causes to verify exhaustively, so equivalence is **unconfirmed** (skeleton exporter status `unchecked`). / 原因が多く全数照合できず、一致は**未確認**（status `unchecked`）。 | "ℹ The generated skeleton couldn't be fully checked against the graph (too many inputs to verify exhaustively), so its exact equivalence is unconfirmed. Use it as a guide." / 「ℹ 入力が多く全数照合できなかったため、生成されたスケルトンがグラフと厳密に一致するかは未確認です。目安としてご利用ください。」 |
 | **B** | A feasible decision-table column fires **two or more effects simultaneously**. / 実行可能な列が**複数の効果を同時に**立てる。 | "ℹ Some test cases produce more than one effect at once. That's fine if intended; otherwise, some constraint definitions may be missing." / 「ℹ 一部のテストケースで複数の効果が同時に成立します。意図的なら問題ありません。そうでなければ制約定義が不足しているかもしれません。」 |
 
-- Both are **advisory** (amber); they never block editing or export. / いずれも**助言的**（amber）で、編集・出力を妨げない。
-- A and B may show together; both are derived reactively from the current model / decision table. / A と B は同時表示可。現在のモデル／デシジョンテーブルからリアクティブに導出。
+- All are **advisory** (amber); they never block editing or export. / いずれも**助言的**（amber）で、編集・出力を妨げない。
+- A1/A2 are mutually exclusive (skeleton fidelity); an A warning and B may show together. All are derived reactively from the current model / decision table. / A1・A2 は排他（スケルトン忠実性）。A 系と B は同時表示可。現在のモデル／デシジョンテーブルからリアクティブに導出。
 - B is a **heuristic** (some graphs legitimately have co-occurring effects), so it is phrased as a caution, not an error. / B は**ヒューリスティック**（同時成立が正当なグラフもある）ため、エラーでなく注意として表現。
 - Rationale: without constraints the premise breaks — the decision table degenerates (columns merge, one case fires several effects) and the skeleton cannot be uniquely realized. A general user must be told, not left to misread degenerate output as correct. / 根拠: 制約が無いと前提が崩れ、デシジョンテーブルが退化（列がマージ・1ケースで複数効果）し、スケルトンが一意に実現できない。一般ユーザに知らせず誤認させてはならない。
 
