@@ -25,6 +25,7 @@ import {
   generateOptimizedDecisionTableWithState,
   getFeasibleConditions,
   getNodeLabel,
+  findUnreachableEffects,
 } from './services/decisionTableCalculator.js';
 import { generateCoverageTableFromState } from './services/coverageTableCalculator.js';
 import {
@@ -33,6 +34,7 @@ import {
 } from './services/csvGenerator.js';
 import { generateGraphSVG } from './services/cliSvgGenerator.js';
 import type { LogicalModel } from './types/logical.js';
+import type { DecisionTable } from './types/decisionTable.js';
 
 // ---------------------------------------------------------------------------
 // Argument parsing
@@ -155,7 +157,19 @@ function parseInput(input: string): LogicalModel {
       .join('\n');
     error(`Parse error:\n${errors}`);
   }
+  for (const w of result.warnings) {
+    process.stderr.write(`Warning: ${w}\n`);
+  }
   return result.model;
+}
+
+/** Emit a warning for each effect that can never be true in any feasible test. */
+function warnUnreachableEffects(table: DecisionTable, model: LogicalModel): void {
+  for (const id of findUnreachableEffects(table)) {
+    process.stderr.write(
+      `Warning: effect '${id}' (${getNodeLabel(model, id)}) can never be true in any feasible test — unreachable effect.\n`
+    );
+  }
 }
 
 function buildNodeLabels(model: LogicalModel): Map<string, string> {
@@ -213,6 +227,7 @@ function main(): void {
   // Generate output based on mode
   if (args.mode === 'decision-table') {
     const { table } = generateOptimizedDecisionTableWithState(model);
+    warnUnreachableEffects(table, model);
     const conditions = getFeasibleConditions(table);
     const nodeLabels = buildNodeLabels(model);
     const csv = generateDecisionTableCSV(
@@ -230,6 +245,8 @@ function main(): void {
     if (table.stats.feasibleConditions === 0) {
       error('No feasible rules — all combinations violate constraints');
     }
+
+    warnUnreachableEffects(table, model);
 
     const coverageTable = generateCoverageTableFromState(model, state);
     const csv = generateCoverageTableCSV(coverageTable);

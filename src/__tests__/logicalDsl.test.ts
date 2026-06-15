@@ -598,3 +598,26 @@ n2 := n1
     expect(result2.model.nodes.get('n2')?.width).toBeUndefined();
   });
 });
+
+describe('Constraint member validation', () => {
+  it('warns when a constraint references a derived (effect) node', () => {
+    const result = parseLogicalDSL(`
+a: "a"
+b: "b"
+e := a AND b
+ONE(a, e)
+`);
+    expect(result.success).toBe(true);
+    expect(result.warnings.some((w) => w.includes("'e'"))).toBe(true);
+  });
+
+  it('does not warn when constraints reference only cause nodes', () => {
+    const result = parseLogicalDSL(`
+a: "a"
+b: "b"
+e := a AND b
+ONE(a, b)
+`);
+    expect(result.warnings.length).toBe(0);
+  });
+});

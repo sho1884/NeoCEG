@@ -121,6 +121,22 @@ export function getFeasibleConditions(table: DecisionTable): TestCondition[] {
 }
 
 /**
+ * Find effects that can never be true in any feasible test condition
+ * (unreachable / "dead" effects). Usually signals a modeling error such as
+ * over-constraining or contradictory factors that suppress the effect's inputs.
+ * Reference: DSL_Grammar_Specification, Validation.
+ * Returns [] when there are no feasible conditions at all (that is a separate,
+ * larger problem — "no feasible rules" — not per-effect reachability).
+ */
+export function findUnreachableEffects(table: DecisionTable): string[] {
+  const feasible = table.conditions.filter((c) => !c.excluded);
+  if (feasible.length === 0) return [];
+  return table.effectIds.filter(
+    (id) => !feasible.some((c) => isTrue(c.values.get(id) ?? 'F'))
+  );
+}
+
+/**
  * Get node label for display
  */
 export function getNodeLabel(model: LogicalModel, nodeName: string): string {
