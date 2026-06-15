@@ -39,7 +39,7 @@ interface GraphStore extends HistorySnapshot {
   setSelectedConstraintNodeId: (id: string | null) => void;
 
   // Node actions
-  addNode: (label: string, position: { x: number; y: number }, operator?: LogicalOperator) => string;
+  addNode: (label: string, position: { x: number; y: number }, operator?: LogicalOperator, name?: string) => string;
   updateNode: (id: string, data: Partial<CEGNodeData>) => void;
   deleteNode: (id: string) => void;
   updateNodePosition: (id: string, position: { x: number; y: number }) => void;
@@ -98,6 +98,22 @@ const generateConstraintId = () => `constraint_${++constraintIdCounter}`;
 const generateConstraintNodeId = () => `cnode_${constraintIdCounter}`;
 
 export const generateDefaultNodeName = () => `Logical Statement ${++nodeNameCounter}`;
+
+let nodeIdentifierCounter = 0;
+/**
+ * Generate a stable, unique node identifier (identity), e.g. n1, n2, ...
+ * Used for GUI-created nodes that have no author-given identifier
+ * (Internal_Design_Specification §5). Skips any identifier already in use so it
+ * never collides with imported identifiers.
+ */
+const generateNodeIdentifier = (existing: CEGNode[]): string => {
+  const taken = new Set(existing.map((n) => n.data.name).filter(Boolean));
+  let candidate: string;
+  do {
+    candidate = `n${++nodeIdentifierCounter}`;
+  } while (taken.has(candidate));
+  return candidate;
+};
 
 export const useGraphStore = create<GraphStore>()(
   (set, get) => {
@@ -199,15 +215,20 @@ export const useGraphStore = create<GraphStore>()(
       selectedConstraintNodeId: null,
       setSelectedConstraintNodeId: (id) => set({ selectedConstraintNodeId: id }),
 
-      addNode: (label, position, operator) => {
+      addNode: (label, position, operator, name) => {
         pushHistory();
         const id = generateNodeId();
+        // Identity: use the given identifier (e.g. a DSL-imported name), else
+        // auto-generate a stable, unique one. Preserved for the node's lifetime.
+        const identifier =
+          name && name.trim() !== '' ? name : generateNodeIdentifier(get().nodes);
         const newNode: CEGNode = {
           id,
           type: 'cegNode',
           position,
           data: {
             label,
+            name: identifier,
             operator,
           },
         };
@@ -991,6 +1012,7 @@ export const useGraphStore = create<GraphStore>()(
         edgeIdCounter = 0;
         constraintIdCounter = 0;
         nodeNameCounter = 0;
+        nodeIdentifierCounter = 0;
         set({
           nodes: [],
           constraintNodes: [],

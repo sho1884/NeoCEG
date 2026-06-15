@@ -448,7 +448,7 @@ EXCL(n1, n2)
 });
 
 describe('Nullable labels', () => {
-  it('should handle effect nodes without labels', () => {
+  it('should handle effect nodes without an explicit label', () => {
     const input = `
 n1: "入力A"
 n2 := n1
@@ -456,8 +456,9 @@ n2 := n1
     const result = parseLogicalDSL(input);
 
     expect(result.success).toBe(true);
-    // Effect node without explicit label should have null label
-    expect(result.model.nodes.get('n2')?.label).toBeNull();
+    // No separate quoted label → the author's identifier IS the logical statement,
+    // so it is assigned to the label too (Internal_Design_Specification §6).
+    expect(result.model.nodes.get('n2')?.label).toBe('n2');
   });
 
   it('should use name as fallback label for effects without user label', () => {
