@@ -141,6 +141,12 @@ export const VALIDITY_MESSAGES = {
   // B: a feasible test case produces multiple effects at once.
   multiEffect:
     "ℹ Some test cases produce more than one effect at once. That's fine if intended; otherwise, some constraint definitions may be missing.",
+  // C: a constraint references a derived (intermediate/effect) node — no effect.
+  constraintOnDerived:
+    'ℹ A constraint refers to a derived (intermediate/effect) node, which has no effect — constraints apply to cause nodes only.',
+  // D: an effect can never be true in any feasible test (unreachable / dead effect).
+  unreachableEffect:
+    'ℹ Some effects can never occur in any feasible test (unreachable). This usually means an over-constraint or contradictory factors.',
 } as const;
 
 // =============================================================================

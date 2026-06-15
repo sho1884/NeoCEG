@@ -15,7 +15,9 @@ import {
   generateLearningModeTable,
   getFeasibleConditions,
   getNodeLabel,
+  findUnreachableEffects,
 } from '../services/decisionTableCalculator';
+import { findConstraintsOnDerivedNodes } from '../services/modelValidation';
 import {
   generateCoverageTableFromState,
   getCoverageMarkerDisplay,
@@ -1676,6 +1678,19 @@ export default function DecisionTablePanel() {
     return generateSkeletonPseudoCode(logicalModel, table, nodeLabels);
   }, [logicalModel, table, nodeLabels]);
 
+  // Model-health warnings C/D (GUI §7.4): constraints that reference a derived
+  // (non-cause) node, and effects that can never fire in any feasible test.
+  // Shown in the always-visible validity banner.
+  const modelHealth = useMemo(() => {
+    if (!logicalModel) {
+      return { derivedMembers: [] as string[], unreachableEffects: [] as string[] };
+    }
+    return {
+      derivedMembers: findConstraintsOnDerivedNodes(logicalModel),
+      unreachableEffects: findUnreachableEffects(table),
+    };
+  }, [logicalModel, table]);
+
   // Auto-switch to Practice Mode when 2^n > 256
   useEffect(() => {
     if (displayMode === 'learning' && learningTable === null && logicalModel) {
@@ -2011,6 +2026,35 @@ export default function DecisionTablePanel() {
           {skeletonResult.status === 'unverified' && <span>{VALIDITY_MESSAGES.skeletonMismatch}</span>}
           {skeletonResult.status === 'unchecked' && <span>{VALIDITY_MESSAGES.skeletonUnchecked}</span>}
           {skeletonResult.multiEffect && <span>{VALIDITY_MESSAGES.multiEffect}</span>}
+        </div>
+      )}
+
+      {/* Validity warnings C/D (model health) — always visible, persistent (GUI §7.4) */}
+      {(modelHealth.derivedMembers.length > 0 || modelHealth.unreachableEffects.length > 0) && (
+        <div
+          style={{
+            padding: '6px 16px',
+            backgroundColor: '#fff3e0',
+            color: '#bf360c',
+            fontSize: '12px',
+            borderBottom: '1px solid #ffccbc',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '2px',
+          }}
+        >
+          {modelHealth.derivedMembers.length > 0 && (
+            <span>
+              {VALIDITY_MESSAGES.constraintOnDerived}{' '}
+              {modelHealth.derivedMembers.map((n) => nodeLabels.get(n) ?? n).join(', ')}
+            </span>
+          )}
+          {modelHealth.unreachableEffects.length > 0 && (
+            <span>
+              {VALIDITY_MESSAGES.unreachableEffect}{' '}
+              {modelHealth.unreachableEffects.map((n) => nodeLabels.get(n) ?? n).join(', ')}
+            </span>
+          )}
         </div>
       )}
 

@@ -9,6 +9,7 @@ import {
   generateOptimizedDecisionTable,
   generateLearningModeTable,
   getFeasibleConditions,
+  findUnreachableEffects,
 } from '../services/decisionTableCalculator';
 import {
   truthAnd,
@@ -824,5 +825,29 @@ p3 := p1 OR p2
     for (let i = 0; i < learning!.conditions.length; i++) {
       expect(learning!.conditions[i].id).toBe(i + 1);
     }
+  });
+});
+
+describe('Unreachable effect detection', () => {
+  test('flags an effect that can never be true under constraints', () => {
+    const result = parseLogicalDSL(`
+a: "a"
+b: "b"
+e := a AND b
+ONE(a, b)
+`);
+    // ONE(a, b) makes "a AND b" impossible, so e is never true.
+    const table = generateOptimizedDecisionTable(result.model);
+    expect(findUnreachableEffects(table)).toContain('e');
+  });
+
+  test('does not flag a reachable effect', () => {
+    const result = parseLogicalDSL(`
+a: "a"
+b: "b"
+e := a OR b
+`);
+    const table = generateOptimizedDecisionTable(result.model);
+    expect(findUnreachableEffects(table)).not.toContain('e');
   });
 });

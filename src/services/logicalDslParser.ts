@@ -38,6 +38,7 @@ import type {
 } from '../types/logical';
 
 import { ref, not, and, or } from '../types/logical';
+import { findConstraintsOnDerivedNodes } from './modelValidation';
 
 // =============================================================================
 // Parse Result
@@ -276,6 +277,8 @@ class Parser {
       this.parseStatement();
     }
 
+    this.validateConstraintMembers();
+
     return {
       success: this.errors.length === 0,
       model: {
@@ -285,6 +288,23 @@ class Parser {
       errors: this.errors,
       warnings: this.warnings,
     };
+  }
+
+  /**
+   * Warn if any constraint references a derived (non-cause) node.
+   * Constraints restrict input (cause) combinations; a member that is an
+   * intermediate/effect node is meaningless (DSL_Grammar_Specification, Validation).
+   */
+  private validateConstraintMembers(): void {
+    const derived = findConstraintsOnDerivedNodes({
+      nodes: this.nodes,
+      constraints: this.constraints,
+    });
+    for (const name of derived) {
+      this.warnings.push(
+        `Constraint references '${name}', a derived (intermediate/effect) node, not a cause. Constraints apply to cause nodes only — this has no effect.`
+      );
+    }
   }
 
   private parseStatement(): void {

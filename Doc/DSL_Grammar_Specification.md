@@ -1,6 +1,6 @@
-# NeoCEG DSL Grammar Specification v1.5
+# NeoCEG DSL Grammar Specification v1.6
 
-**Status**: Finalized; latest revision v1.5 (2026-06-14) / 確定済み・最新改訂 v1.5（2026-06-14）
+**Status**: Finalized; latest revision v1.6 (2026-06-15) / 確定済み・最新改訂 v1.6（2026-06-15）
 **Language**: English (primary) / 日本語 (説明)
 
 ---
@@ -23,7 +23,7 @@ This document defines the formal grammar for the NeoCEG DSL (Domain-Specific Lan
 ## EBNF Grammar / EBNF文法
 
 ```ebnf
-(* NeoCEG DSL Grammar v1.5 *)
+(* NeoCEG DSL Grammar v1.6 *)
 (* Authoring note (incl. AI): to build a graph from requirements, output ONLY    *)
 (* .nceg DSL conforming to this grammar — no prose, no code fences, no comments   *)
 (* of your own. Names follow the factor = level convention below.                 *)
@@ -64,6 +64,17 @@ effect_def      = ":=" expression ;
 (* The factor = level text is the node's quoted LABEL; reference it by a short  *)
 (* identifier that mirrors it (no spaces/'='):  天候_雨 : "天候 = 雨".          *)
 (* Levels of one factor are mutually exclusive -> usually a ONE(...) constraint.*)
+(* --- Factor IDENTITY: group levels by MUTUAL EXCLUSIVITY, not by wording. ---  *)
+(* One real attribute = ONE factor = ONE constraint over ALL its levels. Levels  *)
+(* may be worded heterogeneously (a tier, a state, a residual "other") and still *)
+(* be one factor; a residual level is valid. Never split or duplicate a factor.  *)
+(*   account = {guest, free, premium, enterprise}                                *)
+(*        ->  ONE(guest, free, premium, enterprise)                              *)
+(*   ❌ split:     ONE(guest, member) + ONE(free, premium, enterprise)           *)
+(*                 — allows guest AND premium (an anonymous user on a paid plan)  *)
+(*   ❌ duplicate: an extra ONE(paid, unpaid) restating premium/enterprise vs    *)
+(*                 the rest — allows enterprise AND unpaid. Instead derive a node:*)
+(*                   paid := premium OR enterprise                               *)
 (* Name a CAUSE/INTERMEDIATE by its attribute, not a downstream consequence:    *)
 (*   ❌ cause 要傘 (a conclusion)      ✅ cause 天候 = 雨 (the attribute)         *)
 (* An EFFECT *is* the conclusion, so name it by the outcome (output factor=level)*)
@@ -109,6 +120,10 @@ literal         = [ "NOT" ] identifier ;
 constraint_stmt = symmetric_constraint
                 | directional_constraint ;
 
+(* Constraint members are CAUSE nodes only — constraints restrict INPUT combos.   *)
+(*   ❌ ONE(can_export, read_only)   — these are effects (derived permissions)     *)
+(* Output (effect) exclusivity is a CONSEQUENCE of the cause logic + cause         *)
+(* constraints; never assert it by constraining effects.                          *)
 (* Symmetric constraints: ONE, EXCL, INCL *)
 (* ✅ ONE(n1, n2, n3)   ✅ EXCL(n1, n2)   ✅ INCL(n1, n2)                       *)
 symmetric_constraint = ( "ONE" | "EXCL" | "INCL" )
@@ -498,8 +513,18 @@ MASK(NOT A -> B, C)   # If A=F then B=M and C=M
 - 式と制約内のすべてのノード参照は定義されている必要がある
 - Circular references are allowed (they will be detected at evaluation time)
 - 循環参照は許可される（評価時に検出される）
-- Constraint members should refer to cause nodes only (checked at runtime)
-- 制約のメンバーは原因ノードのみを参照すべき（実行時にチェック）
+- Constraint members must refer to **cause nodes** only. A member that is a derived
+  (intermediate/effect) node is meaningless — constraints restrict input (cause)
+  combinations, and a derived value cannot be freely chosen. The tool emits a
+  **warning** (not a hard error). E.g. `ONE(...)` over effect nodes.
+- 制約のメンバーは**原因ノード**のみ。派生（中間/結果）ノードを指す制約は無意味 ── 制約は入力
+  （原因）の組合せを縛るもので、派生値は自由に選べない。ツールは**警告**を出す（ハードエラーに
+  はしない）。例：効果ノードへの `ONE(...)`。
+- An **effect that can never be true** in any feasible test condition (an unreachable /
+  "dead" effect) is surfaced as a **warning**. It usually signals a modeling error —
+  over-constraining, or contradictory factors that suppress the effect's inputs.
+- どの実行可能なテスト条件でも**真にならない効果**（到達不能・「死んだ」効果）は**警告**として
+  示す。たいていモデリング誤り（過剰な制約、または効果の入力を成立させない因子の矛盾）の兆候。
 
 ---
 
@@ -556,3 +581,4 @@ This DSL format is **NOT compatible** with CEGTest 1.6's CSV format.
 | 2026-06-13 | 1.3 | Restrict expressions to **one gate per node** (no parentheses / nesting / AND-OR mixing) and add **Pragmatics §P1–P5** (node = proposition; expression is a naming hint; expression-as-name is a last resort); also **remove the observable flag entirely** (`[unobservable]`/`[observable]` no longer recognised) / 式を**1ノード1ゲート**に制限（括弧・入れ子・AND/OR混在不可）し**語用論 §P1–P5**を追加（ノード＝命題／式は命名の手がかり／式の名前代用は最後の手段）、さらに**観測フラグを完全削除**（`[unobservable]`/`[observable]` は非対応に） |
 | 2026-06-13 | 1.4 | Add inline ✅/❌ examples to the EBNF comments (single-gate expressions, REQ/MASK NOT rules, constraints, layout, escapes), mirroring the parser tests. Grammar unchanged — illustrative only, aids human and AI authors / EBNFコメントに ✅/❌ 例を追加（単一ゲート式・REQ/MASKのNOT規則・制約・レイアウト・エスケープ）、パーサのテストと一致。文法は不変＝例示のみ、人間とAIの作成を補助 |
 | 2026-06-14 | 1.5 | Add the **`factor = level` (equivalence class) naming convention** (Pragmatics §P6) for unification with the sibling tool NeoCombi's factor/level domain; fold a compact digest + an AI output-format note into the EBNF comments. Includes the English-only caution (no `or`/`and`/`not` or raw comparisons inside a level) and the identifier-vs-label rule. Examples use a **deliberately unrelated domain (weather → outfit)** so the spec carries no worked answer for any benchmark used to evaluate AI generation. Grammar unchanged / NeoCombi の factor/level ドメインと統一するため **`factor = level`（同値クラス）命名規則**（語用論 §P6）を追加。圧縮ダイジェストと AI 向け出力体裁メモを EBNF コメントへ畳み込み。英語限定の注意（水準に `or`/`and`/`not` や生比較を入れない）と識別子／ラベルの規則を含む。例は **わざと無関係なドメイン（天候→服装）** を使い、AI 生成の評価に使う題材の答えを仕様に載せない。文法は不変 |
+| 2026-06-15 | 1.6 | Add EBNF-comment pragmatics: **factor identity** (one attribute = one factor = one ONE; group levels by mutual exclusivity, not wording; never split or duplicate a factor; a residual level is valid) and **constraint members are cause nodes only** (output/effect exclusivity is a consequence of the cause logic, never asserted on effects). Example uses an unrelated SaaS account domain. Grammar unchanged — illustrative only / EBNFコメントに語用論を追加：**因子の同一性**（1属性＝1因子＝1つの ONE、水準は相互排他で見分け語彙では分けない、因子を分割・重複させない、残余水準も正当）と**制約メンバーは原因ノードのみ**（出力の排他は原因ロジックの帰結で、効果には課さない）。例は無関係な SaaS アカウント領域。文法は不変＝例示のみ |
