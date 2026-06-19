@@ -11,6 +11,8 @@
  * Output options:
  *   -o, --output FILE   Write output to FILE (default: stdout)
  *   --coverage          Output coverage table CSV instead of decision table
+ *   --all-combinations  Output the full decision table (all 2^n combinations,
+ *                       with per-column feasibility flags); errors if 2^n > 256
  *   --svg               Output cause-effect graph as SVG
  *
  * Information:
@@ -23,6 +25,7 @@ import { writeFileSync } from 'fs';
 import { parseLogicalDSL } from './services/logicalDslParser.js';
 import {
   generateOptimizedDecisionTableWithState,
+  generateLearningModeTable,
   getFeasibleConditions,
   getNodeLabel,
   findUnreachableEffects,
@@ -34,7 +37,7 @@ import {
 } from './services/csvGenerator.js';
 import { generateGraphSVG } from './services/cliSvgGenerator.js';
 import type { LogicalModel } from './types/logical.js';
-import type { DecisionTable } from './types/decisionTable.js';
+import type { DecisionTable, TestCondition } from './types/decisionTable.js';
 
 // ---------------------------------------------------------------------------
 // Argument parsing
@@ -43,7 +46,7 @@ import type { DecisionTable } from './types/decisionTable.js';
 interface CliArgs {
   inputFile: string | null;
   outputFile: string | null;
-  mode: 'decision-table' | 'coverage' | 'svg';
+  mode: 'decision-table' | 'all-combinations' | 'coverage' | 'svg';
   help: boolean;
   version: boolean;
 }
@@ -66,6 +69,8 @@ function parseArgs(argv: string[]): CliArgs {
       args.version = true;
     } else if (arg === '--coverage') {
       args.mode = 'coverage';
+    } else if (arg === '--all-combinations') {
+      args.mode = 'all-combinations';
     } else if (arg === '--svg') {
       args.mode = 'svg';
     } else if (arg === '-o' || arg === '--output') {
@@ -104,6 +109,8 @@ Input:
 Output options:
   -o, --output FILE   Write output to FILE (default: stdout)
   --coverage          Output coverage table CSV instead of decision table
+  --all-combinations  Output the full decision table (all 2^n combinations,
+                      with per-column feasibility flags); errors if 2^n > 256
   --svg               Output cause-effect graph as SVG
 
 Information:
@@ -111,8 +118,10 @@ Information:
   --version           Show version number
 
 Examples:
-  neoceg input.nceg                          # Decision table to stdout
-  neoceg -o dt.csv input.nceg                # Decision table to file
+  neoceg input.nceg                          # Optimized decision table to stdout
+  neoceg -o dt.csv input.nceg                # Optimized decision table to file
+  neoceg --all-combinations input.nceg       # Full (2^n) decision table to stdout
+  neoceg --all-combinations -o all.csv in.nceg # Full decision table to file
   neoceg --coverage input.nceg               # Coverage table to stdout
   neoceg --coverage -o cov.csv input.nceg    # Coverage table to file
   neoceg --svg -o graph.svg input.nceg       # Graph SVG to file
@@ -225,10 +234,28 @@ function main(): void {
   const model = parseInput(input);
 
   // Generate output based on mode
-  if (args.mode === 'decision-table') {
+  if (args.mode === 'decision-table' || args.mode === 'all-combinations') {
     const { table } = generateOptimizedDecisionTableWithState(model);
+
+    // Choose columns: feasible-only (optimized) or all 2^n combinations.
+    // For --all-combinations, resolve the learning-mode table FIRST. It returns
+    // null (not a partial table) when 2^n > 256, so this check happens before a
+    // single byte of output is produced — guaranteeing no partial/substitute
+    // table is ever emitted (CLI-SR-014/015).
+    let conditions: TestCondition[];
+    if (args.mode === 'all-combinations') {
+      const learningTable = generateLearningModeTable(model, table);
+      if (!learningTable) {
+        error(
+          `Too many causes for --all-combinations: 2^${table.causeIds.length} exceeds the 256-column limit. No table emitted.`
+        );
+      }
+      conditions = learningTable.conditions;
+    } else {
+      conditions = getFeasibleConditions(table);
+    }
+
     warnUnreachableEffects(table, model);
-    const conditions = getFeasibleConditions(table);
     const nodeLabels = buildNodeLabels(model);
     const csv = generateDecisionTableCSV(
       table,

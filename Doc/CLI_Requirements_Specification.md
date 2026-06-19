@@ -3,8 +3,9 @@
 | Item / 項目 | Content / 内容 |
 |------|---------|
 | Document / 文書 | NeoCEG CLI Requirements Specification / NeoCEG CLI 要求仕様書 |
-| Version / バージョン | 0.1 (Draft / ドラフト) |
+| Version / バージョン | 0.2 (Draft / ドラフト) |
 | Created / 作成日 | 2026-03-29 |
+| Updated / 更新日 | 2026-06-19 |
 | Status / 状態 | Draft / ドラフト |
 
 ---
@@ -42,6 +43,10 @@ Same as [Requirements_Specification.md](./Requirements_Specification.md) §1.2.
 | CLI-UR-001 | Generate a decision table from a finalized .nceg file in an automated pipeline / 確定済みの .nceg ファイルからデシジョンテーブルを自動パイプラインで生成する | High / 高 |
 | CLI-UR-002 | Generate a coverage table for audit and traceability / 監査・トレーサビリティのためにカバレッジ表を生成する | Medium / 中 |
 | CLI-UR-003 | Generate a graph image for inclusion in test design documents and reports / テスト設計書やレポートに含めるグラフ画像を生成する | Medium / 中 |
+| CLI-UR-004 | Generate the full decision table (all input combinations, with constraint feasibility) headlessly for batch/automation use / 全入力組み合わせ（制約による実行可否付き）の完全デシジョンテーブルを、バッチ・自動化用途でヘッドレスに生成する | Medium / 中 |
+
+> **Note / 注 (CLI-UR-004)**: This is the same capability the GUI already provides via its learning mode plus CSV export. What CLI-UR-004 adds is **a headless means of producing it** — not the capability itself. The interactive case is already covered by the GUI; CLI-UR-004 covers the automation/batch case the GUI cannot reach. See [ADR-001](adr/ADR-001-cli-full-decision-table.yaml).
+> / CLI-UR-004 は、GUI が学習モード＋CSV エクスポートで**既に提供している能力**と同一である。CLI-UR-004 が加えるのは**それをヘッドレスで生成する手段**であって、能力そのものではない。対話的な利用は GUI が既にカバーしており、CLI-UR-004 は GUI が届かない自動化・バッチ文脈をカバーする。[ADR-001](adr/ADR-001-cli-full-decision-table.yaml) 参照。
 
 ---
 
@@ -86,6 +91,9 @@ CLI-SR-004:
 | CLI-SR-010 | Output decision table in CSV format (default) / デシジョンテーブルを CSV 形式で出力する（デフォルト） | CLI-UR-001 |
 | CLI-SR-011 | Output coverage table in CSV format via `--coverage` option / `--coverage` オプションによりカバレッジ表を CSV 形式で出力する | CLI-UR-002 |
 | CLI-SR-012 | Output cause-effect graph in SVG format via `--svg` option / `--svg` オプションにより原因結果グラフを SVG 形式で出力する | CLI-UR-003 |
+| CLI-SR-013 | Output the full decision table — all 2^n cause combinations, each column flagged feasible or constraint-excluded — in CSV format via `--all-combinations` option / `--all-combinations` オプションにより、全 2^n 原因組み合わせを各列の実行可否（有効/制約除外）フラグ付きで完全デシジョンテーブルとして CSV 出力する | CLI-UR-004 |
+| CLI-SR-014 | Detect 2^n > 256 **before producing any output**, then report an error (non-zero exit) and write **no table at all** — no partial table, no substitute table / 出力を生成する**前に** 2^n > 256 を検出し、エラー（非ゼロ終了）を報告して**表を一切出力しない**（途中までの表も、別の表も出さない） | CLI-UR-004 |
+| CLI-SR-015 | On any error, write nothing to stdout and leave any `-o` target file unmodified; emit diagnostics to stderr only and exit non-zero (never emit a partial table) / いかなるエラー時も stdout には何も書かず、`-o` 指定先の既存ファイルも変更しない。診断は stderr のみに出し非ゼロ終了する（途中までの表を決して出さない） | CLI-UR-001 |
 
 **Rule Scenarios / ルールシナリオ**:
 
@@ -102,6 +110,44 @@ CLI-SR-012:
 [Action]   User runs: neoceg --svg -o graph.svg input.nceg
 [Outcome]  SVG file containing the cause-effect graph is written to the specified file
 ```
+
+CLI-SR-013:
+```
+[Context]  An automated report needs the complete decision table with feasibility flags
+[Action]   User runs: neoceg --all-combinations input.nceg
+[Outcome]  Full 2^n decision table CSV is written to stdout, including a status row
+           that marks each constraint-excluded (infeasible) column
+```
+
+CLI-SR-014 + CLI-SR-015:
+```
+[Context]  The graph has 9 causes (2^9 = 512 > 256)
+[Action]   User runs: neoceg --all-combinations big.nceg -o out.csv
+[Outcome]  An error is written to stderr and the command exits non-zero, stating that
+           the full table exceeds the 256-column limit. Nothing is written to stdout,
+           and out.csv is NOT created or modified — no partial table is ever emitted.
+```
+
+#### 3.2.1 Reuse note (full decision table) / 再利用方針（完全デシジョンテーブル）
+
+CLI-SR-013/014 add **no new algorithm** (per §1.2). They reuse the exact core the GUI uses for its learning mode:
+
+- `generateLearningModeTable(model, table)` in `src/services/decisionTableCalculator.ts` (SR-025/SR-026) produces the all-2^n conditions, with constraint-excluded columns flagged, and returns `null` when 2^n > 256.
+- `generateDecisionTableCSV(...)` already emits the feasibility **status row** when excluded conditions exist — no change needed.
+
+The CLI's existing decision-table path differs from this only in **one line**: it uses `getFeasibleConditions(table)`. For `--all-combinations`, select `generateLearningModeTable(model, table)?.conditions` instead (this mirrors `csvExporter.ts` `computeTablesFromGraph`'s learning-mode branch). When the helper returns `null`, error out per CLI-SR-014.
+
+This ordering **inherently** satisfies CLI-SR-014/015: `generateLearningModeTable` returns `null` (never a partial table) *before* any CSV is generated, and the CLI writes output exactly once, after the table is fully built. The `null` check therefore happens before a single byte is written — no partial output is structurally possible.
+
+CLI-SR-013/014 は新規アルゴリズムを追加しない（§1.2 準拠）。GUI の学習モードと同一コアを再利用する：
+
+- `src/services/decisionTableCalculator.ts` の `generateLearningModeTable(model, table)`（SR-025/SR-026）が全 2^n 条件を生成し、制約除外列をフラグ付けし、2^n>256 で `null` を返す。
+- `generateDecisionTableCSV(...)` は除外条件が存在するとき実行可否の**ステータス行**を既に出力する（変更不要）。
+
+CLI の既存デシジョンテーブル経路との差は **1 行**のみ：現在は `getFeasibleConditions(table)` を使う。`--all-combinations` ではこれを `generateLearningModeTable(model, table)?.conditions` に差し替える（`csvExporter.ts` の `computeTablesFromGraph` 学習モード分岐と同型）。`null` の場合は CLI-SR-014 に従いエラー終了する。
+
+> **Confirmed / 確定**: Flag name is `--all-combinations`. The name makes explicit that it is the **combinations** that are exhaustive (plain `--full` was rejected as ambiguous — full of *what?*). The internal name *learning mode* is deliberately not surfaced as the flag — the CLI user's intent is "give me every combination," not "teach me".
+> / **確定**: フラグ名は `--all-combinations`。**組み合わせ**が全網羅であることを明示する（単なる `--full` は「何が full か」が曖昧として不採用）。内部名称「学習モード」はフラグに用いない — CLI 利用者の意図は「全組み合わせが欲しい」であって「学習したい」ではない。
 
 ### 3.3 SVG Output / SVG 出力
 
@@ -209,6 +255,9 @@ Input:
 Output options:
   -o, --output FILE   Write output to FILE (default: stdout)
   --coverage          Output coverage table CSV instead of decision table
+  --all-combinations              Output the full decision table (all 2^n combinations,
+                      with per-column feasibility flags) instead of the
+                      optimized one; errors if 2^n > 256
   --svg               Output cause-effect graph as SVG
 
 Information:
@@ -216,8 +265,10 @@ Information:
   --version           Show version number
 
 Examples:
-  neoceg input.nceg                          # Decision table to stdout
-  neoceg -o dt.csv input.nceg                # Decision table to file
+  neoceg input.nceg                          # Optimized decision table to stdout
+  neoceg -o dt.csv input.nceg                # Optimized decision table to file
+  neoceg --all-combinations input.nceg                   # Full (2^n) decision table to stdout
+  neoceg --all-combinations -o all.csv input.nceg        # Full decision table to file
   neoceg --coverage input.nceg               # Coverage table to stdout
   neoceg --coverage -o cov.csv input.nceg    # Coverage table to file
   neoceg --svg -o graph.svg input.nceg       # Graph SVG to file
@@ -232,3 +283,4 @@ Examples:
 | Date / 日付 | Version / バージョン | Change / 変更 |
 |---|---|---|
 | 2026-03-29 | 0.1 | Initial draft / 初版ドラフト |
+| 2026-06-19 | 0.2 | Add full decision table output (CLI-UR-004, CLI-SR-013/014, `--all-combinations`), reusing the GUI learning-mode core. See ADR-001. / 完全デシジョンテーブル出力（CLI-UR-004・CLI-SR-013/014・`--all-combinations`）を追加。GUI 学習モードのコアを再利用。ADR-001 参照。 |
