@@ -1,0 +1,84 @@
+id: ADR-001
+title: "CLIに全デシジョンテーブル（学習モード相当）出力を追加する"
+date: "2026-06-19"
+status: accepted  # proposed | accepted | deprecated | superseded
+superseded_by: null
+
+participants:
+  author: "sho1884"
+  approver: "sho1884"
+  last_updated: "2026-06-19"
+
+context:
+  problem: |
+    NeoCEG は原因結果グラフ法のツールであり、本来は全入力組み合わせ（2^n）の
+    デシジョンテーブルを必要としない。テストの削減（最適化表）が本来の出力である。
+    一方で、(1) 全組み合わせとの関係を理解することには学習効果があるため学習モードを設け、
+    (2) 「全デシジョンテーブルそのものを使いたい」という別ニーズにも同じ学習モードで応える
+    という経緯がある。
+
+    GUI はこのニーズを既に満たしている。表示モードを学習モードに切り替えて CSV を
+    エクスポートすれば、全 2^n の表が、制約による有効/無効（除外）のステータス行付きで得られる
+    (generateLearningModeTable + 既存 CSV 経路、SR-025/SR-026)。
+
+    しかし CLI には学習モード出力が無い (CLI 出力は最適化デシジョンテーブル/カバレッジ/SVG のみ)。
+    そのため、ヘッドレス／自動化（CI/CD・バッチ）の文脈から同じ表を得る手段が存在しない。
+    学習モードのコア実装は共有モジュール src/services/decisionTableCalculator.ts に
+    残存しており、CLI が import していないだけである。
+  drivers:
+    - "全デシジョンテーブルを使いたいという、CEG法本来の削減目的とは別のステークホルダーニーズ"
+    - "そのニーズがヘッドレス／自動化の文脈にも存在する（GUI の対話操作では届かない）"
+    - "学習モード生成は既存・共有済みで、CLI から再利用できる（§1.2 新規アルゴリズム不追加の方針と整合）"
+
+decision:
+  summary: "全デシジョンテーブル（学習モード相当）出力をCLIに追加する。新規アルゴリズムは作らず既存の学習モード生成を再利用する"
+  detail: |
+    CLI に、全 2^n 組み合わせを制約による有効/無効フラグ付きで出力する
+    「全デシジョンテーブル（＝GUI の学習モード相当）」出力モードを追加することにした。
+
+    理由（誤読を避けて明記する）：
+    全デシジョンテーブルのニーズは、GUI の学習モード＋CSV エクスポートで既に満たされている。
+    ただしそれは対話操作を前提とするため、ヘッドレス／自動化の文脈からは利用できない。
+    CLI に同じ出力を設け、対話を介さず同一の表・同一の feasibility 情報を得られるようにする。
+    埋めるのは「ニーズ」ではなく「ヘッドレスでそれを提供する手段」である。
+
+    新規アルゴリズムは作らない。GUI が使う generateLearningModeTable(model, table) と
+    既存の generateDecisionTableCSV をそのまま CLI から呼ぶ。GUI 側
+    (csvExporter.ts computeTablesFromGraph の学習モード分岐) は、最適化表の条件を
+    学習モード条件へ差し替えて同じ CSV 生成器に渡しているだけであり、CLI でも
+    「getFeasibleConditions(table) を学習モード条件へ差し替える1点」で実現できる。
+    制約による有効/無効は CSV のステータス行として既存実装が出力する。
+
+    2^n が 256 を超える場合 (SR-026) は generateLearningModeTable が null を返す。
+    CLI は黙って別の表に差し替えず、明示的にエラー終了する（非対話ゆえ予期せぬ結果を避ける）。
+    重要：チェックは出力生成より前に行い、エラー時は stdout に一切書かず（途中までの表も出さない）、
+    -o 指定先の既存ファイルも変更しない。null は部分表ではなく「表が無い」を意味し、CSV 生成より前に
+    返るため、CLI が出力を一度だけ書く構造上、部分出力は原理的に起こり得ない（CLI-SR-014/015）。
+
+neglected:
+  - option: "学習モードはGUI専用のままにし、CLIには追加しない"
+    because: "ヘッドレス／自動化の文脈で全デシジョンテーブルを得る手段が無いままになり、要望がCLI側で未充足になるため"
+  - option: "CLIに全表生成の新ロジックを実装する"
+    because: "学習モード生成は共有モジュールに既存（CLIが未importなだけ）で、再実装は重複とGUIとの挙動乖離を生むため"
+  - option: "2^n>256でGUIと同様に自動でプラクティス表へフォールバックする"
+    because: "非対話のCLIが要求と異なる表を黙って返すと、自動パイプラインで予期せぬ結果を生むため、明示エラーにすべきため"
+
+consequences:
+  positive:
+    - "既存コア（generateLearningModeTable＋generateDecisionTableCSV）の再利用で、CLI変更は条件差し替え1点に収まる"
+    - "GUIとCLIで同一の表・同一のfeasibility情報になり、出力が一貫する"
+    - "CLI仕様§1.2『新規アルゴリズムを追加しない』方針を維持できる"
+  negative:
+    - "CLIの出力モード・フラグ・テスト・ドキュメントが1つ増える"
+    - "学習モードの256列上限という制限をCLIにも持ち込む"
+  risks:
+    - "2^n>256時の挙動をGUI（自動切替）とCLI（エラー・無出力）で変える点が、利用者に差異として映る可能性がある"
+
+decisions_log:
+  - "2026-06-19: フラグ名を --all-combinations に確定（--full は『何が full か』曖昧として不採用）"
+
+references:
+  - "Doc/CLI_Requirements_Specification.md §1.2 スコープ（既存コア再利用・新規アルゴリズム不追加）, §3.2 出力モード（追加先）"
+  - "src/services/csvExporter.ts computeTablesFromGraph（GUIの学習モードCSV経路＝再利用の手本）"
+  - "src/services/decisionTableCalculator.ts generateLearningModeTable（再利用するコア, SR-025/SR-026）"
+  - "src/cli.ts decision-table 経路（差し替え対象は getFeasibleConditions の1点）"

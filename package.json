@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "build:cli": "node --loader tsx/esm src/cli.ts --help > /dev/null",
+    "build:cli": "node --import tsx src/cli.ts --help > /dev/null",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest",

@@ -1,0 +1,47 @@
+# ADR Template v1.3
+# AIへの指示:
+# 1. 以下のスキーマに従ってADRを生成すること。
+# 2. 日本語で記述し、翻訳調を避け、簡潔で論理的な技術文書として作成すること。
+# 3. 'neglected'セクションでは、なぜ不採用としたかのトレードオフを明確に記述すること。
+
+id: ADR-NNN
+title: "決定事項の要約"
+date: "YYYY-MM-DD"
+status: proposed  # proposed | accepted | deprecated | superseded
+superseded_by: null  # statusがsupersededの場合、後継ADRのidを記載
+
+# 責任の所在
+participants:
+  author: "起草者名"
+  approver: "承認者名（またはチーム名）"
+  last_updated: "YYYY-MM-DD"
+
+context:
+  problem: |
+    解決しようとしている問題、背景、制約。
+    価値中立な事実と、技術的・組織的な状況を記述。
+  drivers:
+    - "意思決定に影響した主要な要因（例：パフォーマンス、品質、納期）"
+
+decision:
+  summary: "決定内容の1行要約"
+  detail: |
+    「〜することにした」という能動的な表現を用い、
+    論理的な選定理由（Rationale）を含めて記述する。
+
+neglected:  # 採用しなかった選択肢とその理由——反実仮想の記録
+  - option: "検討したが採用しなかった案A"
+    because: "採用しなかった決定的な理由（一文）"
+  - option: "検討したが採用しなかった案B"
+    because: "採用しなかった決定的な理由（一文）"
+
+consequences:
+  positive:
+    - "決定によって得られる直接的なメリット"
+  negative:
+    - "この決定により受け入れる負債や、制約されること"
+  risks:
+    - "将来的に問題になる可能性がある不確実な懸念事項"
+
+references:
+  - "関連ドキュメントのURLや関連ADRのID"
