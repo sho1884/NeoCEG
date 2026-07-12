@@ -19,6 +19,13 @@ echo "Copying Doc/*.md -> $DEST/"
 cp "$NEOCEG_DIR"/Doc/*.md "$DEST/"
 cp -r "$NEOCEG_DIR"/Doc/requirements "$DEST/"
 
+# Figures referenced by the manuals (e.g. User_Manual.md uses images/...).
+# Without this the published MkDocs site would 404 the screenshots.
+if [ -d "$NEOCEG_DIR/Doc/images" ]; then
+  echo "Copying Doc/images -> $DEST/images/"
+  cp -r "$NEOCEG_DIR"/Doc/images "$DEST/"
+fi
+
 echo "Done. Files copied to $DEST"
 
 if [ "$1" = "--push" ]; then

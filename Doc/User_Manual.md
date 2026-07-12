@@ -1,8 +1,8 @@
 # NeoCEG User Manual / NeoCEG ユーザーマニュアル
 
-**Version**: 1.1
-**Date**: 2026-06-14
-**Status**: Updated for current release / 現行リリースに更新
+**Version**: 1.2
+**Date**: 2026-07-12
+**Status**: Updated for current release / 現行リリースに更新 (added screen figures / 画面図を追加)
 
 ---
 
@@ -11,6 +11,10 @@
 NeoCEG is a modern web-based Cause-Effect Graph (CEG) test design tool. It provides a graphical editor for building CEGs and automatically generates optimized decision tables with expression coverage analysis.
 
 NeoCEGは、原因結果グラフ（CEG）によるテスト設計のためのWebベースツールです。CEGをグラフィカルに編集し、最適化されたデシジョンテーブルと論理式カバレッジ分析を自動生成します。
+
+![NeoCEG main screen — the cause-effect graph editor with the auto-generated decision table below / NeoCEG のメイン画面 — 原因結果グラフエディタと、その下に自動生成されるデシジョンテーブル](images/Screenshot_NeoCEG1.png)
+
+<p align="center"><em>Editing an admission-fee model: the graph canvas (top) and the decision table it generates in real time (bottom). / 入場料モデルの編集例：上がグラフキャンバス、下がそれからリアルタイム生成されるデシジョンテーブル。</em></p>
 
 **Prerequisites / 前提知識**: This manual assumes familiarity with the Cause-Effect Graph methodology as described in Myers, Badgett, Sandler "The Art of Software Testing" 3rd Ed., Chapter 4, or ISO/IEC/IEEE 29119-4.
 
@@ -425,6 +429,10 @@ These are advisories, not errors — the tool works normally; they just invite a
 The **Skeleton** tab shows a program control-structure skeleton (pseudo-code) derived from the decision table — the nested `if`/`else` shape an implementation would take to realize the same cause→effect behavior. It is read-only and updates as you edit the graph.
 
 **Skeleton** タブは、デシジョンテーブルから導いた制御構造スケルトン（擬似コード）——同じ原因→結果の振る舞いを実装するときに取る `if`/`else` のネスト構造——を表示します。読み取り専用で、グラフ編集に追随します。
+
+![The Skeleton tab showing the generated if/else pseudo-code for the graph above / 上のグラフから生成された if/else 擬似コードを表示する Skeleton タブ](images/Screenshot_NeoCEG2.png)
+
+<p align="center"><em>The same graph with the <strong>Skeleton</strong> tab open — each effect appears as a labelled <code>return</code> inside the nested <code>if</code>/<code>else</code> structure. / 同じグラフで <strong>Skeleton</strong> タブを開いた状態 — 各結果がネストした <code>if</code>/<code>else</code> の中のラベル付き <code>return</code> として現れる。</em></p>
 
 - **Copy** / **Download** in the tab header (and File menu) export the skeleton as plain text (`skeleton_<date>.txt`). / タブヘッダ（および File メニュー）の **Copy** / **Download** で擬似コードをプレーンテキスト出力（`skeleton_<date>.txt`）。
 - The skeleton assumes the constraints hold and is verified equivalent to the graph over the feasible input space; when that cannot be guaranteed, the validity banner (§7.6) warns you. / スケルトンは制約成立を前提とし、実行可能入力全体でグラフと一致することを検証する。保証できないときは妥当性バナー（§7.6）が知らせる。
