@@ -28,6 +28,8 @@
     "src/services/decisionTableCalculator.ts",
     "src/services/coverageTableCalculator.ts",
     "src/services/cegAlgorithm.ts",
+    "src/services/apiSerialize.ts",
+    "src/services/httpApi.ts",
     "src/types/**/*.ts",
     "src/constants/messages.ts"
   ]

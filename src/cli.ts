@@ -36,6 +36,7 @@ import {
   generateCoverageTableCSV,
 } from './services/csvGenerator.js';
 import { generateGraphSVG } from './services/cliSvgGenerator.js';
+import { runServe, resolveServeConfig, type ServeConfig } from './services/httpApi.js';
 import type { LogicalModel } from './types/logical.js';
 import type { DecisionTable, TestCondition } from './types/decisionTable.js';
 
@@ -116,6 +117,11 @@ Output options:
 Information:
   -h, --help          Show help message
   --version           Show version number
+
+Serve mode (HTTP API — see CLI spec §7):
+  neoceg serve [--host HOST] [--port PORT] [--cors-origin ORIGIN]
+                      Start a long-running HTTP server (default 127.0.0.1:8091)
+                      exposing GET /health and POST /generate
 
 Examples:
   neoceg input.nceg                          # Optimized decision table to stdout
@@ -198,10 +204,55 @@ function sortByY(ids: string[], model: LogicalModel): string[] {
 }
 
 // ---------------------------------------------------------------------------
+// Serve mode
+// ---------------------------------------------------------------------------
+
+/** Parse `neoceg serve` options (only --host / --port / --cors-origin apply). */
+function parseServeArgs(argv: string[]): Partial<ServeConfig> {
+  const flags: Partial<ServeConfig> = {};
+  let i = 0;
+  while (i < argv.length) {
+    const arg = argv[i];
+    if (arg === '--host') {
+      flags.host = requireValue(argv, ++i, '--host');
+    } else if (arg === '--port') {
+      const raw = requireValue(argv, ++i, '--port');
+      const port = Number(raw);
+      if (!Number.isInteger(port) || port < 1 || port > 65535) {
+        error(`Invalid --port value: ${raw}`);
+      }
+      flags.port = port;
+    } else if (arg === '--cors-origin') {
+      flags.corsOrigin = requireValue(argv, ++i, '--cors-origin');
+    } else {
+      error(`Unknown serve option: ${arg}`);
+    }
+    i++;
+  }
+  return flags;
+}
+
+function requireValue(argv: string[], i: number, option: string): string {
+  if (i >= argv.length) {
+    error(`Option ${option} requires a value`);
+  }
+  return argv[i];
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
 function main(): void {
+  // Serve mode: the literal `serve` subcommand switches to the HTTP server and
+  // never returns (long-running). Intercept before batch arg parsing, which
+  // would otherwise treat `serve` as an input file (§3.6).
+  if (process.argv[2] === 'serve') {
+    const flags = parseServeArgs(process.argv.slice(3));
+    runServe(resolveServeConfig(flags));
+    return;
+  }
+
   const args = parseArgs(process.argv);
 
   if (args.help) {

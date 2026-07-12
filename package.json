@@ -11,6 +11,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "build:cli": "node --import tsx src/cli.ts --help > /dev/null",
+    "serve": "node --import tsx src/cli.ts serve",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest",

@@ -1,0 +1,16 @@
+node_modules
+dist
+build
+out
+coverage
+.git
+.github
+.vercel
+.claude
+.idea
+.vscode
+*.log
+tmp
+temp
+Doc
+public-files

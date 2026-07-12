@@ -1,0 +1,26 @@
+# neoceg-api — reference compose fragment for the shared demo box.
+#
+# NeoCEG is a separate repo, so — like the sibling NeoCombi PICT service — its
+# API is wired into the shared ModelLogue stack via the SERVER-ONLY
+# docker-compose.override.yml (not the in-repo prod compose). Merge this service
+# into that override on the box. The source is rsynced to /opt/neoceg.
+#
+# Only the shared Caddy front publishes a port; neoceg-api is reachable only
+# over the internal compose network and is proxied at /neoceg (see
+# deploy/Caddyfile in the ModelLogue repo, and CLI spec §7.8).
+#
+#   docker compose ... -f docker-compose.prod.yml -f docker-compose.override.yml up -d --build
+
+services:
+  neoceg-api:
+    build:
+      context: /opt/neoceg
+      dockerfile: Dockerfile
+    environment:
+      # Public, no-auth demo — narrow CORS to the GUI origin (§7.5/§7.6).
+      - NEOCEG_ALLOWED_ORIGIN=${NEOCEG_ALLOWED_ORIGIN:-*}
+      # Guardrails (§7.6). Defaults match DEFAULT_SERVE_CONFIG.
+      - NEOCEG_MAX_BODY_BYTES=${NEOCEG_MAX_BODY_BYTES:-2097152}
+      - NEOCEG_RATE_LIMIT_PER_MIN=${NEOCEG_RATE_LIMIT_PER_MIN:-60}
+    restart: unless-stopped
+    # No `ports:` — the shared Caddy front reverse-proxies /neoceg to :8091.
