@@ -45,3 +45,5 @@ Reached at `https://<shared-box>/neoceg` — same pattern as `/nswitch` and
 | `NEOCEG_ALLOWED_ORIGIN` | `*` | CORS allow-origin; set to the GUI origin in production. |
 | `NEOCEG_MAX_BODY_BYTES` | `2097152` | Request body cap → `413`. |
 | `NEOCEG_RATE_LIMIT_PER_MIN` | `60` | Per-IP `/generate` rate limit (`0` = off) → `429`. |
+| `NEOCEG_MAX_NODES` | `512` | Max nodes in the parsed model (`0` = off) → `422` (pre-flight compute-DoS guard). |
+| `NEOCEG_MAX_CAUSES` | `64` | Max cause nodes in the parsed model (`0` = off) → `422`; primary compute bound. |

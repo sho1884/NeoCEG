@@ -12,6 +12,7 @@ import type { IncomingMessage, ServerResponse, Server } from 'node:http';
 import { readFileSync } from 'node:fs';
 
 import type { LogicalModel } from '../types/logical.js';
+import { isCause } from '../types/logical.js';
 import type { TestCondition } from '../types/decisionTable.js';
 import { parseLogicalDSL } from './logicalDslParser.js';
 import {
@@ -45,6 +46,10 @@ export interface ServeConfig {
   maxBodyBytes: number;
   /** Per-IP requests/min on /generate (0 = off) → 429 over the cap. */
   rateLimitPerMin: number;
+  /** Max nodes in the parsed model (0 = off) → 422 model_too_large. */
+  maxNodes: number;
+  /** Max cause nodes in the parsed model (0 = off) → 422 model_too_large. */
+  maxCauses: number;
 }
 
 export const DEFAULT_SERVE_CONFIG: ServeConfig = {
@@ -53,6 +58,8 @@ export const DEFAULT_SERVE_CONFIG: ServeConfig = {
   corsOrigin: '*',
   maxBodyBytes: 2 * 1024 * 1024,
   rateLimitPerMin: 60,
+  maxNodes: 512,
+  maxCauses: 64,
 };
 
 /**
@@ -64,6 +71,8 @@ export function resolveServeConfig(flags: Partial<ServeConfig>): ServeConfig {
   const envPort = Number(process.env.PORT);
   const envMaxBody = Number(process.env.NEOCEG_MAX_BODY_BYTES);
   const envRate = Number(process.env.NEOCEG_RATE_LIMIT_PER_MIN);
+  const envMaxNodes = Number(process.env.NEOCEG_MAX_NODES);
+  const envMaxCauses = Number(process.env.NEOCEG_MAX_CAUSES);
   return {
     host: flags.host ?? DEFAULT_SERVE_CONFIG.host,
     port: flags.port ?? (Number.isFinite(envPort) && envPort > 0 ? envPort : DEFAULT_SERVE_CONFIG.port),
@@ -73,6 +82,10 @@ export function resolveServeConfig(flags: Partial<ServeConfig>): ServeConfig {
       Number.isFinite(envMaxBody) && envMaxBody > 0 ? envMaxBody : DEFAULT_SERVE_CONFIG.maxBodyBytes,
     rateLimitPerMin:
       Number.isFinite(envRate) && envRate >= 0 ? envRate : DEFAULT_SERVE_CONFIG.rateLimitPerMin,
+    maxNodes:
+      Number.isFinite(envMaxNodes) && envMaxNodes >= 0 ? envMaxNodes : DEFAULT_SERVE_CONFIG.maxNodes,
+    maxCauses:
+      Number.isFinite(envMaxCauses) && envMaxCauses >= 0 ? envMaxCauses : DEFAULT_SERVE_CONFIG.maxCauses,
   };
 }
 
@@ -115,11 +128,61 @@ function hasLayout(model: LogicalModel): boolean {
   return Array.from(model.nodes.values()).some((n) => n.position);
 }
 
+/** Model-size limits for the pre-flight compute-DoS guard (CLI-SR-058, §7.6). */
+export interface ModelSizeLimits {
+  /** Max nodes (0 = off). */
+  maxNodes: number;
+  /** Max cause nodes (0 = off). */
+  maxCauses: number;
+}
+
+const DEFAULT_MODEL_SIZE_LIMITS: ModelSizeLimits = {
+  maxNodes: DEFAULT_SERVE_CONFIG.maxNodes,
+  maxCauses: DEFAULT_SERVE_CONFIG.maxCauses,
+};
+
+/**
+ * Enforce the model-size cap after parse and before generation (CLI-SR-058).
+ * Returns a 422 model_too_large result when a limit is exceeded, else null.
+ *
+ * This is the primary compute-DoS guard: `calcTable` cost grows super-linearly
+ * with model size and, being synchronous, cannot be preempted by a wall-clock
+ * timeout — so oversized models are rejected pre-flight (§7.6).
+ */
+function checkModelSize(model: LogicalModel, limits: ModelSizeLimits): ApiResult | null {
+  const nodeCount = model.nodes.size;
+  if (limits.maxNodes > 0 && nodeCount > limits.maxNodes) {
+    return errorResult(
+      422,
+      'model_too_large',
+      `model has ${nodeCount} nodes, exceeding the limit of ${limits.maxNodes} (NEOCEG_MAX_NODES)`
+    );
+  }
+  let causeCount = 0;
+  for (const node of model.nodes.values()) {
+    if (isCause(node)) causeCount++;
+  }
+  if (limits.maxCauses > 0 && causeCount > limits.maxCauses) {
+    return errorResult(
+      422,
+      'model_too_large',
+      `model has ${causeCount} cause nodes, exceeding the limit of ${limits.maxCauses} (NEOCEG_MAX_CAUSES)`
+    );
+  }
+  return null;
+}
+
 /**
  * Process a POST /generate request body and produce the response.
  * Never throws for expected conditions; any unexpected error maps to 500.
+ *
+ * `limits` bounds the parsed model size (CLI-SR-058); defaults to the standard
+ * serve limits so existing callers and tests keep the same guard.
  */
-export function processGenerate(body: unknown): ApiResult {
+export function processGenerate(
+  body: unknown,
+  limits: ModelSizeLimits = DEFAULT_MODEL_SIZE_LIMITS
+): ApiResult {
   if (typeof body !== 'object' || body === null || Array.isArray(body)) {
     return errorResult(400, 'invalid_request', 'request body must be a JSON object');
   }
@@ -159,6 +222,10 @@ export function processGenerate(body: unknown): ApiResult {
     return errorResult(400, 'parse_error', detail || 'failed to parse .nceg source');
   }
   const model = parsed.model;
+
+  // Pre-flight compute-DoS guard: reject oversized models before generation.
+  const tooLarge = checkModelSize(model, limits);
+  if (tooLarge) return tooLarge;
 
   try {
     return dispatch(resolvedMode, format, model);
@@ -365,7 +432,7 @@ export function createServer(config: ServeConfig): Server {
             send(res, errorResult(400, 'invalid_request', 'request body is not valid JSON'));
             return;
           }
-          send(res, processGenerate(parsed));
+          send(res, processGenerate(parsed, { maxNodes: config.maxNodes, maxCauses: config.maxCauses }));
         })
         .catch((err: Error) => {
           if (err.message === 'body_too_large') {

@@ -220,6 +220,8 @@ Triggered by the literal subcommand `serve` as the first argument (`neoceg serve
 | CLI-SR-055 | Send CORS headers per `--cors-origin` and answer `OPTIONS` preflight, per §7.5 / `--cors-origin` に従い CORS ヘッダを送出し、`OPTIONS` プリフライトに応答する（§7.5） | CLI-UR-005 |
 | CLI-SR-056 | Apply request guardrails — request-body size cap and per-IP rate limit — configurable by environment variable, per §7.6 / リクエストガードレール（ボディサイズ上限・IP 単位のレート制限）を環境変数で構成し適用する（§7.6） | CLI-UR-005 |
 | CLI-SR-057 | Add no runtime dependency for the server: implement on Node's built-in `http` module only (consistent with CLI-NF-022) / サーバ用の実行時依存を追加しない。Node 組み込みの `http` モジュールのみで実装する（CLI-NF-022 と整合） | CLI-UR-005 |
+| CLI-SR-058 | Enforce a **model-size cap** on `/generate`: after `parseLogicalDSL` and before `calcTable`, reject models whose node/cause count exceeds the env-configured limits (`NEOCEG_MAX_NODES` / `NEOCEG_MAX_CAUSES`, §7.6) with `422 model_too_large`. This is the primary compute-DoS guard, since `calcTable` cost grows super-linearly with model size and a synchronous run cannot be preempted by a wall-clock timeout. / `/generate` に**モデル規模上限**を課す：`parseLogicalDSL` 後・`calcTable` 前に、ノード/原因数が env 上限（`NEOCEG_MAX_NODES`／`NEOCEG_MAX_CAUSES`、§7.6）を超えるモデルを `422 model_too_large` で拒否する。同期実行はウォールクロックで中断できず `calcTable` の計算量はモデル規模に対し超線形のため、これが compute-DoS の主枷。 | CLI-UR-005 |
+| CLI-SR-059 | Apply **container resource limits** in the deploy manifest — CPU (`cpus`) and process count (`pids_limit`) alongside the existing `mem_limit` — so a pathological request cannot starve the co-located sibling demo APIs (§7.8). CPU, unlike memory, is not isolated by default. / デプロイマニフェストに**コンテナ資源上限**を課す — 既存 `mem_limit` に加え CPU（`cpus`）とプロセス数（`pids_limit`）。病的リクエストが同居する姉妹デモ API を巻き添えにしないため（§7.8）。CPU はメモリと違い既定では隔離されない。 | CLI-UR-005 |
 
 **Serve-mode options / serve モードオプション**:
 
@@ -284,6 +286,7 @@ The following are explicitly out of scope for v1.0 but are anticipated for futur
 | GraphViz integration / GraphViz 統合 | Automatic layout generation when `@layout` is absent, producing cleaner graph output / `@layout` がない場合の自動レイアウト生成、より整ったグラフ出力 |
 | Multiple output in single invocation / 一回の呼び出しで複数出力 | Generate decision table + coverage table + SVG in a single run / デシジョンテーブル＋カバレッジ表＋SVG を一回の実行で生成 |
 | Watch mode / ウォッチモード | Re-run on file change for development workflows / 開発ワークフロー向けのファイル変更時自動再実行 |
+| Wall-clock generation timeout (worker offload) / ウォールクロック生成タイムアウト（worker オフロード） | Offload `calcTable` to a Node built-in `worker_threads` worker and hard-kill it past a time budget (→ `503 timeout`), bounding compute even for models that slip under the size cap (CLI-SR-058). Deferred because the pre-flight model-size cap already covers the realistic demo threat; adds concurrency/lifecycle complexity. / `calcTable` を Node 組み込み `worker_threads` にオフロードし、時間予算超過で強制終了（→ `503 timeout`）。規模上限（CLI-SR-058）を掻い潜るモデルにも計算量の枷をかける。pre-flight の規模上限で現実的なデモ脅威は既に賄えるため保留。並行性/ライフサイクルの複雑さを伴う。 |
 
 > **Promoted / 昇格**: "API server" and "JSON output format", previously listed here, are now specified requirements — serve mode (§3.6) exposes the HTTP API (§7), whose `format: "json"` responses (§7.3) are the structured output. / 従来ここにあった「API サーバー」「JSON 出力形式」は正式要件へ昇格した。serve モード（§3.6）が HTTP API（§7）を提供し、その `format: "json"` 応答（§7.3）が構造化出力である。
 
@@ -461,6 +464,7 @@ All errors are `{"error": {"type": "...", "message": "..."}}`. No partial or sub
 | `400` | `parse_error` | The `.nceg` source is rejected by `parseLogicalDSL`. `message` carries the line/reason. / `.nceg` が `parseLogicalDSL` に拒否された。行と理由を `message` に含む。 | exit 1 (CLI-SR-031) |
 | `400` | `invalid_request` | Malformed JSON, missing/empty `source`, unknown `mode`/`format`, or an invalid `mode`×`format` pairing. / JSON 不正、`source` 欠落/空、未知の `mode`/`format`、不正な `mode`×`format` 組合せ。 | — |
 | `422` | `unsatisfiable` | The model parses but cannot yield the requested output: **all rules infeasible** (`decision-table`/`coverage`), **2^n > 256** (`all-combinations`), or **`@layout` absent** (`svg`). `message` states which. / パースは通るが要求出力を生成不能：全ルール実行不能（表/カバレッジ）、2^n>256（all-combinations）、`@layout` 欠如（svg）。 | exit 1 (CLI-SR-032 / CLI-SR-014 / CLI-SR-024) |
+| `422` | `model_too_large` | The model parses but exceeds the serve-mode size cap (`NEOCEG_MAX_NODES` / `NEOCEG_MAX_CAUSES`, §7.6). Rejected pre-flight to bound compute; `message` states which limit and the actual count. Batch mode has no such cap. / パースは通るが serve モードの規模上限（`NEOCEG_MAX_NODES`／`NEOCEG_MAX_CAUSES`、§7.6）を超過。計算量抑止のため生成前に拒否。バッチモードに同上限はない。 | — (serve-only) |
 | `405` | `method_not_allowed` | Wrong HTTP method for the path. / パスに対する誤った HTTP メソッド。 | — |
 | `500` | `internal_error` | Unexpected exception. Logged server-side; response carries a generic message. / 予期しない例外。サーバ側でログし、応答は一般化メッセージ。 | — |
 
@@ -475,9 +479,9 @@ The default `*` is for local development. In production set `--cors-origin` to t
 
 ### 7.6 Guardrails / ガードレール
 
-The API is designed to be **public and unauthenticated** (like the sibling demo APIs), so it is protected by guardrails, configurable by environment variable. Unlike a native-binary wrapper, NeoCEG runs pure in-process JS and invokes no subprocess, and `all-combinations` is already capped at 256 columns (CLI-SR-014) — so generation is inherently bounded and needs no execution timeout.
+The API is designed to be **public and unauthenticated** (like the sibling demo APIs), so it is protected by guardrails, configurable by environment variable. NeoCEG runs pure in-process JS and invokes no subprocess. `all-combinations` is already capped at 256 columns (CLI-SR-014), but the **optimized `decision-table` / `coverage` path is not**: it runs `calcTable`, whose cost grows super-linearly with model size, and the body-byte cap alone does not bound it (a 2 MiB body can encode tens of thousands of short node lines). Because `calcTable` is **synchronous and single-threaded**, a wall-clock request timeout cannot preempt a running computation — so the compute bound is enforced **pre-flight** by a model-size cap (node / cause count), rejecting oversized models with `422 model_too_large` before generation begins (CLI-SR-058). A true wall-clock cap would require offloading generation to a worker thread (deferred — §5).
 
-本 API は（姉妹デモ API と同様に）**公開・無認証**を前提とするため、環境変数で構成するガードレールで守る。ネイティブバイナリのラッパと異なり NeoCEG は純粋にインプロセスの JS で動きサブプロセスを起動しない。`all-combinations` は 256 列で既に上限化（CLI-SR-014）されており、生成は本質的に有界で実行タイムアウトを要しない。
+本 API は（姉妹デモ API と同様に）**公開・無認証**を前提とするため、環境変数で構成するガードレールで守る。NeoCEG は純粋にインプロセスの JS で動きサブプロセスを起動しない。`all-combinations` は 256 列で既に上限化（CLI-SR-014）されているが、**最適化 `decision-table` / `coverage` 経路はそうではない**：`calcTable` を実行し、その計算量はモデル規模に対して超線形に増える。ボディバイト上限だけではこれを縛れない（2 MiB のボディに数万行の短いノード定義を詰められる）。`calcTable` は**同期・単一スレッド**のため、ウォールクロックのリクエストタイムアウトでは実行中の計算を中断できない。したがって計算量の枷は**計算前（pre-flight）**にモデル規模上限（ノード数・原因数）で課し、過大なモデルは生成前に `422 model_too_large` で拒否する（CLI-SR-058）。真のウォールクロック上限には生成の worker スレッドへのオフロードが要る（保留 — §5）。
 
 | Variable / 変数 | Default / 既定 | Purpose / 用途 |
 |---|---|---|
@@ -485,8 +489,10 @@ The API is designed to be **public and unauthenticated** (like the sibling demo 
 | `NEOCEG_ALLOWED_ORIGIN` | (falls back to `--cors-origin`, `*`) | CORS allow-origin when set via env instead of the flag. / フラグの代わりに env で指定する CORS オリジン。 |
 | `NEOCEG_MAX_BODY_BYTES` | `2097152` (2 MiB) | Reject a larger request body with `413`. / これを超えるボディは `413` で拒否。 |
 | `NEOCEG_RATE_LIMIT_PER_MIN` | `60` | Per-IP requests/min on `/generate` (`0` = off) → `429` over the cap. / `/generate` の IP 単位毎分上限（`0`=無効）→超過で `429`。 |
+| `NEOCEG_MAX_NODES` | `512` | Max nodes in the parsed model (`0` = off); a larger model is rejected with `422 model_too_large` before generation. / パース後モデルの最大ノード数（`0`=無効）。超過は生成前に `422 model_too_large`。 |
+| `NEOCEG_MAX_CAUSES` | `64` | Max cause nodes in the parsed model (`0` = off); the primary compute bound, since `calcTable` cost is dominated by cause count. / パース後モデルの最大原因ノード数（`0`=無効）。`calcTable` の計算量は原因数が支配的なため、これが主枷。 |
 
-`413 payload_too_large` and `429 rate_limited` follow the §7.4 error shape. / `413 payload_too_large` と `429 rate_limited` も §7.4 のエラー形状に従う。
+`413 payload_too_large`, `429 rate_limited`, and `422 model_too_large` follow the §7.4 error shape. / `413 payload_too_large`・`429 rate_limited`・`422 model_too_large` も §7.4 のエラー形状に従う。
 
 ### 7.7 Determinism / 決定性
 
@@ -494,9 +500,9 @@ Identical request bodies yield byte-identical responses. The server sets no HTTP
 
 ### 7.8 Deployment / デプロイ
 
-Serve mode is containerized and co-located behind the shared reverse proxy alongside the sibling demo APIs (path-based, public, no auth), reached through a `/neoceg` prefix — the same pattern the sibling N-switch (`/nswitch`) and PICT (`/pict`) services use. The concrete wiring (a `neoceg-api` container running `neoceg serve --host 0.0.0.0 --port 8091` and a reverse-proxy `handle_path /neoceg/*` rule) lives in the shared deploy stack, added during implementation. The container binds `0.0.0.0`, runs as a non-root user, and sets `--cors-origin` to the GUI origin.
+Serve mode is containerized and co-located behind the shared reverse proxy alongside the sibling demo APIs (path-based, public, no auth), reached through a `/neoceg` prefix — the same pattern the sibling N-switch (`/nswitch`) and PICT (`/pict`) services use. The concrete wiring (a `neoceg-api` container running `neoceg serve --host 0.0.0.0 --port 8091` and a reverse-proxy `handle_path /neoceg/*` rule) lives in the shared deploy stack, added during implementation. The container binds `0.0.0.0`, runs as a non-root user, and sets `--cors-origin` to the GUI origin. It is constrained by resource limits — `mem_limit`, `cpus`, and `pids_limit` (CLI-SR-059) — so that a single pathological request is contained (OOM-killed and auto-restarted) and cannot starve the co-located sibling demo APIs.
 
-serve モードはコンテナ化し、姉妹デモ API と同居する形で共有リバースプロキシの背後に配置する（パスベース・公開・無認証）。到達は `/neoceg` プレフィックス経由 — 姉妹の N-switch（`/nswitch`）・PICT（`/pict`）と同一パターン。具体配線（`neoceg serve --host 0.0.0.0 --port 8091` を動かす `neoceg-api` コンテナと、リバースプロキシの `handle_path /neoceg/*` ルール）は共有デプロイスタックに置き、実装時に追加する。コンテナは `0.0.0.0` に bind し、非 root で動作し、`--cors-origin` を GUI オリジンに設定する。
+serve モードはコンテナ化し、姉妹デモ API と同居する形で共有リバースプロキシの背後に配置する（パスベース・公開・無認証）。到達は `/neoceg` プレフィックス経由 — 姉妹の N-switch（`/nswitch`）・PICT（`/pict`）と同一パターン。具体配線（`neoceg serve --host 0.0.0.0 --port 8091` を動かす `neoceg-api` コンテナと、リバースプロキシの `handle_path /neoceg/*` ルール）は共有デプロイスタックに置き、実装時に追加する。コンテナは `0.0.0.0` に bind し、非 root で動作し、`--cors-origin` を GUI オリジンに設定する。さらに資源上限（`mem_limit`・`cpus`・`pids_limit`、CLI-SR-059）で制約し、単一の病的リクエストを封じ込め（OOM kill＋自動再起動）、同居する姉妹デモ API を巻き添えにしないようにする。
 
 ### 7.9 Examples / 例
 
@@ -540,3 +546,4 @@ curl -X POST http://localhost:8091/generate \
 | 2026-03-29 | 0.1 | Initial draft / 初版ドラフト |
 | 2026-06-19 | 0.2 | Add full decision table output (CLI-UR-004, CLI-SR-013/014, `--all-combinations`), reusing the GUI learning-mode core. See ADR-001. / 完全デシジョンテーブル出力（CLI-UR-004・CLI-SR-013/014・`--all-combinations`）を追加。GUI 学習モードのコアを再利用。ADR-001 参照。 |
 | 2026-07-12 | 0.3 | Add serve mode / HTTP API (CLI-UR-005, CLI-SR-050–057, §3.6, §7): `serve` subcommand exposing `GET /health` + `POST /generate` with JSON/CSV/SVG output over the same core, CORS and guardrails, deployed co-located behind the shared proxy at `/neoceg`. Promotes the former Future Considerations "API server" and "JSON output format". Contract mirrors the sibling N-switch HTTP API. / serve モード／HTTP API（CLI-UR-005・CLI-SR-050〜057・§3.6・§7）を追加：`serve` サブコマンドが同一コア上で `GET /health`＋`POST /generate`（JSON/CSV/SVG 出力）を提供し、CORS・ガードレールを備え、共有プロキシ背後の `/neoceg` に同居デプロイ。将来検討事項の「API サーバー」「JSON 出力形式」を昇格。契約は姉妹の N-switch HTTP API に準拠。 |
+| 2026-07-24 | 0.4 | Harden serve-mode guardrails against compute DoS (CLI-SR-058, CLI-SR-059; §7.4, §7.6, §7.8): add a pre-flight **model-size cap** (`NEOCEG_MAX_NODES`=512 / `NEOCEG_MAX_CAUSES`=64 → `422 model_too_large`) as the primary compute bound, and **container CPU / pids limits** to contain blast radius on the shared box. Corrects the prior §7.6 claim that generation needs no execution bound (true only for `all-combinations`, not the `calcTable`-based default path). Wall-clock timeout via worker offload deferred to §5. / serve モードのガードレールを compute DoS 向けに強化（CLI-SR-058・CLI-SR-059；§7.4・§7.6・§7.8）：pre-flight の**モデル規模上限**（`NEOCEG_MAX_NODES`=512／`NEOCEG_MAX_CAUSES`=64 →`422 model_too_large`）を主枷として追加し、**コンテナ CPU／pids 上限**で被害範囲を封じ込め。生成に実行上限は不要という旧 §7.6 の記述を訂正（`all-combinations` にのみ真、`calcTable` 既定経路には偽）。worker オフロードによるウォールクロック上限は §5 へ保留。 |

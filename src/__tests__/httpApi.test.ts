@@ -14,6 +14,7 @@ import type { Server } from 'node:http';
 import {
   processGenerate,
   createServer,
+  resolveServeConfig,
   DEFAULT_SERVE_CONFIG,
   type ServeConfig,
 } from '../services/httpApi';
@@ -165,6 +166,76 @@ describe('processGenerate: svg', () => {
 });
 
 // ---------------------------------------------------------------------------
+// processGenerate — model-size cap (CLI-SR-058, §7.6)
+// ---------------------------------------------------------------------------
+
+describe('processGenerate: model-size cap', () => {
+  // TWO_CAUSE has 3 nodes (p1, p2, p3), of which 2 are causes.
+  test('over maxNodes → 422 model_too_large', () => {
+    const r = processGenerate({ source: TWO_CAUSE }, { maxNodes: 2, maxCauses: 0 });
+    expect(r.status).toBe(422);
+    const err = JSON.parse(r.body).error;
+    expect(err.type).toBe('model_too_large');
+    expect(err.message).toContain('NEOCEG_MAX_NODES');
+  });
+
+  test('over maxCauses → 422 model_too_large', () => {
+    const r = processGenerate({ source: TWO_CAUSE }, { maxNodes: 0, maxCauses: 1 });
+    expect(r.status).toBe(422);
+    const err = JSON.parse(r.body).error;
+    expect(err.type).toBe('model_too_large');
+    expect(err.message).toContain('NEOCEG_MAX_CAUSES');
+  });
+
+  test('at the limit → not rejected (200)', () => {
+    const r = processGenerate({ source: TWO_CAUSE }, { maxNodes: 3, maxCauses: 2 });
+    expect(r.status).toBe(200);
+  });
+
+  test('limit 0 disables the check', () => {
+    const r = processGenerate({ source: TWO_CAUSE }, { maxNodes: 0, maxCauses: 0 });
+    expect(r.status).toBe(200);
+  });
+
+  test('the cap runs after parse — invalid source is still a parse_error', () => {
+    const r = processGenerate({ source: 'this is not valid ::: dsl @@@' }, { maxNodes: 1, maxCauses: 1 });
+    expect(r.status).toBe(400);
+    expect(JSON.parse(r.body).error.type).toBe('parse_error');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// resolveServeConfig — env overrides for the size cap
+// ---------------------------------------------------------------------------
+
+describe('resolveServeConfig: model-size env overrides', () => {
+  afterEach(() => {
+    delete process.env.NEOCEG_MAX_NODES;
+    delete process.env.NEOCEG_MAX_CAUSES;
+  });
+
+  test('defaults when env unset', () => {
+    const c = resolveServeConfig({});
+    expect(c.maxNodes).toBe(DEFAULT_SERVE_CONFIG.maxNodes);
+    expect(c.maxCauses).toBe(DEFAULT_SERVE_CONFIG.maxCauses);
+  });
+
+  test('env overrides are applied, including 0 (off)', () => {
+    process.env.NEOCEG_MAX_NODES = '128';
+    process.env.NEOCEG_MAX_CAUSES = '0';
+    const c = resolveServeConfig({});
+    expect(c.maxNodes).toBe(128);
+    expect(c.maxCauses).toBe(0);
+  });
+
+  test('non-numeric env falls back to the default', () => {
+    process.env.NEOCEG_MAX_NODES = 'nonsense';
+    const c = resolveServeConfig({});
+    expect(c.maxNodes).toBe(DEFAULT_SERVE_CONFIG.maxNodes);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // HTTP layer
 // ---------------------------------------------------------------------------
 
@@ -252,6 +323,17 @@ describe('HTTP layer', () => {
     });
     expect(res.status).toBe(413);
     expect((await res.json()).error.type).toBe('payload_too_large');
+  });
+
+  test('oversized model → 422 model_too_large', async () => {
+    const base = await startServer({ maxNodes: 2 });
+    const res = await fetch(`${base}/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source: TWO_CAUSE }),
+    });
+    expect(res.status).toBe(422);
+    expect((await res.json()).error.type).toBe('model_too_large');
   });
 
   test('rate limit → 429 after the per-minute cap', async () => {

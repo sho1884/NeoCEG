@@ -23,7 +23,16 @@ services:
       # Guardrails (§7.6). Defaults match DEFAULT_SERVE_CONFIG.
       - NEOCEG_MAX_BODY_BYTES=${NEOCEG_MAX_BODY_BYTES:-2097152}
       - NEOCEG_RATE_LIMIT_PER_MIN=${NEOCEG_RATE_LIMIT_PER_MIN:-60}
+      # Pre-flight model-size cap — primary compute-DoS guard (CLI-SR-058, §7.6).
+      - NEOCEG_MAX_NODES=${NEOCEG_MAX_NODES:-512}
+      - NEOCEG_MAX_CAUSES=${NEOCEG_MAX_CAUSES:-64}
     restart: unless-stopped
-    # 2 GB shared box; actual usage ~45 MiB. See CLI spec §7.8.
+    # Resource limits contain a single pathological request so it cannot starve
+    # the co-located sibling demo APIs (CLI-SR-059, §7.8). CPU, unlike memory,
+    # is not isolated by default.
+    # 2 GB shared box; actual usage ~45 MiB.
     mem_limit: 192m
+    # Cap CPU share (compute-DoS blast radius) and process count (defense-in-depth).
+    cpus: 1.0
+    pids_limit: 128
     # No `ports:` — the shared Caddy front reverse-proxies /neoceg to :8091.
