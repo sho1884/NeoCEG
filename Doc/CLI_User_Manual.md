@@ -256,8 +256,91 @@ CLI は GUI とは独立して SVG を生成します（ブラウザ不要）。
 
 ---
 
+## 8. Try It as an API (Demo) / API として試す（デモ）
+
+The same engine is exposed over HTTP by the CLI's **serve mode**, and a public demo instance is hosted so you can try it with a single `curl` — no clone, no install.
+
+CLI の **serve モード**は同じエンジンを HTTP で公開します。公開デモが動いているので、クローンもインストールも不要で `curl` 一発で試せます。
+
+> **Demo — best-effort.** `https://modellogue.com/neoceg` is a **public, unauthenticated demo** for evaluation. It has **no SLA**, may **change or stop without notice**, and applies the guardrails below. For anything beyond a quick trial — automation, CI, private data — **run your own instance** with `neoceg serve` from the NeoCEG source and point your client at it.
+>
+> **デモ（ベストエフォート）。** `https://modellogue.com/neoceg` は評価用の**公開・無認証デモ**です。**SLA なし**、**予告なく変更/停止**、下記のガードレールが適用されます。試用を超える用途（自動化・CI・機微データ）では、NeoCEG ソースの `neoceg serve` で**自分のインスタンスを起動**し、そこへ接続してください。
+
+### 8.1 Endpoints / エンドポイント
+
+| Method | Path | Purpose / 用途 |
+|---|---|---|
+| `GET` | `/neoceg/health` | Liveness + version / 死活確認とバージョン |
+| `POST` | `/neoceg/generate` | Process a `.nceg` model / `.nceg` モデルを処理 |
+
+`POST /neoceg/generate` takes a JSON body. Only `source` is required; the rest default:
+
+`POST /neoceg/generate` は JSON ボディを取ります。必須は `source` のみで、他は既定値です：
+
+| Field / フィールド | Values / 値 | Default / 既定 |
+|---|---|---|
+| `source` | The `.nceg` text / `.nceg` テキスト | — (required / 必須) |
+| `mode` | `decision-table` \| `all-combinations` \| `coverage` \| `svg` | `decision-table` |
+| `format` | `json` \| `csv` \| `svg` | `json` (tables) / `svg` (mode `svg`) |
+
+### 8.2 Examples / 使用例
+
+**Liveness / 疎通:**
+```bash
+curl -sS https://modellogue.com/neoceg/health
+# → {"status":"ok","version":"0.1.0"}
+```
+
+**Optimized decision table as JSON (send only `source`) / 最適化デシジョンテーブルを JSON で（`source` のみ）:**
+```bash
+curl -sS -X POST https://modellogue.com/neoceg/generate \
+  -H 'Content-Type: application/json' \
+  -d '{ "source": "A: \"A\"\nB: \"B\"\nE := A AND B\nONE(A, B)" }'
+```
+
+**Coverage table as CSV / カバレッジ表を CSV で:**
+```bash
+curl -sS -X POST https://modellogue.com/neoceg/generate \
+  -H 'Content-Type: application/json' \
+  -d '{ "source": "...", "mode": "coverage", "format": "csv" }'
+```
+
+**Graph as SVG / グラフを SVG で:**
+```bash
+curl -sS -X POST https://modellogue.com/neoceg/generate \
+  -H 'Content-Type: application/json' \
+  -d '{ "source": "...", "mode": "svg" }' > graph.svg
+```
+
+**From a `.nceg` file (build the JSON with `jq`) / `.nceg` ファイルから（`jq` で JSON 化）:**
+```bash
+jq -Rs '{source: .}' input.nceg \
+  | curl -sS -X POST https://modellogue.com/neoceg/generate \
+      -H 'Content-Type: application/json' --data @-
+```
+
+### 8.3 Guardrails / ガードレール
+
+The demo is public compute with no secrets, protected by env-tunable limits (self-hosted defaults shown):
+
+デモは秘密を持たない公開計算で、env で調整可能な上限で守られています（セルフホスト時の既定値）：
+
+| Limit / 上限 | Default / 既定 | Over the limit / 超過時 |
+|---|---|---|
+| Request body size / ボディサイズ | 2 MiB | `413 payload_too_large` |
+| Per-IP rate / IP 単位レート | 60 req/min | `429 rate_limited` |
+| Model nodes / モデルのノード数 | 512 | `422 model_too_large` |
+| Model causes / モデルの原因数 | 64 | `422 model_too_large` |
+
+Errors are always JSON: `{"error": {"type": "...", "message": "..."}}`.
+
+エラーは常に JSON：`{"error": {"type": "...", "message": "..."}}`。
+
+---
+
 ## Document History / 変更履歴
 
 | Date / 日付 | Change / 変更 |
 |---|---|
 | 2026-04-04 | Initial version / 初版作成 |
+| 2026-07-24 | Add §8 Demo API (serve mode) with the public demo URL, curl examples, and guardrails / §8 デモ API（serve モード）を追加：公開デモ URL・curl 例・ガードレール |
