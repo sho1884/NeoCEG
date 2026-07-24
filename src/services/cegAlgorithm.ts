@@ -1115,6 +1115,35 @@ function nextCondition(
     // Step (5): deduce remaining values
     deduce(work, model);
 
+    // Step (5b): final consistency gate (Algorithm_Design.md §6.1/§6.2).
+    // The per-cause isPossible checks in Step 4 pass while an upstream
+    // intermediate is still indeterminate (checkRelation ignores unknown
+    // inputs). The final deduce above can determine that intermediate and
+    // expose a contradiction — e.g. a shared intermediate required T by a
+    // downstream node while its own inputs force F. Re-validate the finished
+    // condition; on contradiction, backtrack the last turn and retry
+    // (mirrors the Step 4 backtracking).
+    if (isPossible(work, model) !== '') {
+      if (state.turns.length === 0) {
+        return false;
+      }
+      const badTurn = state.turns[state.turns.length - 1];
+      if (badTurn.type === 'expression') {
+        state.vtestcov[badTurn.expressionIndex] = false;
+        state.unsuitableExpressions.add(badTurn.expressionIndex);
+        if (state.turns.length === 1) {
+          state.infeasibles[badTurn.expressionIndex] = 'Infeasible (consistency)';
+        }
+      } else {
+        state.unsuitableCauseValues.add(
+          encodeCauseChoice(badTurn.nodeName, badTurn.value)
+        );
+      }
+      state.turns.pop();
+      reCalc(work, state);
+      continue;
+    }
+
     // Step (6): recalculate coverage
     for (let l = 0; l < state.expressions.length; l++) {
       state.vtestcov[l] = isCoveredBy(work, state.expressions[l]);

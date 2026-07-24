@@ -1640,3 +1640,45 @@ describe('getCoverageMarkerDisplay', () => {
     expect(getCoverageMarkerDisplay('not_covered')).toBe('');
   });
 });
+
+// =============================================================================
+// §6.1/§6.2 Step 5b - final consistency gate (shared-intermediate chains)
+// =============================================================================
+
+describe('calcTable - Step 5b consistency gate', () => {
+  // Shared intermediate JIDOU (:= AP := age1 OR age2) referenced by two
+  // downstream effects, plus an exclusive third cause age3 (ONE). Without the
+  // gate, the generator emitted tests with JIDOU=T while age3=T forced AP=F
+  // (a logical contradiction: a required shared intermediate = T while its
+  // upstream inputs force F).
+  it('never emits a test that its own isPossible rejects', () => {
+    const model = createModel([
+      { name: 'age1' },
+      { name: 'age2' },
+      { name: 'age3' },
+      { name: 'sel' },
+      { name: 'AP', expression: or(ref('age1'), ref('age2')) },
+      { name: 'JIDOU', expression: ref('AP') },
+      { name: 'FUKA', expression: ref('age3') },
+      { name: 'E_shonin', expression: and(ref('sel'), ref('JIDOU')) },
+      { name: 'E_fuka', expression: and(ref('sel'), ref('FUKA')) },
+    ]);
+    model.constraints = [
+      {
+        type: 'ONE',
+        members: [
+          { name: 'age1', negated: false },
+          { name: 'age2', negated: false },
+          { name: 'age3', negated: false },
+        ],
+      },
+    ];
+
+    const state = calcTable(model);
+    expect(state.tests.length).toBeGreaterThan(0);
+    // Every generated test (weak or not) must be logically consistent.
+    for (const test of state.tests) {
+      expect(isPossible(test as unknown as Map<string, WorkValue>, model)).toBe('');
+    }
+  });
+});
