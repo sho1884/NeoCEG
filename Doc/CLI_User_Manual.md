@@ -198,6 +198,7 @@ Each row represents a node. Each column after the header columns represents a te
 | f | False (deduced — no matching expression exists) / 偽（演繹 — 対応する論理式なし） |
 | M | Masked (Don't Care — MASK constraint active) / マスク（Don't Care — MASK 制約有効） |
 | I | Indeterminate (cannot determine due to M propagation) / 不定（M 伝播により確定不能） |
+| - | Don't-care — the cause is unconstrained here and affects no result; any value works (distinct from `M`, which is MASK-driven) / 不問 — 制約でも定まらず結果に影響しない原因。どの値でも成立（MASK 由来の `M` とは別） |
 
 ### 5.2 Coverage Table CSV / カバレッジ表 CSV
 
@@ -219,7 +220,13 @@ Each row represents a logical expression (edge) that should be covered.
 |------|----------|
 | `#` | Adopted — this test rule covers this expression / 採用 — このテストルールがこの論理式をカバー |
 | `x` | Also covered — expression already covered by another rule / 追加カバー — 別のルールで既にカバー済み |
+| `!` | Infeasible — the expression can never hold (constraint violation) / 実行不能 — 制約違反で成立し得ない |
+| `?` | Untestable — feasible but the result is indeterminate under MASK / テスト不能 — 実行可能だが MASK により結果が不定 |
 | (blank) | Not covered by this rule / このルールではカバーされない |
+
+The coverage table's infeasible marker is `!` (not `-`); `-` is the decision table's don't-care marker (§5.1), so the two tables never share a glyph.
+
+カバレッジ表の実行不能は `!`（`-` ではない）。`-` はデシジョンテーブルの不問記号（§5.1）なので、両表で字形が衝突しません。
 
 ---
 
@@ -377,3 +384,4 @@ Errors are always JSON: `{"error": {"type": "...", "message": "..."}}`.
 | 2026-04-04 | Initial version / 初版作成 |
 | 2026-07-24 | Add §8 Demo API (serve mode) with the public demo URL, curl examples, and guardrails / §8 デモ API（serve モード）を追加：公開デモ URL・curl 例・ガードレール |
 | 2026-07-24 | Document `--all-combinations` (learning mode) and its 256-column limit to match the core; remove the stale Observable column (the observable flag was removed in 2026-06) / コアに合わせ `--all-combinations`（学習モード）と 256 列上限を記載。廃止済みの Observable 列を削除（観測フラグは 2026-06 に削除） |
+| 2026-07-24 | Symbol alignment: decision-table don't-care is `-`; coverage-table infeasible is `!` (was `-`), untestable `?` — added the missing coverage markers and the DT `-` legend / 記号統一：DTの不問は `-`、カバレッジの実行不能は `!`（旧 `-`）・テスト不能 `?`。欠けていたカバレッジ記号と DT `-` の凡例を追加 |

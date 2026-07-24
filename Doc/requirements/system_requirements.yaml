@@ -2,10 +2,12 @@
 # Format: Verb + Object with rule scenarios
 # Reference: Myers, Badgett, Sandler "The Art of Software Testing" 3rd Ed., Ch.4
 
-version: "1.0"
-last_updated: "2026-02-04"
+version: "1.1"
+last_updated: "2026-07-24"
 
 # Change Log:
+# v1.1 - Coverage infeasible marker '-' -> '!' (SR-030): avoids colliding with the
+#        decision table's don't-care '-'; see Algorithm_Design.md §5.1 / §13.4.3 / §15.2
 # v1.0 - Simplify node expression handling (SR-002)
 #        - Remove auto-fill expression display (too complex with label special chars)
 #        - Remove expression tooltip on hover
@@ -949,7 +951,7 @@ requirements:
         outcome: "Display coverage relationship between logical expressions and test conditions in table format"
       - context: "Logical expression is infeasible"
         action: "-"
-        outcome: "Display '-' (hyphen) marker in red; show 'Infeasible' in Status column and constraint detail (e.g., 'ONE(A, B, C)') in Reason column; gray entire row"
+        outcome: "Display '!' (exclamation) marker in red; show 'Infeasible' in Status column and constraint detail (e.g., 'ONE(A, B, C)') in Reason column; gray entire row. ('!' not '-': '-' is the decision table's don't-care marker; see Algorithm_Design.md 13.4.3/15.2)"
       - context: "Logical expression is untestable"
         action: "-"
         outcome: "Display '?' (question) marker in amber; show 'Untestable' in Status column and 'MASK(X → Y)' in Reason column; gray entire row"

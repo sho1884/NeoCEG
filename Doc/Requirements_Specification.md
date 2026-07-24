@@ -241,10 +241,10 @@ When a constraint has NOT on a member, the member's value is inverted before con
 | Adopted / 採択 | `#` | First test to cover this expression / この式を最初にカバーするテスト |
 | Covered / カバー済み | `x` | Additional test covering an already-covered expression / 既にカバー済みの式を追加でカバー |
 | Not covered / 未カバー | (blank / 空白) | Test does not exercise this expression / このテストはこの式を検証しない |
-| Infeasible / 実行不能 | `-` | Expression infeasible due to constraint violation / 制約違反のため実行不可 |
+| Infeasible / 実行不能 | `!` | Expression infeasible due to constraint violation / 制約違反のため実行不可 |
 | Untestable / テスト不能 | `?` | Untestable due to MASK (result indeterminate) / MASK制約によりテスト不能 |
 
-> **Note**: CEGTest 1.6 uses `||` (vertical hatching) for infeasible and `=` (horizontal hatching) for untestable. NeoCEG uses `-` and `?` as text-compatible alternatives, and distinguishes infeasible from untestable (a CEGTest 1.6 bug fix per 秋山浩一「ソフトウェアテストしようぜ」第236回).
+> **Note**: CEGTest 1.6 uses `||` (vertical hatching) for infeasible and `=` (horizontal hatching) for untestable. NeoCEG uses `!` and `?` as text-compatible alternatives, and distinguishes infeasible from untestable (a CEGTest 1.6 bug fix per 秋山浩一「ソフトウェアテストしようぜ」第236回). The coverage-table infeasible marker is `!` (not `-`) so it does not collide with the decision table's don't-care marker `-` (see Algorithm_Design.md §13.4.3 / §15.2). / カバレッジ表の実行不可は `!`。デシジョンテーブルの不問記号 `-` と字形が衝突しないようにするため（Algorithm_Design.md §13.4.3 / §15.2）。
 
 ### 3.5 Import/Export / インポート・エクスポート
 
@@ -504,6 +504,7 @@ MASK制約：NOTは**トリガー側のみ**許可。ターゲット側のNOTは
 | 2026-02-01 | 1.1 | REQ 1:n, constraint node representation, labels One/Excl/Incl/Req/Mask, reimplementation approach / REQ 1:n対応、制約ノード表現、ラベル変更、新規実装方針 | - |
 | 2026-02-01 | 1.2 | NOT support on both logical and constraint edges / 論理エッジと制約エッジの両方にNOTサポート追加 | - |
 | 2026-02-08 | 1.3 | Finalized DSL grammar specification, added reference / DSL文法仕様確定、参照追加 | - |
+| 2026-07-24 | 1.4 | Coverage infeasible marker `-`→`!` (SR-030) to avoid colliding with the decision table's don't-care `-`; see Algorithm_Design.md §5.1 (constraint-completion pass) / §13.4.3 / §15.2 / カバレッジ実行不能マーカー `-`→`!`（SR-030）。DTの不問 `-` との衝突回避 | - |
 
 ---
 
