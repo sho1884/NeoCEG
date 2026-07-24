@@ -74,6 +74,7 @@ neoceg [options] [input-file]
 |--------|----------|
 | `-o FILE`, `--output FILE` | Write output to FILE instead of stdout / stdout の代わりに FILE に出力 |
 | `--coverage` | Output coverage table CSV instead of decision table / デシジョンテーブルの代わりにカバレッジ表 CSV を出力 |
+| `--all-combinations` | Output the full **learning-mode** decision table — all 2^n cause combinations with a per-column feasibility (Status) row, instead of the optimized table. Errors if 2^n > 256 (the learning-mode column limit). / 最適化表の代わりに、全 2^n 原因組合せを列ごとの実行可否（Status 行）付きで出力する**学習モード**表。2^n > 256（学習モードの列上限）でエラー。 |
 | `--svg` | Output cause-effect graph as SVG / 原因結果グラフを SVG として出力 |
 | `-h`, `--help` | Show help message / ヘルプメッセージを表示 |
 | `--version` | Show version number / バージョン番号を表示 |
@@ -116,7 +117,26 @@ Expr.2,F,T,F,,#,,,
 Expr.3,T,F,F,,,#,,
 ```
 
-### 4.4 Graph SVG / グラフ SVG
+### 4.4 All Combinations (Learning Mode) / 全組合せ（学習モード）
+
+```bash
+node bin/neoceg.mjs --all-combinations input.nceg
+```
+
+Output / 出力:
+```csv
+ID,Classification (分類),Logical Statement (論理言明),#1,#2,#3,#4
+,Status,,Infeasible,Adopted,Adopted,Infeasible
+A,Cause (原因),A,T,T,F,F
+B,Cause (原因),B,T,F,T,F
+E,Effect (結果),E,T,F,F,F
+```
+
+Every one of the 2^n cause combinations becomes a column (here 2^2 = 4). The extra **Status** row flags each column — `Adopted` (a feasible test) or `Infeasible` (violates a constraint). This is the same **Learning Mode** view as the GUI. It errors if 2^n exceeds **256 columns** (i.e. more than 8 causes), matching the GUI's learning-mode limit — use the optimized default or `--coverage` for larger models.
+
+2^n 個の原因組合せがすべて列になります（ここでは 2^2 = 4）。追加の **Status** 行が各列を `Adopted`（実行可能なテスト）か `Infeasible`（制約違反）で示します。GUI の**学習モード**と同じ表示です。2^n が **256 列**（＝原因が 8 個超）を超えるとエラーになります（GUI の学習モード上限と一致）。大きいモデルには最適化された既定表か `--coverage` を使ってください。
+
+### 4.5 Graph SVG / グラフ SVG
 
 ```bash
 node bin/neoceg.mjs --svg -o graph.svg input.nceg
@@ -126,7 +146,7 @@ The SVG output requires `@layout` coordinates in the `.nceg` file. Files saved f
 
 SVG 出力には `.nceg` ファイル内の `@layout` 座標が必要です。NeoCEG GUI から保存されたファイルには常にレイアウト情報が含まれています。
 
-### 4.5 Piping from stdin / stdin からのパイプ
+### 4.6 Piping from stdin / stdin からのパイプ
 
 ```bash
 cat input.nceg | node bin/neoceg.mjs
@@ -134,7 +154,7 @@ cat input.nceg | node bin/neoceg.mjs --coverage > coverage.csv
 cat input.nceg | node bin/neoceg.mjs --svg > graph.svg
 ```
 
-### 4.6 Combining with other tools / 他のツールとの組み合わせ
+### 4.7 Combining with other tools / 他のツールとの組み合わせ
 
 The CLI outputs clean CSV to stdout and diagnostics to stderr, making it safe to pipe into other tools.
 
@@ -238,6 +258,14 @@ The `--svg` option requires node position data. Save the graph from the NeoCEG G
 
 `--svg` オプションにはノード位置データが必要です。NeoCEG GUI からグラフを保存すると、`@layout` 座標が常に含まれます。
 
+**Too many causes for --all-combinations / --all-combinations で原因が多すぎる**:
+```
+Error: Too many causes for --all-combinations: 2^9 exceeds the 256-column limit. No table emitted.
+```
+The learning-mode full table is capped at 256 columns (8 causes). Use the optimized default decision table or `--coverage`, which have no such limit.
+
+学習モードの全組合せ表は 256 列（原因 8 個）が上限です。この上限のない最適化デシジョンテーブル（既定）または `--coverage` を使ってください。
+
 ---
 
 ## 7. Notes / 備考
@@ -282,6 +310,10 @@ CLI の **serve モード**は同じエンジンを HTTP で公開します。�
 | `source` | The `.nceg` text / `.nceg` テキスト | — (required / 必須) |
 | `mode` | `decision-table` \| `all-combinations` \| `coverage` \| `svg` | `decision-table` |
 | `format` | `json` \| `csv` \| `svg` | `json` (tables) / `svg` (mode `svg`) |
+
+`mode: "all-combinations"` is the learning-mode full table and is limited to **2^n ≤ 256** (≤ 8 causes); a larger model returns `422 unsatisfiable`. This is separate from — and stricter than — the model-size guardrails below (§8.3).
+
+`mode: "all-combinations"` は学習モードの全組合せ表で、**2^n ≤ 256**（原因 8 個以下）に制限されます。超過は `422 unsatisfiable`。これは下記のモデル規模ガードレール（§8.3）とは別で、より厳しい制限です。
 
 ### 8.2 Examples / 使用例
 
@@ -344,3 +376,4 @@ Errors are always JSON: `{"error": {"type": "...", "message": "..."}}`.
 |---|---|
 | 2026-04-04 | Initial version / 初版作成 |
 | 2026-07-24 | Add §8 Demo API (serve mode) with the public demo URL, curl examples, and guardrails / §8 デモ API（serve モード）を追加：公開デモ URL・curl 例・ガードレール |
+| 2026-07-24 | Document `--all-combinations` (learning mode) and its 256-column limit to match the core; remove the stale Observable column (the observable flag was removed in 2026-06) / コアに合わせ `--all-combinations`（学習モード）と 256 列上限を記載。廃止済みの Observable 列を削除（観測フラグは 2026-06 に削除） |
