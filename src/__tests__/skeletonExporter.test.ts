@@ -181,18 +181,24 @@ describe('skeletonExporter — feasible-space equivalence (§8 #1)', () => {
   });
 });
 
-describe('skeletonExporter — constraints removed (premise broken)', () => {
-  // Removing constraints breaks the premise: test cases fire multiple effects at
-  // once, so the skeleton cannot be verified equivalent. The exporter must say so
-  // (status 'unverified' → warning A1 mismatch; multiEffect → warning B), not pretend it is OK.
+describe('skeletonExporter — constraints removed (effects co-fire)', () => {
+  // Removing the ONE constraints lets several effects fire for one input. The
+  // exporter partitions them into independent families and accumulates (§5 step
+  // 5), so the skeleton is still verified equivalent to the CEG — it must NOT
+  // drop concurrent effects. multiEffect (warning B) still flags the co-firing.
   const { model, nodeLabels } = build();
   model.constraints = [];
   const { table } = generateOptimizedDecisionTableWithState(model);
   const result = generateSkeletonPseudoCode(model, table, nodeLabels);
 
-  test('status is unverified and multiEffect is flagged', () => {
-    expect(result.status).toBe('unverified');
+  test('accumulate form verifies and flags multiEffect', () => {
+    // status 'verified' means every feasible input routes exactly like the CEG
+    // (the exporter verifies over the whole feasible space, §8 #1).
+    expect(result.status).toBe('verified');
     expect(result.multiEffect).toBe(true);
-    expect(result.text).toMatch(/does not exactly match the graph/);
+    // Accumulate control flow, not a single early return.
+    expect(result.text).toContain('result = []');
+    expect(result.text).toContain('return result');
+    expect(result.text).not.toMatch(/does not exactly match the graph/);
   });
 });

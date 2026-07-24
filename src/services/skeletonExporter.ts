@@ -275,12 +275,69 @@ function runSkeleton(nodes: Node[], bools: Map<string, boolean>): string[] | nul
   return null;
 }
 
+/**
+ * Run each effect family independently and accumulate the union of fired
+ * effects (Skeleton_Generator_Specification.md §5 step 5). Never stops at the
+ * first hit — independent families live in different subtrees.
+ */
+function runFamilies(families: Node[][], bools: Map<string, boolean>): Set<string> {
+  const out = new Set<string>();
+  for (const tree of families) {
+    const r = runSkeleton(tree, bools);
+    if (r) for (const e of r) out.add(e);
+  }
+  return out;
+}
+
+/**
+ * Partition effects into independent families: two effects are in DIFFERENT
+ * families iff some feasible input fires both (co-firing). Within a family the
+ * effects are therefore mutually exclusive (≤1 fires) and can share one gated
+ * if/elif tree; across families they may fire concurrently and are accumulated.
+ * Greedy coloring of the co-fire graph — deterministic. (§5 step 5)
+ */
+function partitionFamilies(
+  model: LogicalModel,
+  causeIds: string[],
+  effectIds: string[],
+): string[][] {
+  const effs = effectIds.filter((e) => model.nodes.get(e)?.expression);
+  if (effs.length <= 1) return effs.length ? [effs] : [];
+  // Too many causes to enumerate feasibility → treat each effect as its own
+  // family (flat accumulate), which never drops a concurrent effect.
+  if (causeIds.length > MAX_VERIFY_CAUSES) return effs.map((e) => [e]);
+
+  const coFire = new Map<string, Set<string>>();
+  effs.forEach((e) => coFire.set(e, new Set()));
+  const total = 1 << causeIds.length;
+  for (let mask = 0; mask < total; mask++) {
+    const assignment = causeIds.map((_, i) => (mask & (1 << i)) !== 0);
+    const ev = evalModel(model, causeIds, effectIds, assignment);
+    if (!ev.feasible) continue;
+    const fired = effs.filter((e) => ev.effects.has(e));
+    for (let i = 0; i < fired.length; i++) {
+      for (let j = i + 1; j < fired.length; j++) {
+        coFire.get(fired[i])!.add(fired[j]);
+        coFire.get(fired[j])!.add(fired[i]);
+      }
+    }
+  }
+
+  const families: string[][] = [];
+  for (const e of effs) {
+    const fam = families.find((f) => f.every((m) => !coFire.get(e)!.has(m)));
+    if (fam) fam.push(e);
+    else families.push([e]);
+  }
+  return families;
+}
+
 /** Verify the skeleton equals the CEG over every constraint-valid input. */
 function verify(
   model: LogicalModel,
   causeIds: string[],
   effectIds: string[],
-  nodes: Node[],
+  families: Node[][],
 ): { ok: boolean; checked: boolean } {
   if (causeIds.length > MAX_VERIFY_CAUSES) return { ok: false, checked: false };
   const total = 1 << causeIds.length;
@@ -288,8 +345,8 @@ function verify(
     const assignment = causeIds.map((_, i) => (mask & (1 << i)) !== 0);
     const ev = evalModel(model, causeIds, effectIds, assignment);
     if (!ev.feasible) continue;
-    const got = runSkeleton(nodes, ev.bools) ?? [];
-    if (!sameSet(new Set(got), ev.effects)) return { ok: false, checked: true };
+    const got = runFamilies(families, ev.bools);
+    if (!sameSet(got, ev.effects)) return { ok: false, checked: true };
   }
   return { ok: true, checked: true };
 }
@@ -304,12 +361,25 @@ function sameSet(a: Set<string>, b: Set<string>): boolean {
 // Emit pseudo-code
 // ---------------------------------------------------------------------------
 
-function emitNodes(nodes: Node[], depth: number, label: (id: string) => string, lines: string[]): void {
+function emitNodes(
+  nodes: Node[],
+  depth: number,
+  label: (id: string) => string,
+  lines: string[],
+  accumulate: boolean,
+): void {
   const pad = INDENT.repeat(depth);
   for (const node of nodes) {
     if (node.kind === 'return') {
-      const value = node.effects.map(label).join(' + ') || 'None';
-      lines.push(`${pad}return ${value}      # ${node.effects.join('+') || 'none'}`);
+      // Accumulate mode: append this family's effect and fall through to the
+      // next family (never `return`, which would drop later families).
+      if (accumulate) {
+        const value = node.effects.map(label).join(', ');
+        lines.push(`${pad}result.append(${value})      # ${node.effects.join('+') || 'none'}`);
+      } else {
+        const value = node.effects.map(label).join(' + ') || 'None';
+        lines.push(`${pad}return ${value}      # ${node.effects.join('+') || 'none'}`);
+      }
       continue;
     }
     const condText = serializeExpression(node.cond);
@@ -317,10 +387,10 @@ function emitNodes(nodes: Node[], depth: number, label: (id: string) => string, 
       ? `      # ${label(node.cond.name)}`
       : '';
     lines.push(`${pad}if ${condText}:${condLabel}`);
-    emitNodes(node.then, depth + 1, label, lines);
+    emitNodes(node.then, depth + 1, label, lines, accumulate);
     if (node.els.length > 0) {
       lines.push(`${pad}else:`);
-      emitNodes(node.els, depth + 1, label, lines);
+      emitNodes(node.els, depth + 1, label, lines, accumulate);
     }
   }
 }
@@ -359,16 +429,22 @@ export function generateSkeletonPseudoCode(
   const label = (id: string) => nodeLabels.get(id) ?? id;
   const { causeIds, intermediateIds, effectIds } = table;
 
-  // Build the topology skeleton, then verify it; fall back to explicit guards.
-  let body = buildFactored(model, effectIds);
-  const v = verify(model, causeIds, effectIds, body);
+  // Partition effects into independent families (§5 step 5), build a gated tree
+  // per family, verify over the feasible space, and fall back to explicit
+  // per-effect guards. Families are accumulated so concurrent effects from
+  // independent sub-graphs are all emitted.
+  const effs = effectIds.filter((e) => model.nodes.get(e)?.expression);
+  const families = partitionFamilies(model, causeIds, effectIds);
+  let familyTrees = families.map((fam) => buildFactored(model, fam));
   let note = '';
   let status: SkeletonStatus;
+  const v = verify(model, causeIds, effectIds, familyTrees);
   if (v.checked && v.ok) {
     status = 'verified';
   } else if (v.checked && !v.ok) {
-    body = buildFlat(model, effectIds);
-    const v2 = verify(model, causeIds, effectIds, body);
+    // Explicit fallback: one guard per effect (each effect its own family).
+    familyTrees = effs.map((e) => buildFlat(model, [e]));
+    const v2 = verify(model, causeIds, effectIds, familyTrees);
     if (v2.ok) {
       status = 'explicit';
       note = '# note: factored form could not be verified; using explicit per-effect guards.';
@@ -377,11 +453,16 @@ export function generateSkeletonPseudoCode(
       note = '# note: this skeleton does not exactly match the graph (a difference was found in at least one case) — use as a rough reference only.';
     }
   } else {
-    // Verification skipped (too many causes): cannot claim equivalence (no mismatch found, just unchecked).
-    body = buildFlat(model, effectIds);
+    // Verification skipped (too many causes): one guard per effect, accumulated
+    // (never drops a concurrent effect), but equivalence is unconfirmed.
+    familyTrees = effs.map((e) => buildFlat(model, [e]));
     status = 'unchecked';
     note = `# note: ${causeIds.length} causes — too many to verify exhaustively; exact equivalence is unconfirmed. Use as a guide.`;
   }
+
+  // Accumulate (result list) when ≥2 independent effect families; otherwise keep
+  // the simpler single-`return` tree form (§5 step 5 / §6 control flow).
+  const accumulate = familyTrees.length >= 2;
 
   // Warning B signal: a feasible column firing two or more effects.
   const fires = (v: string | undefined) => v === 'T' || v === 't';
@@ -413,8 +494,17 @@ export function generateSkeletonPseudoCode(
     lines.push('');
   }
 
-  emitNodes(body, 1, label, lines);
-  lines.push(`${INDENT}return None      # default: no effect fires`);
+  if (accumulate) {
+    lines.push(`${INDENT}result = []`);
+    familyTrees.forEach((tree, i) => {
+      lines.push(`${INDENT}# effect group ${i + 1}`);
+      emitNodes(tree, 1, label, lines, true);
+    });
+    lines.push(`${INDENT}return result      # all fired effects (independent groups accumulated)`);
+  } else {
+    emitNodes(familyTrees[0] ?? [], 1, label, lines, false);
+    lines.push(`${INDENT}return None      # default: no effect fires`);
+  }
 
   return { text: lines.join('\n') + '\n', status, multiEffect };
 }

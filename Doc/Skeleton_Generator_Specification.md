@@ -249,12 +249,46 @@ Deterministic.
    one MC/DC control path.
    OR 定義の効果（例 `e1 = n3 OR n6 OR n9`）はその論理和でガード。各項が1つの MC/DC 制御パス。
 
-5. **Default / 既定**
-   A single trailing `return None` for inputs that fire no effect (under the constraints this may be
-   unreachable; it is never an effect).
-   どの効果も立たない入力のための末尾 `return None`（制約下では到達しないこともある。効果には決してしない）。
+5. **Independent effect families & accumulation / 独立な効果系統と蓄積**
+   Partition the effects into **families**: within a family at most one effect fires for any feasible input
+   (mutually exclusive — discriminated by a shared gate / `ONE`, steps 2–3), while **different families may
+   fire concurrently** (e.g. a main underwriting result *and* an independent rider result). Two effects are
+   in **different** families iff some feasible input fires both.
+   効果を**系統(family)**に分割する。系統内は任意の実行可能入力で高々1効果しか立たない（相互排他 —
+   共有ゲート/`ONE` で識別、手順2–3）。**異なる系統は同時に立ち得る**（例：主契約の引受結果 *と* 独立した
+   所得補償特約の結果）。ある実行可能入力で両方立つ2効果は**別系統**とする。
 
-6. **Emit / 出力**
+   Emit each family independently and **accumulate** the results — never stop at the first hit:
+   各系統を独立に出力し、結果を**蓄積**する（最初の一致で止めない）:
+   ```
+   result = []
+   # family A（主契約引受: ONE で相互排他）
+   if …:   result.append(引受区分_個別審査)
+   elif …: result.append(引受区分_自動引受)
+   else:   result.append(引受区分_引受不可)
+   # family B（所得補償特約: 独立・同時発火し得る）
+   if 選択しない:      result.append(所得補償特約判定_対象外)
+   elif …:            result.append(所得補償特約判定_付帯承認)
+   …
+   return result
+   ```
+   Within a family the factored gate/discriminate tree (steps 2–3) still applies, but its leaves **`append`**
+   instead of `return`. A model with a **single** family keeps the simpler single-`return` tree form.
+   系統内は手順2–3の factoring 木をそのまま使うが、葉は `return` ではなく **`append`**。系統が**1つだけ**の
+   モデルは、従来の単一 `return` 木のままでよい。
+
+   > **Why / 根拠**: independent families live in **different subtrees**. A single early `return` emits only
+   > the first family's effect and silently drops the others — which makes the skeleton disagree with the CEG
+   > on any multi-effect input (§8 fails → "unverified"). Accumulation is required for correctness.
+   > 独立系統は**別サブツリー**にある。単一の早期 `return` は最初の系統の効果しか出さず残りを落とすため、
+   > 複数効果入力で CEG と食い違う（§8 不一致→"unverified"）。正しさのため蓄積が必須。
+
+6. **Default / 既定**
+   A single trailing `return None` / empty `result` for inputs that fire no effect (under the constraints this
+   may be unreachable; it is never an effect).
+   どの効果も立たない入力のための末尾 `return None` / 空の `result`（制約下では到達しないこともある。効果には決してしない）。
+
+7. **Emit / 出力**
    Walk the structure with the selected emitter.
    選択した出力器で構造をたどる。
 
@@ -282,6 +316,7 @@ a product of choices: admission fee 2×4×2 = 16).
 | Derivation source / 導出源 | `model` (expressions + intermediates + constraints) / モデル | — (CSV table alone is insufficient — §3 note) |
 | Emitter / 出力言語 | `pseudo` (language-agnostic) / 擬似コード | `typescript`, `python` |
 | Nesting / ネスト方針 | `tree` (gated nested `if`) / ゲート付きネスト | `flat` (one guard per effect) / 効果ごとガード |
+| Control flow / 制御フロー | `accumulate` when ≥2 independent effect families (append to `result`, §5 step 5) / 独立系統が2つ以上なら蓄積 | `return`-tree when a single family / 単一系統なら return 木 |
 | Intermediates / 中間変数 | `keep` (named computed variables) / 名前付き計算変数で残す | `inline` (expand into conditions) / 条件に展開 |
 | Gate ordering / ゲート順序 | `most-shared-first` (greedy) / 最共有の支配条件優先 | `topological`, `effect-order` |
 | Default leaf / 既定の葉 | `return None` | configurable string / 文字列指定 |
@@ -303,7 +338,7 @@ node feeding several effects is **computed once and shared** — the DAG sharing
 - **Not globally optimal / 大域最適ではない.** Greedy gate ordering yields a *simple-enough*, not minimal, nesting (optimal factoring is NP-hard). / 貪欲なゲート順序は*十分シンプル*で最小ではない（最適 factoring は NP困難）。
 - **Unverifiable simplification falls back / 検証できない単純化は退避.** If a factored guard cannot be verified equivalent to the CEG over the feasible space, the effect is emitted with a more explicit (less-factored) guard — correct but more verbose. / factoring したガードが実行可能空間で CEG と一致すると検証できなければ、その効果はより明示的なガードで出力（正しいが冗長）。
 - **Determinacy values (`M`/`I`) / 不定値.** Effects that are `M`/`I` (MASK untestable) are skipped with a comment. / `M`/`I`（MASK でテスト不能）の効果はコメント付きでスキップ。
-- **Multiple simultaneous effects / 複数効果同時成立.** A path firing several effects emits all actions at that leaf. / 複数効果が立つパスは、その葉で全動作を出力。
+- **Multiple simultaneous effects / 複数効果同時成立.** Effects are partitioned into independent families and **accumulated** (§5 step 5): each family contributes at most one effect and the skeleton returns the union, so concurrent effects from independent sub-graphs (e.g. main contract + rider) are all emitted. (Emitting only the first — an early `return` — was the cause of "unverified" skeletons on multi-effect models.) / 効果は独立系統に分割して**蓄積**する（§5 step 5）。各系統は高々1効果を出し、骨格はその和を返すので、独立サブグラフの同時効果（例：主契約＋特約）を全て出力する。（最初の1つだけを早期 `return` するのが、複数効果モデルで "unverified" になる原因だった。）
 
 ---
 
@@ -332,6 +367,14 @@ Acceptance — **#1 is the real criterion; the rest are structural cross-checks:
    once / どのゲートも自グループを区別しない条件をテストしない。複数効果に効くノードは一度だけ計算。
 5. Reproduces topology: intermediate definitions present (from expressions); shared conditions are gates
    tested once / トポロジー再現: 中間定義が（式から）出る。共有条件はゲートとして一度だけテスト。
+6. **Multi-effect models verify / 複数効果モデルも検証される.** For a model with independent effect families
+   (e.g. medical underwriting: `引受区分_*` **and** `所得補償特約判定_*` both terminal effects), criterion #1
+   still holds — the accumulate form (§5 step 5) returns the full set of concurrent effects, so the skeleton is
+   `verified`, not `unverified`. A model that fires ≥2 independent effects for some feasible input must not
+   fall back to an early-`return` form that drops effects. / 独立系統を持つモデル（例：医療保険引受で
+   `引受区分_*` と `所得補償特約判定_*` が共に終端効果）でも基準#1が成立する。蓄積形（§5 step 5）が同時効果の
+   全集合を返すので、`verified` になる（`unverified` にならない）。ある実行可能入力で独立2効果以上が立つ
+   モデルは、効果を落とす早期 `return` 形に退避してはならない。
 
 ---
 
