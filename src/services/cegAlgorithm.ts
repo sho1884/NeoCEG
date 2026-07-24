@@ -1174,9 +1174,24 @@ export function initWork(model: LogicalModel): Map<string, WorkValue> {
  *
  * Reference: Algorithm_Design.md §14.2
  */
+/**
+ * Whether test `t` demonstrates MASK constraint `c` functioning:
+ * the trigger is satisfied AND at least one target is masked (M).
+ * (Algorithm_Design.md §14.4)
+ */
+function demonstratesMask(
+  test: Map<string, WorkValue>,
+  c: LogicalConstraint
+): boolean {
+  if (c.type !== 'MASK') return false;
+  if (!isMemberSatisfied(c.trigger, test)) return false;
+  return c.targets.some((target) => test.get(target.name) === 'M');
+}
+
 function checkStrong(
   testIndex: number,
-  state: AlgorithmState
+  state: AlgorithmState,
+  model: LogicalModel
 ): boolean {
   let strong = 0;
   let weak = 0;
@@ -1208,6 +1223,27 @@ function checkStrong(
 
       if (otherCoverage === 0) return true; // Can't remove
     }
+
+    // MASK demonstration protection (§14.4): keep this test if it is the last
+    // non-weak test that demonstrates some MASK constraint firing (trigger
+    // satisfied → target masked). A generated test suite must show that each
+    // constraint actually functions; for MASK that evidence is the masked (M)
+    // pattern, and the triggering cause is often isolated (anchored to no
+    // expression), so such tests would otherwise be dropped as redundant.
+    for (const c of model.constraints) {
+      if (c.type !== 'MASK') continue;
+      if (!demonstratesMask(state.tests[testIndex], c)) continue;
+
+      let otherDemo = 0;
+      for (let t = 0; t < state.tests.length; t++) {
+        if (t === testIndex) continue;
+        if (state.weaks[t]) continue;
+        if (demonstratesMask(state.tests[t], c)) otherDemo++;
+      }
+
+      if (otherDemo === 0) return true; // Last MASK demonstrator → can't remove
+    }
+
     return false; // Weak: safe to remove
   }
 
@@ -1323,7 +1359,7 @@ export function calcTable(model: LogicalModel): AlgorithmState {
   // === Phase 3: Weak test deletion ===
   state.weaks = new Array(state.tests.length).fill(false);
   for (let t = 0; t < state.tests.length; t++) {
-    if (!checkStrong(t, state)) {
+    if (!checkStrong(t, state, model)) {
       state.weaks[t] = true;
     }
   }

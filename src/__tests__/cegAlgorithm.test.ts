@@ -1682,3 +1682,58 @@ describe('calcTable - Step 5b consistency gate', () => {
     }
   });
 });
+
+// =============================================================================
+// §14.4 MASK demonstration protection (weak removal keeps MASK-firing tests)
+// =============================================================================
+
+describe('calcTable - MASK demonstration protection', () => {
+  // `trig` is a MASK trigger referenced by no expression (isolated). Without
+  // §14.4 protection, the test that fires the MASK is dropped as weak, so the
+  // masked (M) behaviour never appears — an insufficient test suite/skeleton.
+  it('keeps a non-weak test that demonstrates each MASK firing', () => {
+    const model = createModel([
+      { name: 'trig' },
+      { name: 'other' },
+      { name: 'tgt1' },
+      { name: 'tgt2' },
+      { name: 'X' },
+      { name: 'E', expression: and(ref('X'), ref('other')) },
+    ]);
+    model.constraints = [
+      {
+        type: 'ONE',
+        members: [
+          { name: 'trig', negated: false },
+          { name: 'other', negated: false },
+        ],
+      },
+      {
+        type: 'ONE',
+        members: [
+          { name: 'tgt1', negated: false },
+          { name: 'tgt2', negated: false },
+        ],
+      },
+      {
+        type: 'MASK',
+        trigger: { name: 'trig', negated: false },
+        targets: [
+          { name: 'tgt1', negated: false },
+          { name: 'tgt2', negated: false },
+        ],
+      },
+    ];
+
+    const state = calcTable(model);
+    // At least one retained (non-weak) test fires the MASK: trig satisfied and
+    // a target masked (M).
+    const demonstrated = state.tests.some((t, i) => {
+      if (state.weaks[i]) return false;
+      const trig = t.get('trig');
+      const trigOk = trig === 'T' || trig === 't';
+      return trigOk && (t.get('tgt1') === 'M' || t.get('tgt2') === 'M');
+    });
+    expect(demonstrated).toBe(true);
+  });
+});
