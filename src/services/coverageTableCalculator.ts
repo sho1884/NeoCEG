@@ -222,9 +222,12 @@ export function generateCoverageTableFromState(
  * Symbols (Algorithm_Design.md §13.3, §13.4.3):
  * - # : first coverage (first non-weak test to cover this expression)
  * - x : additional coverage (expression already covered by a previous test)
- * - - : infeasible (constraint violation, cannot execute)
+ * - ! : infeasible (constraint violation, cannot execute)
  * - ? : untestable (can execute, but result unknown due to MASK)
  * - (blank) : not covered
+ *
+ * Note: infeasible is '!' (not '-'); '-' is the decision table's don't-care
+ * marker, so the two tables never share a glyph (Algorithm_Design.md §15.2).
  */
 export function getCoverageMarkerDisplay(marker: CoverageMarker): string {
   switch (marker) {
@@ -235,7 +238,7 @@ export function getCoverageMarkerDisplay(marker: CoverageMarker): string {
     case 'not_covered':
       return '';
     case 'infeasible':
-      return '-';
+      return '!';
     case 'untestable':
       return '?';
   }

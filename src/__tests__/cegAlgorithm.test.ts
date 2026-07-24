@@ -23,7 +23,7 @@ import {
   isPossible,
   calcTable,
 } from '../services/cegAlgorithm';
-import { generateCoverageTableFromState } from '../services/coverageTableCalculator';
+import { generateCoverageTableFromState, getCoverageMarkerDisplay } from '../services/coverageTableCalculator';
 import { generateOptimizedDecisionTableWithState } from '../services/decisionTableCalculator';
 
 // =============================================================================
@@ -1555,5 +1555,88 @@ describe('calcTable - admission fee example', () => {
     expect(coverageTable.stats.totalExpressions).toBe(22);
     expect(coverageTable.stats.coveredExpressions).toBe(22);
     expect(coverageTable.stats.coveragePercent).toBe(100);
+  });
+});
+
+// =============================================================================
+// §5.1 Phase 4 - Constraint completion (fill isolated causes) + don't-care
+// =============================================================================
+
+describe('calcTable - Phase 4 constraint completion', () => {
+  it('fills an isolated cause determined by ONE (no empty cell left)', () => {
+    // A_on is referenced (E := A_on); A_off appears only in ONE → isolated.
+    // Every test sets A_on to T/F, so ONE(A_on, A_off) determines A_off.
+    const model = createModel([
+      { name: 'A_on' },
+      { name: 'A_off' },
+      { name: 'E', expression: ref('A_on') },
+    ]);
+    model.constraints = [
+      {
+        type: 'ONE',
+        members: [
+          { name: 'A_on', negated: false },
+          { name: 'A_off', negated: false },
+        ],
+      },
+    ];
+
+    const state = calcTable(model);
+    expect(state.tests.length).toBeGreaterThan(0);
+    for (const test of state.tests) {
+      const on = test.get('A_on');
+      const off = test.get('A_off');
+      // A_off must be filled (never '' / undefined) and be the ONE-complement.
+      expect(off === 'T' || off === 'F').toBe(true);
+      if (on === 'T' || on === 't') expect(off).toBe('F');
+      if (on === 'F' || on === 'f') expect(off).toBe('T');
+    }
+  });
+
+  it('leaves a genuine don\'t-care cell empty when ONE cannot pin it', () => {
+    // ONE(A, B, C) with only C referenced (E := X AND C). In a C=F test the
+    // constraint only says "one of A,B is true" → A,B stay unset (don't-care).
+    const model = createModel([
+      { name: 'A' },
+      { name: 'B' },
+      { name: 'C' },
+      { name: 'X' },
+      { name: 'E', expression: and(ref('X'), ref('C')) },
+    ]);
+    model.constraints = [
+      {
+        type: 'ONE',
+        members: [
+          { name: 'A', negated: false },
+          { name: 'B', negated: false },
+          { name: 'C', negated: false },
+        ],
+      },
+    ];
+
+    const state = calcTable(model);
+    // Some test has C false, where A and B are both genuinely don't-care.
+    const hasDontCare = state.tests.some((t) => {
+      // '' (unset / don't-care) and undefined are both falsy; T/F/M/I are truthy.
+      return !t.get('A') && !t.get('B');
+    });
+    expect(hasDontCare).toBe(true);
+  });
+});
+
+// =============================================================================
+// §13.4.3 Coverage marker glyphs (infeasible '!' — not '-')
+// =============================================================================
+
+describe('getCoverageMarkerDisplay', () => {
+  it('renders infeasible as "!" (reserving "-" for the decision table)', () => {
+    expect(getCoverageMarkerDisplay('infeasible')).toBe('!');
+  });
+
+  it('renders the other markers unchanged', () => {
+    expect(getCoverageMarkerDisplay('adopted')).toBe('#');
+    expect(getCoverageMarkerDisplay('covered')).toBe('x');
+    expect(getCoverageMarkerDisplay('untestable')).toBe('?');
+    expect(getCoverageMarkerDisplay('not_covered')).toBe('');
   });
 });

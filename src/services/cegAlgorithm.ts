@@ -1299,5 +1299,19 @@ export function calcTable(model: LogicalModel): AlgorithmState {
     }
   }
 
+  // === Phase 4: Constraint completion (display fill) ===
+  // Fill cause cells that are uniquely determined by constraints (ONE/EXCL/
+  // INCL/REQ/MASK) but were left unset because the cause appears in no
+  // expression (an isolated cause). deduceAllConstraints/applyAllMasks only
+  // write cells that are still '', so existing values are untouched and — since
+  // the filled causes are absent from every expression — coverage, weak flags,
+  // and test count are unaffected. Cells still '' afterward are genuine
+  // don't-care, rendered as '-' (Algorithm_Design.md §5.1 / §15.2).
+  for (const test of state.tests) {
+    const work = test as Map<string, WorkValue>;
+    deduceAllConstraints(work, model.constraints);
+    applyAllMasks(work, model.constraints);
+  }
+
   return state;
 }

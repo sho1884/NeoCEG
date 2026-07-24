@@ -501,7 +501,7 @@ interface CoverageTableViewProps {
  * Displays logical expressions with:
  * - Expression column (論理式1, 論理式2, ...)
  * - Node columns showing required values (T/F)
- * - Test condition columns showing coverage (# = covered, x = infeasible, blank = not covered)
+ * - Test condition columns showing coverage (# = first coverage, x = additional, ! = infeasible, ? = untestable, blank = not covered)
  * - Remarks column showing status
  */
 function CoverageTableView({ table, conditions, mode = 'practice' }: CoverageTableViewProps) {
