@@ -222,7 +222,16 @@ Each row represents a logical expression (edge) that should be covered.
 | `x` | Also covered — expression already covered by another rule / 追加カバー — 別のルールで既にカバー済み |
 | `!` | Infeasible — the expression can never hold (constraint violation) / 実行不能 — 制約違反で成立し得ない |
 | `?` | Untestable — feasible but the result is indeterminate under MASK / テスト不能 — 実行可能だが MASK により結果が不定 |
+| `>` | Unobservable — the value never reaches an effect, so no rule can decide it / 観測不能 — 値が結果ノードに届かず合否を判定できない |
 | (blank) | Not covered by this rule / このルールではカバーされない |
+
+`#` and `x` assert that the rule **verifies** the expression: the value under test reaches an effect
+and the result decides pass or fail. The coverage rate counts every expression (`covered / total`),
+with infeasible / untestable / unobservable listed separately, so a gap stays visible.
+
+`#`・`x` は、そのルールがその論理式を**検証する**ことの表明です（検証対象の値が結果ノードに届き、
+結果で合否が決まる）。カバレッジ率は全論理式を分母に数え（`covered / total`）、実行不能・テスト不能・
+観測不能を内訳として別に示すため、漏れが見えなくなることはありません。
 
 The coverage table's infeasible marker is `!` (not `-`); `-` is the decision table's don't-care marker (§5.1), so the two tables never share a glyph.
 
@@ -384,4 +393,5 @@ Errors are always JSON: `{"error": {"type": "...", "message": "..."}}`.
 | 2026-04-04 | Initial version / 初版作成 |
 | 2026-07-24 | Add §8 Demo API (serve mode) with the public demo URL, curl examples, and guardrails / §8 デモ API（serve モード）を追加：公開デモ URL・curl 例・ガードレール |
 | 2026-07-24 | Document `--all-combinations` (learning mode) and its 256-column limit to match the core; remove the stale Observable column (the observable flag was removed in 2026-06) / コアに合わせ `--all-combinations`（学習モード）と 256 列上限を記載。廃止済みの Observable 列を削除（観測フラグは 2026-06 に削除） |
+| 2026-09-02 | Coverage markers assert verification (`#`/`x` only when the value reaches an effect); added the Unobservable marker `>`; the coverage rate counts every expression with the breakdown shown / カバレッジマーカーは検証の表明（値が結果に届く場合のみ `#`・`x`）。観測不能 `>` を追加。カバレッジ率は全論理式を分母とし内訳を併記 |
 | 2026-07-24 | Symbol alignment: decision-table don't-care is `-`; coverage-table infeasible is `!` (was `-`), untestable `?` — added the missing coverage markers and the DT `-` legend / 記号統一：DTの不問は `-`、カバレッジの実行不能は `!`（旧 `-`）・テスト不能 `?`。欠けていたカバレッジ記号と DT `-` の凡例を追加 |
