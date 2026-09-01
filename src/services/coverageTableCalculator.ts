@@ -88,10 +88,12 @@ export function generateCoverageTableFromState(
   let coveredCount = 0;
   let infeasibleCount = 0;
   let untestableCount = 0;
+  let unobservableCount = 0;
 
   for (let l = 0; l < state.expressions.length; l++) {
     const expr = state.expressions[l];
     const isInfeasible = state.infeasibles[l] !== null;
+    const isUnobservable = !isInfeasible && state.unobservables[l] !== null;
 
     // Build edge info from expression
     const inputNames = [...expr.requiredValues.keys()].filter(k => k !== expr.ownerNode);
@@ -120,6 +122,11 @@ export function generateCoverageTableFromState(
       // All cells get 'infeasible' marker
       for (let t = 0; t < state.tests.length; t++) {
         coverage.set(t + 1, 'infeasible');
+      }
+    } else if (isUnobservable) {
+      // The value never reaches an effect: no test can decide it (§13.4)
+      for (let t = 0; t < state.tests.length; t++) {
+        coverage.set(t + 1, 'unobservable');
       }
     } else {
       for (let t = 0; t < state.tests.length; t++) {
@@ -150,7 +157,7 @@ export function generateCoverageTableFromState(
     // 3. At least one non-weak test would cover it with relaxed matching
     //    (treating M/I as wildcards)
     let isUntestable = false;
-    if (!isInfeasible && !isCovered) {
+    if (!isInfeasible && !isUnobservable && !isCovered) {
       for (let t = 0; t < state.tests.length; t++) {
         if (state.weaks[t]) continue;
         if (isRelaxedCoveredBy(state.tests[t], requiredValues)) {
@@ -174,6 +181,8 @@ export function generateCoverageTableFromState(
     let reason = '';
     if (isInfeasible) {
       reason = state.infeasibles[l] || 'Infeasible';
+    } else if (isUnobservable) {
+      reason = state.unobservables[l] || '遮断';
     } else if (isUntestable) {
       // Find MASK constraints from model
       const maskConstraints = model.constraints
@@ -185,6 +194,7 @@ export function generateCoverageTableFromState(
     if (isCovered) coveredCount++;
     if (isInfeasible) infeasibleCount++;
     if (isUntestable) untestableCount++;
+    if (isUnobservable) unobservableCount++;
 
     rows.push({
       expressionIndex: l + 1,
@@ -194,12 +204,15 @@ export function generateCoverageTableFromState(
       isCovered,
       isInfeasible,
       isUntestable,
+      isUnobservable,
       reason,
     });
   }
 
-  const testable = state.expressions.length - infeasibleCount - untestableCount;
-  const coveragePercent = testable > 0 ? (coveredCount / testable) * 100 : 100;
+  // Every expression counts, whether or not it can be discharged: what is
+  // missing must be visible as missing (Algorithm_Design.md §1.4).
+  const total = state.expressions.length;
+  const coveragePercent = total > 0 ? (coveredCount / total) * 100 : 100;
 
   return {
     rows,
@@ -211,6 +224,7 @@ export function generateCoverageTableFromState(
       coveredExpressions: coveredCount,
       infeasibleExpressions: infeasibleCount,
       untestableExpressions: untestableCount,
+      unobservableExpressions: unobservableCount,
       coveragePercent,
     },
   };
@@ -224,6 +238,7 @@ export function generateCoverageTableFromState(
  * - x : additional coverage (expression already covered by a previous test)
  * - ! : infeasible (constraint violation, cannot execute)
  * - ? : untestable (can execute, but result unknown due to MASK)
+ * - > : unobservable (executes, but the value never reaches an effect)
  * - (blank) : not covered
  *
  * Note: infeasible is '!' (not '-'); '-' is the decision table's don't-care
@@ -241,6 +256,8 @@ export function getCoverageMarkerDisplay(marker: CoverageMarker): string {
       return '!';
     case 'untestable':
       return '?';
+    case 'unobservable':
+      return '>';
   }
 }
 

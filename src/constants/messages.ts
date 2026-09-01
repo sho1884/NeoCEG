@@ -45,11 +45,13 @@ export const COVERAGE_MESSAGES = {
   // Expression status tooltips
   infeasibleTooltip: 'This expression is infeasible due to constraint violations',
   untestableTooltip: 'This expression is untestable due to MASK constraint',
+  unobservableTooltip: 'The value never reaches an effect, so no test can decide this expression',
   notCoveredTooltip: 'This expression is not covered by any test condition',
 
   // Status badges
   infeasibleBadge: 'Infeasible',
   untestableBadge: 'Untestable',
+  unobservableBadge: 'Blocked',
   notCoveredBadge: 'Not Covered',
 
   // Abbreviated badges for column headers

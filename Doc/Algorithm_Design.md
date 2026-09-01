@@ -40,6 +40,46 @@
 
 ---
 
+### 1.4 決定表の正しさ（義務集合）
+
+生成された決定表 `T`（列の集合）が**正しい**とは、次の3つが同時に成り立つことをいう。
+
+1. **完全性**: 義務集合 `O` の各義務が、`T` のいずれかの列によって**果たされている**
+2. **説明可能性**: 果たせない義務は、その理由（実行不可／テスト不可／観測不能）に分類して報告されている
+3. **非冗長性**: `T` のどの列を取り除いても、果たされなくなる義務が存在する
+
+**「果たされている」の定義**:
+
+> 義務が果たされているとは、その列を実行したときに、**テスターが合否を判定できる形で**
+> 当該の事実が現れることをいう。
+
+この定義により、観測可能性（§2.5）は後付けの追加規則ではなく、「果たす」という語の
+意味として全義務に一様に適用される。結果ノードで観測できない事実は、果たされていない。
+
+#### 義務の全集合
+
+| ID | 義務 | 果たす条件 | 詳細 |
+|----|------|-----------|------|
+| A | **論理式網羅** — 各論理式につき最低1本 | 列が要求値を実現し、かつオーナーノードが観測可能 | §4, §13.1 |
+| B | **結果網羅** — 孤立でない各原因の T と F | 列がその値を持ち、かつ観測可能 | §5.1 フェーズ2 |
+| C | **制約の実演** — 各 MASK 制約につき最低1本 | トリガー真 → ターゲット不問(M) を示す | §14.4 |
+| D | **実行可能性** — 各列が実行可能 | `checkConstr` と `isPossible` が空 | §6.2 Step 5b, §10, §11.4 |
+| E | **非冗長性** — どの列も A・B・C のいずれかを単独で担う | 削除すると果たされない義務が生じる | §14 |
+| F | **分類と報告** — 果たせない義務の理由を示す | 実行不可 / テスト不可 / 観測不能 | §13.4 |
+| G | **表示規則** — 値と不問の表記 | §15.2 のとおり | §15.2 |
+| I | **列の一意性** — 実行入力として同一の列を出さない | `T` と `t`、`F` と `f` は同じ入力とみなす | §14.5 |
+| J | **決定性** — 同一ソースからは同一の決定表 | 走査順に依存しない | — |
+
+> C の ONE/EXCL/INCL/REQ については、排除作用がカバレッジ表の実行不可マーキング
+> （違反制約名つき、§13.4）で実証されるため、追加の列は要求しない。
+
+#### カバレッジ率の分母
+
+カバレッジ率は、**果たせる／果たせないに関わらず全論理式**を分母として数える。
+実行不可・テスト不可・観測不能の件数を併記し、到達できない理由が読み取れるようにする。
+漏れているものは、漏れていると分かる形で示す。
+
+
 ## 2. 真理値の体系
 
 ### 2.1 値の種類と意味
@@ -56,20 +96,29 @@
 | `I` | 不確定 | マスクまたは不確定な入力により、出力が確定しない | `deduceValue()` |
 | `""` | 未設定 | まだ値が割り当てられていない | 初期状態 |
 
-### 2.2 カバレッジ判定と大文字/小文字の関係
+### 2.2 カバレッジ判定は「実行されるテスト」の性質
 
-カバレッジ判定（論理式がテスト条件にカバーされるか）は**完全一致比較**で行う:
+カバレッジ判定（論理式がテスト条件にカバーされるか）は、**テスターが実行する入力**に
+対して行う。したがって値の**由来は問わない**:
 
 ```
-カバー条件: 論理式の全値セルについて work[k] == logics[l][k]
+カバー条件: 論理式の全値セルについて 真偽が一致する
+            （"T" と "t" は同じ真、"F" と "f" は同じ偽）
+        かつ オーナーノードがその列で観測可能（§2.5）
 ```
 
-この比較は**大文字と小文字を区別する**。すなわち:
-- `"T" != "t"`: 論理式が `"T"` を要求している場合、作業配列が `"t"` では一致しない
-- `"F" != "f"`: 同様
+**なぜ由来を問わないか**: 同一の入力を実行する2本のテストは、同じ結果を返す。
+値が論理式に要求されたものか推論で決まったものかは、実行結果を変えない。
+由来で区別すると、同じ入力の列が「片方は検証、片方は未検証」に分かれ、
+実行入力として重複する列（義務 I 違反）が残る。
 
-これにより、論理式定義の値（大文字）と推論値（小文字）が区別され、
-テスト条件が論理式の意図する状況を正確に反映しているかが検証される。
+**「意図する状況を検証しているか」の担保**: この役割は観測可能性（§2.5）が担う。
+値がその列で結果ノードまで届いていれば、その論理式は検証されている。届いていなければ、
+値がどう作られていても検証にはなっていない。
+
+**大文字/小文字の役割**: `T`/`F`（論理式定義・制約演繹由来）と `t`/`f`（推論由来）の
+区別は、値の由来を示す**表示上の注釈**として残る（Requirements_Specification SR-021）。
+カバレッジ判定には用いない。
 
 ### 2.3 論理演算における値の扱い
 
@@ -127,6 +176,38 @@ CEGTest 1.6では、M（マスク）値の論理演算に不正確な部分が�
 
 ---
 
+### 2.5 観測可能性
+
+テスト条件 `work` において、ノード `n` が**観測可能**であるとは、`n` の値を反転させて
+下流を再計算したとき、**両方の場合で確定している結果ノード**の値が異なるものが
+存在することをいう。
+
+```
+FUNCTION observable(work, model, n) -> BOOLEAN:
+    IF work[n] が T/t/F/f のいずれでもない:
+        RETURN FALSE                       // M / I / 未設定は観測不能
+
+    kept    = work を複製し、n を現在値に固定して n 以外の派生ノードを再計算
+    flipped = work を複製し、n を反転値に固定して n 以外の派生ノードを再計算
+
+    FOR each 結果ノード e:
+        IF kept[e] と flipped[e] の**両方**が T/t/F/f:
+            IF 真偽が異なる:
+                RETURN TRUE
+    RETURN FALSE
+```
+
+**両側を同じ手順で再計算する**: 基準側に元の作業配列（合流や制約演繹で入った値を含む）を
+使うと、推論し直した値と比較することになり判定が狂う。
+
+**確定同士でのみ比較する**: `M`（マスク）や `I`（不定）は、テスターが合否を判定できない。
+「確定 → 不定」への変化は観測の証拠にならない。
+
+**計算量**: O(ノード数)。
+
+**結果ノード自身**: 反転すれば必ず結果が変わるため、常に観測可能となる（無害）。
+
+
 ## 3. データ構造
 
 ### 3.1 論理式配列 `logics[l][k]`
@@ -177,18 +258,20 @@ CEGTest 1.6では、M（マスク）値の論理演算に不正確な部分が�
 - `l`: 論理式番号
 - 値: `0` または `1`
 
-### 3.6 採用履歴 `turns[]`
+### 3.6 合流履歴 `applied[]`
 
-現在のテスト条件生成で採用した選択を記録する配列。
+1本の列を作る間だけ保持する、合流した論理式の履歴。
 
-- 値が `lnum` 未満: 論理式番号（論理式を採用した）
-- 値が `lnum` 以上: 原因ノードの値選択をエンコード
-  - `lnum + nodeIndex * 2`: ノードにTを割り当て
-  - `lnum + nodeIndex * 2 + 1`: ノードにFを割り当て
+```
+applied[i] = { index: 論理式番号, req: その論理式が持ち込んだ要求値 }
+```
 
-**注意**: `chooseCauseValue()`は小文字 `"t"`/`"f"` で呼ばれるため、
-大文字 `"T"`/`"F"` の条件チェックに合致せず、実際には原因ノードの選択は
-`turns[]` に記録されない。これは敗者復活フェーズでのみ明示的に記録される。
+`req` には論理式自身の要求値と**感度化条件**（§4.7）の両方が入る。
+バックトラックのときは末尾を取り消し、種（主義務の要求値＋その感度化条件）から
+`applied` を順に再適用して作業配列を復元する（§12）。
+
+原因ノードへの値割り当ては履歴に残さない。取り消しのあとは、再構築された作業配列に
+対して割り当てをやり直す。
 
 ### 3.7 不適切マーク `unsuitables[i]`
 
@@ -338,387 +421,258 @@ Eの直接入力（I, C）のみに関心があるためである。マージ時
 
 ---
 
+### 4.7 感度化条件
+
+論理式は自ノードと直接の入力にしか値を持たない（§4.6）。その値を**結果ノードまで
+届ける条件**は論理式の外にあるため、義務を果たすには論理式の要求値に加えて
+感度化条件を課す。
+
+#### 4.7.1 1ゲートの感度化
+
+ノード `x` の値をゲート `g` に通すための、`x` 以外の入力への要求:
+
+| `g` の種類 | `x` 以外の入力に課す値 |
+|-----------|----------------------|
+| AND | **満足**させる（NOT無しなら `T`、NOT有りなら `F`） |
+| OR | **非満足**にする（NOT無しなら `F`、NOT有りなら `T`） |
+| 単一入力・NOT | 追加条件なし |
+
+これは §4.3／§4.4 の論理式生成規則と同じ形である。§4 はこの規則を1ゲート内に
+適用しており、感度化はそれを経路全体に適用したものにあたる。
+
+#### 4.7.2 経路の感度化
+
+`x` から結果ノード `e` までの経路上の各ゲートに 4.7.1 を課したものが、その経路の
+感度化条件である。同じノードに相反する値を要求する経路は成立しないため捨てる。
+
+#### 4.7.3 経路の列挙順（決定性）
+
+経路は**モデルのノード定義順に幅優先で列挙**し、成立した最初のものを採用する。
+順序を定義順に固定することで、同一ソースからは同一の決定表が得られる（義務 J）。
+
+結果ノード自身は、値を反転すれば必ず結果が変わるため、感度化条件を必要としない。
+経路が1本も存在しないノードは、その値をどの入力でも観測できない（§13.4 の観測不能）。
+
+
 ## 5. メインループ
 
 ### 5.1 calcTABLE: テーブル生成のエントリポイント
 
+決定表の生成は、義務集合（§1.4）を1つずつ果たしていく手続きである。
+
 ```
-FUNCTION calcTABLE():
-    // 初期化
-    tests = []
-    covs = []
-    lnum = 全ノードの論理式数の合計
-    vtestcov = Array(lnum, 初期値 0)
-    unsuitables = Array(lnum + 2 * nodeCount, 初期値 0)
-    infeasibles = Array(lnum, 初期値 "")
+FUNCTION calcTable(model) -> AlgorithmState:
 
-    // === フェーズ1: 論理式網羅 ===
-    uncover = -1
-    FOR iteration = 0 TO lnum - 1:
-        // 各テスト条件生成ごとにリセット
-        vtest = Array(nodeCount, 初期値 "")
-        vtestcov = Array(lnum, 初期値 0)
-        unsuitables = Array(lnum + 2*nodeCount, 初期値 0)
-        turns = []
+    expressions = extractExpressions(model)      // 義務 A の一覧（§4）
+    IF expressions.length == 0: RETURN 空の state
 
-        IF nextCondition(vtest, lnum) == TRUE:
-            tests.append(copy of vtest)
-        ELSE:
-            // テスト条件生成失敗（全てテスト不可能）
-            BREAK
+    effects     = 結果ノードの一覧
+    obligations = buildObligations(model, expressions)   // フェーズ0
 
-        // 網羅完成チェック
-        complete = TRUE
-        FOR l = 0 TO lnum - 1:
-            IF infeasibles[l] != "":
-                CONTINUE
-            IF countCoverage(l) == 0:
-                IF uncover == l:
-                    ERROR "論理式(l+1)が網羅できません"
-                    RETURN
-                uncover = l
-                complete = FALSE
-                BREAK
-        IF complete:
-            BREAK
-
-    // === フェーズ2: 敗者復活（結果網羅）===
-    FOR each causeNode i:
-        IF causeNode i is 孤立（どのノードの入力にもなっていない）:
+    // === フェーズ1: 未達成の義務ごとに列を1本作る ===
+    FOR each obligation o IN obligations:
+        IF 既存のどれかの列が o を果たしている（完成形で判定）:
             CONTINUE
+        column = buildColumn(model, state, o, effects)   // §6
+        IF column == null:
+            CONTINUE                                     // フェーズ6で分類する
+        tests.append(column)
 
-        // T/t と F/f のカウント
-        countT = tests中でノードiがT/tである数
-        countF = tests中でノードiがF/fである数
+    // === フェーズ2: 制約完了（列を完成形にする）===
+    FOR each test:
+        deduceAllConstraints(test)
+        applyAllMasks(test)
 
-        IF countT == 0:
-            // Tが不足: t を設定してテスト条件生成
-            vtest = Array(nodeCount, 初期値 "")
-            vtest[i] = "t"
-            turns = [lnum + i * 2]  // 明示的にturnsに記録
-            IF nextCondition(vtest, lnum) == TRUE:
-                tests.append(copy of vtest)
+    // === フェーズ3: 実行入力として重複する列を落とす（義務 I）===
+    // 同一性は T と t、F と f を同じ入力とみなして判定する（§2.2）
 
-        IF countF == 0:
-            // Fが不足: f を設定してテスト条件生成
-            vtest = Array(nodeCount, 初期値 "")
-            vtest[i] = "f"
-            turns = [lnum + i * 2 + 1]  // 明示的にturnsに記録
-            IF nextCondition(vtest, lnum) == TRUE:
-                tests.append(copy of vtest)
+    // === フェーズ4: 完成形の列で論理式カバレッジを判定（§13.1）===
+    FOR each test t, each expression l:
+        covs[t][l] = 真偽が一致する AND observable(t, オーナーノード)
 
-    // === フェーズ3: 弱テスト削除 ===
-    weaks = Array(tests.length, 初期値 0)
-    FOR t = 0 TO tests.length - 1:
-        IF checkStrong(t) == FALSE:
-            weaks[t] = 1  // 弱テスト → 削除対象
+    // === フェーズ5: 弱テスト削除（義務 E、§14）===
+    FOR each test t:
+        weaks[t] = isRemovable(t)
 
-    // === フェーズ4: 制約完了（表示補完）===
-    // 制約(ONE/EXCL/INCL/REQ/MASK)により一意に定まるが、どの論理式にも
-    // 現れない原因（＝孤立原因）は、フェーズ1–2 で値割り当てされず '' のまま
-    // 残る。例: ONE(通常, 危険) で 危険=F のとき、通常=T は制約上確定するが、
-    // 通常 がどの式にも使われていなければ未設定のまま残る。
-    // 表示前に各テストへ制約演繹を1回適用し、この確定値を埋める。
-    FOR t = 0 TO tests.length - 1:
-        deduceAllConstraints(tests[t])   // '' のセルのみ充填（既存値は不変）
-        applyAllMasks(tests[t])
-    // 充填対象はどの論理式にも現れない原因のみなので、covs / weaks /
-    // テスト本数には影響しない（フェーズ3の後に置いてよい理由）。
-    // ここで残る '' は「制約でも一意に決まらない真の don't-care」であり、
-    // デシジョンテーブルでは記号 '-'（不問）で表示する（§15.2）。
+    // === フェーズ6: 果たせなかった論理式を分類（義務 F、§13.4）===
+    FOR each expression l WHERE どの非弱テストも果たしていない:
+        IF 要求値が制約下で成立しない: infeasibles[l] = 違反した制約
+        ELSE IF 感度化経路が1本もない:  unobservables[l] = "遮断"
+
+    RETURN state
 ```
 
-> **背景 / なぜ必要か**: デシジョンテーブルの「不問(don't-care)」は `-`（ハイフン、
-> DT の教科書標準）で表す。ただし補完が無いと、**制約で一意に確定する原因**まで
-> `''` のまま `-` に化け、「本当に不問」と「制約で確定」の区別が失われる。
-> フェーズ4で確定分を `T`/`F` で埋め、真の不問だけを `-` に残す。
-> なお、この `-` と紛れないよう、カバレッジ表の「実行不可」は `!` に変更した
-> （§13.4.3）。
+#### 義務リストの構築（フェーズ0）
+
+```
+FUNCTION buildObligations(model, expressions) -> Obligation[]:
+    // モデル定義順に並べる（義務 J: 同一ソースから同一の結果）
+    FOR each expression l:            append { kind: A, index: l }
+    FOR each 原因ノード c WHERE 孤立でない:
+        append { kind: B, cause: c, want: true }
+        append { kind: B, cause: c, want: false }
+    FOR each MASK 制約:               append { kind: C, constraint }
+```
+
+**結果網羅（旧フェーズ2「敗者復活」）は義務 B としてこのリストに含まれる。**
+生成後に不足を補う特別扱いは行わない。
+
+#### 義務を果たしたかの判定
+
+| 義務 | 果たす条件 |
+|------|-----------|
+| A | 列が論理式の要求値を実現し、かつオーナーノードが観測可能（§2.5） |
+| B | 列がその原因にその真偽を持ち、かつその原因が観測可能 |
+| C | トリガーが満たされ、ターゲットの少なくとも1つが `M` |
+
+判定は**完成形の列**（フェーズ2適用後）に対して行う。要求セルが `M` になった
+論理式は、その列では検証されていない。
 
 ### 5.2 フェーズ間の関係
 
 ```
-フェーズ1: 論理式網羅
-    ├── 全論理式に対して最低1つのテスト条件を生成
-    └── テスト数の最小化（マージによる最適化）
+フェーズ0: 義務の一覧化
+    └── A（論理式）・B（結果網羅）・C（MASK 実演）をモデル定義順に並べる
 
-フェーズ2: 敗者復活
-    ├── 全原因ノードのT/F両方の出現を保証
-    ├── フェーズ1で片方しか出現しなかった原因を補完
-    └── 追加テスト条件を生成
+フェーズ1: 列の生成
+    ├── 未達成の義務ごとに、その義務を主目的とする列を1本作る
+    ├── 主義務の要求値 ＋ 感度化条件（§4.7）を置く
+    └── 矛盾しない他の論理式を合流し、自由変数を埋める
 
-フェーズ3: 弱テスト削除
-    ├── 一意的カバレッジ(#)を持たないテストを識別
-    ├── 削除しても全論理式がカバーされることを確認
-    └── 冗長テストを削除してテスト数を削減
+フェーズ2: 制約完了（表示補完）
+    └── 制約で一意に定まる値を充填し、MASK を適用して列を完成させる
 
-フェーズ4: 制約完了（表示補完）
-    ├── 制約で一意に定まる孤立原因の値を各テストに充填
-    ├── covs / weaks / テスト本数は不変（充填対象は論理式に無関係）
-    └── 残る空値は真の don't-care → 表示は '-'（不問, §15.2）
+フェーズ3: 重複列の除去
+    └── 実行入力として同一の列を1本にする（義務 I）
+
+フェーズ4: カバレッジ判定
+    └── 完成形の列に対して §13.1 で判定する
+
+フェーズ5: 弱テスト削除
+    └── 担う義務がすべて他の列でも担われている列を削除する（義務 E）
+
+フェーズ6: 分類と報告
+    └── 果たせなかった論理式を 実行不可 / テスト不可 / 観測不能 に分類する
 ```
 
----
+**フェーズ2がフェーズ4より前にあること**が重要である。制約完了で `M` や `T`/`F` が
+入ると、その列が果たす義務が変わる。判定はテスターに渡す形の列に対して行う。
 
-## 6. テスト条件生成 (nextCondition)
+## 6. テスト条件生成 (buildColumn)
 
 ### 6.1 全体フロー
 
+1本の列は、**ある1つの義務を果たすため**に作られる。その義務の要求値と、値を結果
+ノードへ届ける感度化条件（§4.7）を同時に置くことで、観測可能性は構成的に満たされる。
+
 ```
-FUNCTION nextCondition(base, lnum) -> BOOLEAN:
-    work = copy of base
+FUNCTION buildColumn(model, state, o, effects) -> 列 or null:
 
-    // 最大 lnum 回のバックトラックを許容
-    FOR attempt = 0 TO lnum - 1:
+    target = o が値を伝播させるノード（A ならオーナー、B なら原因、C なら無し）
+    paths  = target == null ? [空] : sensitisationPaths(model, target, effects)
 
-        // ステップ(1): 未網羅の論理式を選択・マージ
-        ret = chooseCondition(work, mode=0)  // 未網羅のみ
-        IF turns.length == 0 AND ret == 0:
-            RETURN FALSE  // 全て網羅済みまたはテスト不可能
+    FOR each path IN paths:                     // §4.7.3 の順序
+        // --- 種にする要求値 ---
+        seed = o の要求値 ∪ path の感度化条件
+        IF seed 内で値が衝突: CONTINUE
 
-        // ステップ(2): MASK制約による値決定
-        FOR each constraint:
-            constraint.maskLogic(work)
+        work = initWork(model)
+        seed を work に置く（衝突すれば CONTINUE）
 
-        // ステップ(3): 既網羅の論理式も追加マージ
-        chooseCondition(work, mode=1)  // 既網羅も含む
+        // --- 制約の適用と整合性（義務 D）---
+        applyAllMasks(work)
+        全制約について deduceConstraint(work)
+        IF checkConstr(work) != "" OR isPossible(work) != "": CONTINUE
 
-        // ステップ(4): 原因ノードに値を割り当て
-        match = TRUE
-        FOR each causeNode j:
-            IF work[j] != "":
-                CONTINUE  // 既に値がある
-            IF causeNode j is 孤立:
-                CONTINUE  // どのノードの入力にもなっていない
+        // --- 列を完成させる ---
+        IF NOT completeColumn(work, state, model, effects, seed, applied): CONTINUE
 
-            // まず "t" を試す
-            IF chooseCauseValue(work, j, "t", lnum) == FALSE:
-                // "f" を試す
-                IF chooseCauseValue(work, j, "f", lnum) == FALSE:
-                    // 両方失敗 → バックトラック
+        // --- 表明（§6.3）---
+        IF NOT o が完成形の work で果たされている: CONTINUE
 
-                    // 最後の採用を不適切としてマーク
-                    lastTurn = turns[turns.length - 1]
-                    IF lastTurn < lnum:
-                        vtestcov[lastTurn] = 0  // カバレッジ解除
-                    unsuitables[lastTurn] = 1
+        RETURN work
 
-                    IF turns.length == 1:
-                        infeasibles[turns[0]] = "テスト不可能"
-
-                    turns.pop()
-
-                    // 作業配列を再構築
-                    reCalc(work, lnum)
-                    match = FALSE
-                    BREAK
-
-        IF match == FALSE:
-            CONTINUE  // ステップ(1)に戻って再試行
-
-        // ステップ(5): 演繹計算で残りの値を決定
-        deduce(work)
-
-        // ステップ(5b): 最終整合ゲート
-        //   ステップ(4)の原因割り当て時、上流の中間ノードが未確定(I)の間は
-        //   checkRelation が矛盾を見逃す(未確定入力は素通し)。ステップ(5)の
-        //   最終演繹でその中間ノードが確定し、下流が要求した値と矛盾する場合が
-        //   ある(例: 共有中間 = T なのに、その入力側が F を強制)。
-        //   ここで isPossible により最終状態を再検証し、矛盾なら直近の turn を
-        //   バックトラックして再試行する(ステップ(4)のバックトラックと同型)。
-        IF isPossible(work) != "":
-            IF turns.length == 0:
-                RETURN FALSE
-            badTurn = turns[turns.length - 1]
-            IF badTurn は論理式:
-                vtestcov[badTurn] = 0
-                unsuitables[badTurn] = 1
-                IF turns.length == 1:
-                    infeasibles[badTurn] = "テスト不可能(整合)"
-            ELSE:  // 原因値
-                unsuitableCauseValues.add(badTurn)
-            turns.pop()
-            reCalc(work, lnum)
-            CONTINUE  // ステップ(1)に戻って再試行
-
-        // ステップ(6): カバレッジ再計算
-        //   MASK等により値が変わった可能性があるため、
-        //   全論理式について改めてカバーしているか確認
-        FOR l = 0 TO lnum - 1:
-            match = TRUE
-            FOR k = 0 TO nodeCount - 1:
-                IF work[k] != "" AND logics[l][k] != "":
-                    IF work[k] != logics[l][k]:  // 大文字/小文字区別
-                        match = FALSE
-                        BREAK
-            vtestcov[l] = (match ? 1 : 0)
-
-        // ステップ(7): カバレッジ情報を保存
-        covs.append(copy of vtestcov)
-        base = copy of work
-        RETURN TRUE
-
-    RETURN TRUE
+    RETURN null      // どの経路でも作れない → §13.4 で分類する
 ```
 
-### 6.2 各ステップの詳細
+### 6.2 completeColumn: 合流と自由変数
 
-#### ステップ(1): 未網羅論理式の選択
+```
+FUNCTION completeColumn(work, state, model, effects, seed, applied) -> BOOLEAN:
+    FOR attempt = 0 TO lnum:
+        applyAllMasks(work)
+        mergeExpressions(work, mode=0)      // 未カバーの論理式を合流（§7）
+        mergeExpressions(work, mode=1)      // カバー済みの論理式も合流
 
-`chooseCondition(work, mode=0)` を呼び出す。mode=0 は「まだ全テスト条件を通じて一度もカバーされていない論理式」のみを選択対象とする。
+        FOR each 原因ノード c WHERE work[c] == "" AND 孤立でない:
+            IF chooseCauseValue(work, c, "t"): CONTINUE
+            IF chooseCauseValue(work, c, "f"): CONTINUE
+            // 両方失敗 → 直近の合流を取り消して再試行（§12）
+            直近の合流を applied から取り消し、work を種から再構築
+            attempt をやり直す
 
-複数の論理式が矛盾しなければ、1回の呼び出しで複数の論理式をマージ（同時採用）できる。
+        deduce(work, model)
+        IF isPossible(work, model) == "": RETURN TRUE
 
-#### ステップ(2): MASK制約
+        直近の合流を取り消して再試行
+    RETURN FALSE
+```
 
-全MASK制約に対して、トリガー条件が満たされていれば対象ノードに `"M"` を設定する。
+### 6.3 表明としての観測可能性チェック
 
-#### ステップ(3): 既網羅論理式のマージ
+感度化条件を要求値に含めているため、完成した列は主義務を観測できるはずである。
+ただし**再収斂**（同じ値が複数経路で結果に届き互いに打ち消す）の場合のみ、条件を
+満たしても観測できないことがある。この1点のために、完成形の列に §2.5 を適用して
+確認し、偽であれば次の経路を試す。
 
-`chooseCondition(work, mode=1)` を呼び出す。mode=1 は「既にカバーされている論理式」も含めて選択し、現在の作業配列に矛盾しないものをマージする。
+これは修復手段ではなく、経路選択の打ち切り判定である。すべての経路で偽なら、その
+義務は果たせないものとして §13.4 で分類する。
 
-**目的**: 1つのテスト条件でできるだけ多くの論理式をカバーすることで、テスト数を削減する。
-
-#### ステップ(4): 原因ノードへの値割り当て
-
-未設定の原因ノードに対して、まず `"t"` を試し、失敗すれば `"f"` を試す。
-両方失敗した場合は、最後に採用した選択（論理式または原因値）を不適切としてマークし、
-バックトラックする。
-
-#### ステップ(5): 演繹計算
-
-全ての未設定ノードに対して、入力ノードの値からAND/OR演算で出力値を推論する。
-推論結果は小文字 (`"t"`, `"f"`) または `"I"` となる。
-
-#### ステップ(5b): 最終整合ゲート
-
-ステップ(5)の演繹で確定した値が、下流が要求した値と矛盾していないかを
-`isPossible(work)` で最終検証する。矛盾していれば、そのテスト条件は論理的に
-成立しないため採用せず、直近の turn をバックトラックして再試行する。
-
-**なぜ必要か**: ステップ(4)の原因割り当て時に呼ぶ `isPossible` は、`checkRelation`
-が「入力が未確定(`I`/空)の間は矛盾判定しない」(§4.5 の `unknown == 0` ガード)ため、
-**上流の中間ノードが未確定のうちは矛盾を検出できない**。共有中間ノード
-（複数の下流から参照される中間ノード）を下流が `T` に要求し、その中間ノードの
-入力側（さらに上流の中間ノード）がステップ(5)の最終演繹で `F` に確定すると、
-「中間 = T なのに入力は F」という矛盾が**この時点で初めて顕在化**する。
-ステップ(5b)が無いと、この矛盾したテスト条件がそのまま出力される
-（原因結果グラフのチェーン構成・共有中間ノードで発生する重大バグ）。
-
-> **原典との対応 / 補完の記録**: 原典 CEGTest 1.6 の `nextCondition` は
-> ステップ(5)を `reason = deduce(work); if (reason != "") return false;` と書いており、
-> 「最終演繹で矛盾したらテストを棄却する」構造を持っていた。本仕様の旧版は
-> この棄却構造を写し落としており（`deduce(work)` のみ）、実装もそれに従っていた。
-> なお原典の `deduce()` は当該版で常に `""` を返すため原典のゲート自体は不作動だが、
-> NeoCEG では棄却判定を `deduce` の副作用ではなく `isPossible` で明示的に行い、
-> ゲートを確実に機能させる。
-
-#### ステップ(6): カバレッジ再計算
-
-ステップ(2)のMASK制約やステップ(5)の演繹計算により、値が変更された可能性がある。
-そのため、全論理式について改めてカバレッジを判定する。
-
-**重要**: この判定は**大文字/小文字を区別した完全一致比較**である。
-
-#### ステップ(7): 保存
-
-カバレッジ情報を `covs` 配列に追加し、テスト条件の値を返す。
-
----
-
-## 7. 論理式の選択とマージ (chooseCondition)
+## 7. 論理式の選択とマージ (mergeExpressions)
 
 ### 7.1 アルゴリズム
 
+合流候補は、自分の要求値と**自分のオーナーを観測するための感度化条件**を一緒に
+持ち込む。したがって、他の義務の経路を閉じてしまう合流は、値の矛盾として自然に
+拒否される。観測可能性のための専用ゲートは要らない。
+
 ```
-FUNCTION chooseCondition(base, mode) -> adoptedCount:
-    work = copy of base
-    ret = 0
+FUNCTION mergeExpressions(work, state, model, effects, applied, mode):
+    FOR each expression l:
+        IF mode == 0 AND 他のテストで既にカバー済み: CONTINUE
+        IF この列で既にカバー済み: CONTINUE
+        IF 不適切マーク済み: CONTINUE
+        IF 実行不可: CONTINUE
 
-    // 全論理式を走査
-    l = 0
-    FOR each node i:
-        lnum = node i の論理式数
-        FOR j = 0 TO lnum - 1:
-            // --- フィルタリング ---
+        paths = sensitisationPaths(model, l のオーナー, effects)
+        IF paths が空: CONTINUE               // 結果に届かない → 検証できない
 
-            // (a) mode=0 の場合、既にカバー済みの論理式はスキップ
-            IF mode == 0 AND countCoverage(l) > 0:
-                l++; CONTINUE
+        FOR each path IN paths:
+            req = l の要求値 ∪ path の感度化条件
+            IF req 内で衝突: CONTINUE
 
-            // (b) 今回のテスト条件で既にカバー済みならスキップ
-            IF vtestcov[l] > 0:
-                l++; CONTINUE
+            tmp = work のコピー
+            req を tmp に置く（衝突すれば CONTINUE）
+            applyAllMasks(tmp)
+            全制約について deduceConstraint(tmp)
+            IF checkConstr(tmp) != "" OR isPossible(tmp) != "": CONTINUE
 
-            // (c) 不適切としてマーク済みならスキップ
-            IF unsuitables[l] > 0:
-                l++; CONTINUE
-
-            // (d) テスト不可能ならスキップ
-            IF infeasibles[l] != "":
-                l++; CONTINUE
-
-            // --- マージ可能性チェック ---
-
-            // (e) 値の矛盾チェック
-            mergeable = TRUE
-            FOR k = 0 TO nodeCount - 1:
-                IF work[k] != "" AND logics[l][k] != "":
-                    IF work[k] != logics[l][k]:
-                        mergeable = FALSE
-                        BREAK
-            IF NOT mergeable:
-                l++; CONTINUE
-
-            // --- マージ実行 (一時配列で) ---
-            tmp = copy of work
-            FOR k = 0 TO nodeCount - 1:
-                IF logics[l][k] != "":
-                    tmp[k] = logics[l][k]
-
-            // (f) 制約による演繹・検算
-            FOR each constraint:
-                IF constraint.deduceLogic(tmp) == FALSE:
-                    mergeable = FALSE; BREAK
-            IF NOT mergeable:
-                l++; CONTINUE
-
-            // (g) 制約不整合チェック
-            reason = checkConstr(tmp)
-            IF reason != "":
-                IF turns.length == 0:
-                    infeasibles[l] = reason  // 最初の論理式なので不可能確定
-                l++; CONTINUE
-
-            // (h) 論理関係不整合チェック
-            reason = isPossible(tmp)
-            IF reason != "":
-                IF turns.length == 0:
-                    infeasibles[l] = reason
-                l++; CONTINUE
-
-            // --- 採用 ---
             work = tmp
-            vtestcov[l] = 1
-            turns.append(l)
-            ret++
-            l++
-
-    base = work
-    RETURN ret
+            vtestcov[l] = TRUE
+            applied.append({ index: l, req })
+            BREAK
 ```
 
 ### 7.2 マージの順序
 
-論理式はノード走査順に試行される。この順序がテスト条件の最終的な値に影響する。
+論理式はノード走査順に試行される。感度化条件が加わったことで、先に合流した義務の
+経路を塞ぐ候補は拒否されるようになった。順序は依然として最終的な値に影響するが、
+**どの順序でも、採択された義務は観測可能なまま保たれる**。
 
-### 7.3 infeasibles の判定タイミング
+### 7.3 実行不可の判定タイミング
 
-論理式が不可能（infeasible）と判定されるのは、**最初の論理式として選択された場合のみ**
-（`turns.length == 0` のとき）。既に他の論理式が採用された状態での失敗は、
-マージ不可能として単にスキップされる。
-
----
+論理式が実行不可であるかの判定は、フェーズ6（§5.1）でまとめて行う。
+生成中の合流失敗は、その列に入らなかったことを意味するだけで、実行不可を意味しない。
 
 ## 8. 原因ノードへの値割り当て (chooseCauseValue)
 
@@ -1116,77 +1070,59 @@ FOR MASK:
 
 ### 12.1 概要
 
-テスト条件生成中に矛盾（原因ノードにT/Fどちらも割り当てられない）が
-発生した場合、最後の選択を取り消して再試行する。
+列の生成中に行き詰まったときは、**直近の合流**を取り消して続きをやり直す。
+行き詰まりは2種類ある。
+
+| 場面 | 対処 |
+|------|------|
+| 自由変数に `t` も `f` も置けない（§6.2） | 直近の合流を取り消す |
+| 完成した条件が `isPossible` を満たさない（§6.2） | 直近の合流を取り消す |
+
+取り消した論理式は不適切としてマークし、この列では再び合流しない。
+`applied` が空のときは、その主義務ではこの経路で列を作れないため、次の感度化経路を
+試す（§6.1）。すべての経路で作れなければ、その義務は §13.4 で分類する。
 
 ### 12.2 バックトラック処理
 
 ```
-// nextCondition のステップ(4)で T/F 両方失敗した場合:
-
-lastTurn = turns[turns.length - 1]
-
-// 最後の採用が論理式の場合、カバレッジを解除
-IF lastTurn < lnum:
-    vtestcov[lastTurn] = 0
-
-// 不適切としてマーク
-unsuitables[lastTurn] = 1
-
-// 最初の論理式が失敗した場合、その論理式はテスト不可能
-IF turns.length == 1:
-    infeasibles[turns[0]] = "テスト不可能"
-
-// 最後の選択を取り消す
-turns.pop()
-
-// 作業配列を再構築
-reCalc(work, lnum)
+bad = applied.pop()
+vtestcov[bad.index] = FALSE
+unsuitableExpressions.add(bad.index)
+rebuildColumn(work, seed, applied)
 ```
 
-### 12.3 reCalc: 作業配列の再構築
+### 12.3 rebuildColumn: 作業配列の再構築
 
 ```
-FUNCTION reCalc(src, lnum):
-    // 全ノードをクリア
-    FOR k = 0 TO nodeCount - 1:
-        src[k] = ""
-
-    // turnsに残っている選択を順に適用
-    FOR each turn in turns:
-        IF turn < lnum:
-            // 論理式の値を適用
-            FOR k = 0 TO nodeCount - 1:
-                IF logics[turn][k] != "":
-                    src[k] = logics[turn][k]  // 大文字 T/F
-        ELSE:
-            // 原因ノードの値を適用
-            nodeIndex = (turn - lnum)
-            IF nodeIndex is even:
-                src[nodeIndex / 2] = "T"     // 大文字
-            ELSE:
-                src[(nodeIndex - 1) / 2] = "F"  // 大文字
+FUNCTION rebuildColumn(work, seed, applied):
+    work の全セルを "" にする
+    seed の値を置く                        // 主義務の要求値 ＋ 感度化条件
+    FOR each a IN applied:
+        a.req の値のうち、空のセルだけを埋める
 ```
 
-**注意**: `reCalc()` は大文字 (`"T"`, `"F"`) で値を復元する。
-これは論理式の定義値に合わせるためである。
-
----
+種を先に置くことで、主義務の要求と感度化条件は取り消しの対象にならない。
+その列が存在する理由そのものだからである。
 
 ## 13. カバレッジ表の生成
 
 ### 13.1 カバレッジの判定
 
 各論理式 `l` に対して、各テスト条件 `t` がカバーするかを判定する。
+判定は**実行されるテストの性質**として行い（§2.2）、値の由来（大文字/小文字）は問わない。
+さらに、その列でオーナーノードが**観測可能**であることを要する（§2.5）。
 
 ```
 FUNCTION isCoveredBy(expressionIndex l, testIndex t) -> BOOLEAN:
     FOR k = 0 TO nodeCount - 1:
         IF tests[t][k] != "" AND logics[l][k] != "":
-            IF tests[t][k] != logics[l][k]:  // 大文字/小文字区別!
+            IF 真偽が一致しない:          // "T" と "t"、"F" と "f" は一致
                 RETURN FALSE
-    RETURN TRUE
+    RETURN observable(tests[t], model, ownerNode(l))
 ```
+
+**判定対象は完成形の列**: 制約完了と MASK 適用（§5.1 フェーズ4）を施した後の値で
+判定する。要求セルが `M` になった論理式は、その列では検証されていない。
 
 ### 13.2 カバレッジシンボル
 
@@ -1234,6 +1170,7 @@ FOR each expression l:
 |------|------|------|-----|
 | **実行不可** | Infeasible | 制約により論理的に成立し得ない組み合わせ。テスト自体を実行できない | ONE(A,B) で A=F かつ B=F |
 | **テスト不可** | Untestable | テストは実行できるが、MASK制約により入力が不定(M)となり、結果の正しさを判断できない | MASK(C→A,B) で C=T のとき A=M, B=M |
+| **観測不能** | Unobservable | 実行でき値も作れるが、どの実行可能入力でも結果ノードに伝播せず、合否を判定できない | `I := A AND B`, `E := I OR C` で、どの入力でも C=T により I が覆われる場合 |
 
 参考: 秋山浩一「ソフトウェアテストしようぜ」第236回
 
@@ -1260,12 +1197,14 @@ FUNCTION isRelaxedCoveredBy(expressionIndex l, testIndex t) -> BOOLEAN:
 FOR each expression l:
     IF infeasibles[l] != null:
         状態 = "実行不可"    // 制約違反で実行不可能
-    ELSE IF いずれかの非弱テストが厳密カバー (§13.1):
+    ELSE IF いずれかの非弱テストがカバー (§13.1: 真偽一致 かつ 観測可能):
         状態 = "カバー済"    // 正常にカバーされている
     ELSE IF いずれかの非弱テストが緩和カバー:
         状態 = "テスト不可"  // MASKにより検証不能
+    ELSE IF どの実行可能入力でもオーナーノードが観測可能にならない:
+        状態 = "観測不能"    // 実行はできるが結果に伝播せず合否判定できない
     ELSE:
-        状態 = "未カバー"    // その他の理由で未カバー
+        状態 = "未カバー"    // 生成された列に含まれていない（漏れ）
 ```
 
 #### 13.4.3 カバレッジ表での表示
@@ -1275,6 +1214,7 @@ FOR each expression l:
 | カバー済 | (空白) | `#` / `x` / 空白 | 通常 |
 | 実行不可 | 理由表示（赤） | `!`（エクスクラメーション） | 灰色背景 |
 | テスト不可 | "MASK" 表示（橙） | `?`（クエスチョン） | 薄黄色背景 |
+| 観測不能 | "遮断" 表示（橙） | `>`（大なり） | 薄橙色背景 |
 | 未カバー | (空白) | 空白 | 通常 |
 
 **記号の区別**:
@@ -1297,108 +1237,61 @@ FOR each expression l:
 
 ---
 
-## 14. 弱テスト削除 (checkStrong)
+## 14. 弱テスト削除 (isRemovable)
 
 ### 14.1 概要
 
-いずれの論理式も唯一カバーしていないテスト条件は「弱テスト」として
-削除候補になる。ただし、削除しても全論理式がカバーされることを確認する。
+担っている義務がすべて他の列でも担われている列は削除する。判定対象は
+**義務 A・B・C のすべて**であり（§1.4）、種類ごとの特別扱いはない。
 
-**注意**: この判定は表示シンボル（`#`/`x`）とは独立である。
-表示では `#` は「初回カバレッジ」を意味するが（§13.2）、
-弱テスト判定では `ccount`（その式をカバーする非弱テスト数）が1であるか否かを使う。
+| 義務 | この列が担っているか |
+|------|--------------------|
+| A 論理式網羅 | 論理式を実現し、オーナーノードが観測可能（§13.1） |
+| B 結果網羅 | ある原因にその真偽を持ち、その原因が観測可能 |
+| C 制約の実演 | MASK のトリガーが満たされ、ターゲットが `M` |
+
+論理式のカバレッジ、結果網羅、MASK の実演は、いずれもこの1つの規則から出る。
+以前の版にあった「論理式を1つもカバーしない列は残す」「MASK 実演を特別に保護する」
+といった個別の分岐は不要になった。
 
 ### 14.2 アルゴリズム
 
 ```
-FUNCTION checkStrong(testIndex) -> BOOLEAN:
-    strong = 0  // 唯一カバー数（ccount==1の式の数）
-    weak = 0    // 非唯一カバー数（ccount>1の式の数）
+FUNCTION isRemovable(testIndex, state, model, obligations, effects) -> BOOLEAN:
+    mine = obligations のうち tests[testIndex] が担っているもの
 
-    FOR each expression l:
-        IF covs[testIndex][l] == 0:
-            CONTINUE  // このテストはこの式をカバーしていない
+    FOR each o IN mine:
+        coveredElsewhere = FALSE
+        FOR each test t WHERE t != testIndex AND weaks[t] == FALSE:
+            IF tests[t] が o を担っている:
+                coveredElsewhere = TRUE
+                BREAK
+        IF NOT coveredElsewhere:
+            RETURN FALSE      // この義務の担い手が消える → 削除しない
 
-        // この式を何個のテストがカバーしているか
-        ccount = 0
-        FOR each test t:
-            ccount += covs[t][l]
-
-        IF ccount == 1:
-            strong++
-        ELSE IF ccount > 1:
-            weak++
-
-    IF strong == 0 AND weak > 0:
-        // 唯一カバーがゼロ → 削除候補
-        // ただし、削除しても全式がカバーされるか確認
-        FOR each expression l:
-            IF infeasibles[l] != "":
-                CONTINUE
-
-            // このテスト以外、かつ既に弱でないテストでカバーされるか
-            otherCoverage = 0
-            FOR each test t:
-                IF t == testIndex: CONTINUE
-                IF weaks[t] == 1: CONTINUE
-                otherCoverage += covs[t][l]
-
-            IF otherCoverage == 0:
-                RETURN TRUE  // この式がカバーされなくなる → 削除不可
-
-        // MASK 実演の保護(§14.4)。
-        // このテストが、ある MASK 制約の「トリガー真 → ターゲット不問(M)」を
-        // 実演する唯一の(非弱)テストなら削除しない。
-        FOR each MASK constraint c:
-            IF NOT demonstratesMask(testIndex, c):
-                CONTINUE
-            otherDemo = 0
-            FOR each test t:
-                IF t == testIndex: CONTINUE
-                IF weaks[t] == 1: CONTINUE
-                IF demonstratesMask(t, c): otherDemo++
-            IF otherDemo == 0:
-                RETURN TRUE  // この MASK の実演が消える → 削除不可
-
-        RETURN FALSE  // 全式が他テストでカバーされ、MASK 実演も他にある → 削除可能
-
-    ELSE:
-        RETURN TRUE  // 唯一カバーあり → 削除しない
+    RETURN TRUE               // すべて他の列が担っている → 削除できる
 ```
 
-`demonstratesMask(t, c)` は、テスト `t` で MASK 制約 `c` のトリガーが満たされ、
-かつ少なくとも1つのターゲットが `M` になっていれば真。
+判定は**その列が担っている義務だけ**を見る。どの列も担っていない義務があっても、
+それを理由に他の列を削除不可にはしない。担い手のいない義務の有無は、削除可否とは
+別の問題（§13.4 の分類と報告）である。
 
-### 14.3 注意: checkStrongの戻り値
+削除は先頭から順に行い、既に弱と判定した列は担い手として数えない。
 
-- `TRUE`: このテストは**強テスト**（削除しない）
-- `FALSE`: このテストは**弱テスト**（削除可能）
+### 14.3 注意: 戻り値の向き
 
-名前が `checkStrong` であるため、`TRUE` = 強い = 維持、`FALSE` = 弱い = 削除可能。
+- `isRemovable` が `TRUE`: この列は**弱テスト**（削除する）
+- `isRemovable` が `FALSE`: この列は**強テスト**（残す）
 
-### 14.4 MASK 実演の保護
+### 14.4 MASK 実演の扱い
 
-**目的**: 生成するテストは「制約が制約として機能していること」を検証できねば
-ならない。ONE/EXCL/INCL/REQ の排除作用は、カバレッジ表の実行不能マーキング
-(違反した制約名を併記, §13.4)で実証される。一方 **MASK の「トリガーが真の
-とき、ターゲットが不問(M)になる」挙動は、その状況を含むテスト列が最終表に
-残らなければ実証されない**。
+MASK 制約が機能していること（トリガー真 → ターゲット不問）を示す列は、
+義務 C として §14.2 の一般規則で保護される。実演する列が1本しかなければ、
+その列は「担い手が消える」ため削除されない。
 
-**課題**: MASK トリガーとなる原因(例: `過去五年の入院歴_なし`)は、どの論理式の
-入力にもならない孤立原因であることが多い。孤立原因は式カバレッジ上の被覆義務を
-持たないため、MASK を発火させるテスト列は「唯一カバーする式が無い」= 弱テストと
-判定され、削除されてしまう。結果、デシジョンテーブル(および §17 のスケルトン)に
-MASK の不問シナリオが一度も現れず、**テストとして不十分**になる。
-
-**規則**: 弱テスト削除は、**各 MASK 制約について、その発火(トリガー真 + ターゲット
-`M`)を実演する非弱テストを最低1本残す**。削除しようとするテストが、ある MASK 制約の
-実演を担う最後の1本なら、削除しない(§14.2 の追加チェック)。
-
-**最小性**: 既に別の残存テストがその MASK を実演していれば、当該テストは通常どおり
-削除できる。したがって本規則で増える列は「他に実演が無い MASK ごとに高々1列」で
-あり、追加のテスト生成は行わない(生成済みの列を保持するだけ)。
-
----
+MASK のトリガーはどの論理式にも現れない孤立原因であることが多く、論理式カバレッジ
+だけを見ていた頃は弱テスト削除で失われていた。義務 C を明示したことで、この保護は
+一般規則の帰結になった。
 
 ## 15. デシジョンテーブルの表示
 
@@ -1514,6 +1407,6 @@ M値を含むAND/OR演算が不正確。§2.4参照。
 ---
 
 **作成日**: 2026-02-05
-**更新日**: 2026-07-24（フェーズ4「制約完了」追加。DT の不問(don't-care)を教科書標準の `-` に定義し、衝突回避のためカバレッジ表の実行不可を `-`→`!` に変更: §5.1 / §5.2 / §9.1 / §13.4.3 / §15.2 / §16.3–16.4。加えて `nextCondition` に**ステップ(5b) 最終整合ゲート**を追記: §6.1 / §6.2 — 共有中間ノードのチェーンで生じる矛盾テストを棄却する。原典で写し落としていた棄却構造の補完。さらに弱テスト削除に**MASK 実演の保護**を追記: §14.2 / §14.4 — MASK 発火(トリガー真→ターゲット M)を実証するテストを最低1本残し、スケルトンに不問シナリオを含める）
+**更新日**: 2026-09-02（決定表の正しさを義務集合として定義: §1.4。観測可能性を導入し「果たす」の定義に組み込み: §2.5。カバレッジ判定を実行されるテストの性質に変更し大文字小文字を問わないものに: §2.2 / §13.1。感度化条件を新設: §4.7。生成を義務単位のパイプラインに再構成: §5.1 / §5.2 / §6 / §7 / §12。弱テスト削除を義務 A∪B∪C の単一規則に統合し、旧フェーズ2「敗者復活」と MASK 実演保護をその帰結に: §14。観測不能状態と記号 `>` を追加: §13.4。合流履歴を `applied[]` に: §3.6）
 **作成者**: Claude (AI Assistant)
 **レビュー状態**: レビュー待ち

@@ -140,6 +140,7 @@ describe('generateCoverageTableHTML', () => {
         isCovered: true,
         isInfeasible: false,
         isUntestable: false,
+        isUnobservable: false,
         reason: '',
       }],
       nodeNames: ['c1', 'e1'],
@@ -150,6 +151,7 @@ describe('generateCoverageTableHTML', () => {
         coveredExpressions: 1,
         infeasibleExpressions: 0,
         untestableExpressions: 0,
+      unobservableExpressions: 0,
         coveragePercent: 100,
       },
     };
@@ -190,6 +192,7 @@ describe('generateCoverageTableHTML', () => {
         isCovered: false,
         isInfeasible: true,
         isUntestable: false,
+        isUnobservable: false,
         reason: 'ONE(A, B)',
       }],
       nodeNames: ['c1', 'e1'],
@@ -200,6 +203,7 @@ describe('generateCoverageTableHTML', () => {
         coveredExpressions: 0,
         infeasibleExpressions: 1,
         untestableExpressions: 0,
+      unobservableExpressions: 0,
         coveragePercent: 0,
       },
     };
@@ -220,6 +224,7 @@ describe('generateCoverageTableHTML', () => {
         isCovered: false,
         isInfeasible: false,
         isUntestable: true,
+        isUnobservable: false,
         reason: 'MASK(X → Y)',
       }],
       nodeNames: ['c1', 'e1'],
@@ -230,6 +235,7 @@ describe('generateCoverageTableHTML', () => {
         coveredExpressions: 0,
         infeasibleExpressions: 0,
         untestableExpressions: 1,
+      unobservableExpressions: 0,
         coveragePercent: 0,
       },
     };

@@ -429,6 +429,7 @@ const COVERAGE_COLORS: Record<CoverageMarker, { bg: string; text: string }> = {
   not_covered: { bg: '#ffffff', text: '#999999' },
   infeasible: { bg: '#ffcdd2', text: '#c62828' },
   untestable: { bg: '#fff9c4', text: '#f9a825' },
+  unobservable: { bg: '#ffe0b2', text: '#e65100' },
 };
 
 function StatusBadge({ row }: { row: CoverageRow }) {
@@ -446,6 +447,24 @@ function StatusBadge({ row }: { row: CoverageRow }) {
         title={COVERAGE_MESSAGES.infeasibleTooltip}
       >
         {COVERAGE_MESSAGES.infeasibleBadge}
+      </span>
+    );
+  }
+
+  if (row.isUnobservable) {
+    return (
+      <span
+        style={{
+          marginLeft: '8px',
+          padding: '2px 6px',
+          fontSize: '10px',
+          backgroundColor: '#ffe0b2',
+          color: '#e65100',
+          borderRadius: '3px',
+        }}
+        title={COVERAGE_MESSAGES.unobservableTooltip}
+      >
+        {COVERAGE_MESSAGES.unobservableBadge}
       </span>
     );
   }
@@ -1651,7 +1670,7 @@ export default function DecisionTablePanel() {
         nodeNames: [],
         nodeLabels: new Map(),
         conditionIds: [],
-        stats: { totalExpressions: 0, coveredExpressions: 0, infeasibleExpressions: 0, untestableExpressions: 0, coveragePercent: 100 },
+        stats: { totalExpressions: 0, coveredExpressions: 0, infeasibleExpressions: 0, untestableExpressions: 0, unobservableExpressions: 0, coveragePercent: 100 },
       };
       return {
         table: emptyTable,
@@ -1888,7 +1907,23 @@ export default function DecisionTablePanel() {
                   {coverageTable.stats.coveragePercent.toFixed(0)}%
                 </span>
                 {' '}coverage ({coverageTable.stats.coveredExpressions}/
-                {coverageTable.stats.totalExpressions - coverageTable.stats.infeasibleExpressions - coverageTable.stats.untestableExpressions})
+                {coverageTable.stats.totalExpressions})
+                {(coverageTable.stats.infeasibleExpressions > 0 ||
+                  coverageTable.stats.untestableExpressions > 0 ||
+                  coverageTable.stats.unobservableExpressions > 0) && (
+                  <span style={{ color: '#757575' }}>
+                    {' '}(
+                    {[
+                      coverageTable.stats.infeasibleExpressions > 0 &&
+                        `${coverageTable.stats.infeasibleExpressions} infeasible`,
+                      coverageTable.stats.untestableExpressions > 0 &&
+                        `${coverageTable.stats.untestableExpressions} untestable`,
+                      coverageTable.stats.unobservableExpressions > 0 &&
+                        `${coverageTable.stats.unobservableExpressions} blocked`,
+                    ].filter(Boolean).join(', ')}
+                    )
+                  </span>
+                )}
               </>
             )}
             {activeTab === 'compare' && (

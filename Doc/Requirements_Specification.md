@@ -198,6 +198,12 @@ Constraints are represented as **dedicated constraint nodes** (not just labels o
 | M | Truth value cannot be determined due to MASK constraint / MASK制約により真偽が決定できない | Gray / 灰 |
 | I | Truth value cannot be determined (cause-side node indeterminate) / 原因側のノードが真偽不明のため真偽が決定できない | Yellow / 黄 |
 
+> **Note**: T/t and F/f record where a value came from (expression definition / constraint deduction vs.
+> inference). They are a display annotation and are **not** used to judge coverage — coverage is a property
+> of the test that is executed (Algorithm_Design.md §2.2).
+> **注**：T/t および F/f は値の由来（論理式定義・制約演繹か、推論か）を示す表示上の注釈であり、
+> カバレッジ判定には**用いない**。カバレッジは実行されるテストの性質として判定する（Algorithm_Design.md §2.2）。
+
 > **Note**: The T/t and F/f distinction applies to Practice Mode only. Learning Mode always displays uppercase T/F — it shows "what would happen if tested" without the expression-matching subtlety.
 > **注意**：T/tおよびF/fの区別は実務モードのみに適用されます。学習モードでは常に大文字T/Fで表示し、「もしテストしたらどうなるか」を論理式マッチングの区別なしに表示します。
 
@@ -243,6 +249,20 @@ When a constraint has NOT on a member, the member's value is inverted before con
 | Not covered / 未カバー | (blank / 空白) | Test does not exercise this expression / このテストはこの式を検証しない |
 | Infeasible / 実行不能 | `!` | Expression infeasible due to constraint violation / 制約違反のため実行不可 |
 | Untestable / テスト不能 | `?` | Untestable due to MASK (result indeterminate) / MASK制約によりテスト不能 |
+| Unobservable / 観測不能 | `>` | The value never reaches an effect, so the tester cannot decide it / 値が結果ノードに伝播せず合否を判定できない |
+
+> **Covered means verified / 「カバー済」は検証済みを意味する**: `#` and `x` assert that the test
+> **verifies** the expression — the value under test reaches an effect and the tester can decide the
+> outcome (Algorithm_Design.md §1.4 / §2.5). A test whose value is blocked downstream is not covered.
+> `#`・`x` は、そのテストがその式を**検証する**ことを表明する。検証対象の値が結果ノードに届き、
+> テスターが合否を判定できることを要する（Algorithm_Design.md §1.4 / §2.5）。
+> 下流で遮断されている列はカバーではない。
+
+> **Coverage rate / カバレッジ率**: The denominator counts **every** expression, whether or not it can
+> be discharged; infeasible / untestable / unobservable counts are shown alongside so the reason a model
+> cannot reach 100% is visible. What is missing must be visible as missing.
+> 分母は、果たせる／果たせないに関わらず**全論理式**を数える。実行不可・テスト不可・観測不能の
+> 件数を併記し、100% に到達できない理由が読み取れるようにする。漏れているものは漏れていると分かる形で示す。
 
 > **Note**: CEGTest 1.6 uses `||` (vertical hatching) for infeasible and `=` (horizontal hatching) for untestable. NeoCEG uses `!` and `?` as text-compatible alternatives, and distinguishes infeasible from untestable (a CEGTest 1.6 bug fix per 秋山浩一「ソフトウェアテストしようぜ」第236回). The coverage-table infeasible marker is `!` (not `-`) so it does not collide with the decision table's don't-care marker `-` (see Algorithm_Design.md §13.4.3 / §15.2). / カバレッジ表の実行不可は `!`。デシジョンテーブルの不問記号 `-` と字形が衝突しないようにするため（Algorithm_Design.md §13.4.3 / §15.2）。
 
@@ -505,6 +525,7 @@ MASK制約：NOTは**トリガー側のみ**許可。ターゲット側のNOTは
 | 2026-02-01 | 1.2 | NOT support on both logical and constraint edges / 論理エッジと制約エッジの両方にNOTサポート追加 | - |
 | 2026-02-08 | 1.3 | Finalized DSL grammar specification, added reference / DSL文法仕様確定、参照追加 | - |
 | 2026-07-24 | 1.4 | Coverage infeasible marker `-`→`!` (SR-030) to avoid colliding with the decision table's don't-care `-`; see Algorithm_Design.md §5.1 (constraint-completion pass) / §13.4.3 / §15.2 / カバレッジ実行不能マーカー `-`→`!`（SR-030）。DTの不問 `-` との衝突回避 | - |
+| 2026-09-02 | 1.5 | `#`/`x` assert the test **verifies** the expression (value reaches an effect); coverage rate counts every expression with the breakdown shown; add the Unobservable marker `>` (SR-030); T/t and F/f become a display annotation only (SR-021). See Algorithm_Design.md §1.4 / §2.2 / §2.5 / §13.4 / `#`・`x` は検証の表明であること、カバレッジ率の分母を全論理式にして内訳を併記、観測不能マーカー `>` を追加、T/t・F/f は表示上の注釈 | - |
 
 ---
 

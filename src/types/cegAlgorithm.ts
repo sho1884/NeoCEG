@@ -72,24 +72,6 @@ export interface LogicalExpression {
  */
 export type WorkValue = TruthValue | '';
 
-// =============================================================================
-// §3.6 Turn Choice (turns[])
-// =============================================================================
-
-/**
- * A single choice recorded in the turns history.
- *
- * CEGTest encodes this as integers:
- * - < lnum: expression index
- * - >= lnum: cause value (lnum + nodeIndex*2 for T, +1 for F)
- *
- * NeoCEG uses a discriminated union for clarity.
- *
- * Reference: Algorithm_Design.md §3.6
- */
-export type TurnChoice =
-  | { type: 'expression'; expressionIndex: number }
-  | { type: 'causeValue'; nodeName: string; value: 'T' | 'F' };
 
 // =============================================================================
 // Algorithm State
@@ -143,11 +125,6 @@ export interface AlgorithmState {
 
   // --- §3.6 Turn history ---
 
-  /**
-   * Choices made during current test condition generation (turns[]).
-   * Used for backtracking (reCalc).
-   */
-  turns: TurnChoice[];
 
   // --- §3.7 Unsuitable marks ---
 
@@ -164,6 +141,15 @@ export interface AlgorithmState {
    * null = feasible, string = reason for infeasibility.
    */
   infeasibles: (string | null)[];
+
+  // --- §13.4 Blocked (unobservable) marks ---
+
+  /**
+   * Blocked expression marks (unobservables[]).
+   * null = fine, string = reason. Set when no feasible input lets the owner
+   * node reach an effect, so the tester could never decide the expression.
+   */
+  unobservables: (string | null)[];
 
   // --- §3.9 Weak test marks ---
 

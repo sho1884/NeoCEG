@@ -23,7 +23,13 @@ import type { TruthValue } from './decisionTable';
  *
  * Reference: Algorithm_Design.md §13.2, §13.4
  */
-export type CoverageMarker = 'adopted' | 'covered' | 'not_covered' | 'infeasible' | 'untestable';
+export type CoverageMarker =
+  | 'adopted'
+  | 'covered'
+  | 'not_covered'
+  | 'infeasible'
+  | 'untestable'
+  | 'unobservable';
 
 // =============================================================================
 // Coverage Row
@@ -78,6 +84,12 @@ export interface CoverageRow {
   isInfeasible: boolean;
   /** Whether this expression is untestable (due to MASK) */
   isUntestable: boolean;
+  /**
+   * Whether this expression is unobservable (§13.4): it can be executed and the
+   * value can be produced, but it never reaches an effect, so the tester cannot
+   * decide it.
+   */
+  isUnobservable: boolean;
   /** Reason string for infeasible/untestable expressions (e.g., "ONE(A, B, C)") */
   reason: string;
 }
@@ -117,7 +129,13 @@ export interface CoverageTable {
     infeasibleExpressions: number;
     /** Number of untestable expressions */
     untestableExpressions: number;
-    /** Coverage percentage (covered / (total - infeasible - untestable)) */
+    /** Number of unobservable expressions (§13.4) */
+    unobservableExpressions: number;
+    /**
+     * Coverage percentage: covered / total.
+     * Every expression counts, whether or not it can be discharged, so what is
+     * missing stays visible (Algorithm_Design.md §1.4).
+     */
     coveragePercent: number;
   };
 }

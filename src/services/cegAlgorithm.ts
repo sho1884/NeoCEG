@@ -836,73 +836,20 @@ function countCoverage(exprIndex: number, covs: boolean[][]): number {
  *
  * Reference: Algorithm_Design.md §13.1
  */
-function isCoveredBy(
-  work: Map<string, WorkValue>,
-  expr: LogicalExpression
-): boolean {
-  for (const [nodeName, reqValue] of expr.requiredValues) {
-    const wv = work.get(nodeName);
-    if (wv !== '' && wv !== undefined) {
-      if (wv !== reqValue) return false;
-    }
-  }
-  return true;
-}
 
 /**
  * Check if an expression can be merged into work without value conflicts.
  */
-function isMergeable(
-  work: Map<string, WorkValue>,
-  expr: LogicalExpression
-): boolean {
-  for (const [nodeName, reqValue] of expr.requiredValues) {
-    const wv = work.get(nodeName);
-    if (wv !== '' && wv !== undefined) {
-      if (wv !== reqValue) return false;
-    }
-  }
-  return true;
-}
 
 /**
  * Merge expression values into work array.
  */
-function mergeExpression(
-  work: Map<string, WorkValue>,
-  expr: LogicalExpression
-): void {
-  for (const [nodeName, reqValue] of expr.requiredValues) {
-    if (work.get(nodeName) === '' || work.get(nodeName) === undefined) {
-      work.set(nodeName, reqValue);
-    }
-  }
-}
 
 /**
- * Rebuild work array from turns history.
+ * Rebuild the column from its seed and the merges that survived backtracking.
  *
  * Reference: Algorithm_Design.md §12.3
  */
-function reCalc(
-  work: Map<string, WorkValue>,
-  state: AlgorithmState
-): void {
-  // Clear all nodes
-  for (const key of work.keys()) {
-    work.set(key, '');
-  }
-
-  // Re-apply turns
-  for (const turn of state.turns) {
-    if (turn.type === 'expression') {
-      const expr = state.expressions[turn.expressionIndex];
-      mergeExpression(work, expr);
-    } else {
-      work.set(turn.nodeName, turn.value);
-    }
-  }
-}
 
 /**
  * Select and merge logical expressions into the work array.
@@ -914,88 +861,6 @@ function reCalc(
  *
  * Reference: Algorithm_Design.md §7.1
  */
-function chooseCondition(
-  work: Map<string, WorkValue>,
-  state: AlgorithmState,
-  model: LogicalModel,
-  mode: 0 | 1
-): number {
-  let ret = 0;
-
-  for (let l = 0; l < state.expressions.length; l++) {
-    const expr = state.expressions[l];
-
-    // (a) mode=0: skip already covered across all tests
-    if (mode === 0 && countCoverage(l, state.covs) > 0) continue;
-
-    // (b) skip if already covered in current test
-    if (state.vtestcov[l]) continue;
-
-    // (c) skip unsuitable
-    if (state.unsuitableExpressions.has(l)) continue;
-
-    // (d) skip infeasible
-    if (state.infeasibles[l] !== null) continue;
-
-    // (e) check mergeability
-    if (!isMergeable(work, expr)) continue;
-
-    // Trial merge on temp copy
-    const tmp = new Map(work);
-    mergeExpression(tmp, expr);
-
-    // (f) constraint deduction check
-    let constraintOk = true;
-    for (const constraint of model.constraints) {
-      if (!deduceConstraint(tmp, constraint)) {
-        constraintOk = false;
-        break;
-      }
-    }
-    if (!constraintOk) {
-      if (state.turns.length === 0) {
-        // Find the constraint that failed deduction
-        const tmpCheck = new Map(work);
-        mergeExpression(tmpCheck, expr);
-        for (const constraint of model.constraints) {
-          if (!deduceConstraint(tmpCheck, constraint)) {
-            state.infeasibles[l] = formatConstraintDisplay(constraint);
-            break;
-          }
-        }
-      }
-      continue;
-    }
-
-    // (g) constraint violation check
-    const constrReason = checkConstr(tmp, model.constraints);
-    if (constrReason !== '') {
-      if (state.turns.length === 0) {
-        state.infeasibles[l] = constrReason;
-      }
-      continue;
-    }
-
-    // (h) logical consistency check
-    const possibleReason = isPossible(tmp, model);
-    if (possibleReason !== '') {
-      if (state.turns.length === 0) {
-        state.infeasibles[l] = possibleReason;
-      }
-      continue;
-    }
-
-    // Adopt: apply to work
-    for (const key of tmp.keys()) {
-      work.set(key, tmp.get(key)!);
-    }
-    state.vtestcov[l] = true;
-    state.turns.push({ type: 'expression', expressionIndex: l });
-    ret++;
-  }
-
-  return ret;
-}
 
 /**
  * Try to assign a value to a cause node.
@@ -1048,114 +913,6 @@ function chooseCauseValue(
  *
  * Reference: Algorithm_Design.md §6.1
  */
-function nextCondition(
-  work: Map<string, WorkValue>,
-  state: AlgorithmState,
-  model: LogicalModel
-): boolean {
-  const maxAttempts = state.lnum;
-
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    // Step (1): choose uncovered expressions
-    const ret = chooseCondition(work, state, model, 0);
-    if (state.turns.length === 0 && ret === 0) {
-      return false;
-    }
-
-    // Step (2): apply MASK constraints
-    applyAllMasks(work, model.constraints);
-
-    // Step (3): merge already-covered expressions too
-    chooseCondition(work, state, model, 1);
-
-    // Step (4): assign values to cause nodes
-    let match = true;
-    const causeNodes: string[] = [];
-    for (const [name, node] of model.nodes) {
-      if (isCause(node)) causeNodes.push(name);
-    }
-
-    for (const causeName of causeNodes) {
-      if (work.get(causeName) !== '') continue;
-      if (isIsolatedCause(causeName, model)) continue;
-
-      // Try 't' first, then 'f'
-      if (!chooseCauseValue(work, state, model, causeName, 't')) {
-        if (!chooseCauseValue(work, state, model, causeName, 'f')) {
-          // Both failed → backtrack
-          if (state.turns.length === 0) {
-            match = false;
-            break;
-          }
-          const lastTurn = state.turns[state.turns.length - 1];
-
-          if (lastTurn.type === 'expression') {
-            state.vtestcov[lastTurn.expressionIndex] = false;
-            state.unsuitableExpressions.add(lastTurn.expressionIndex);
-          } else {
-            state.unsuitableCauseValues.add(
-              encodeCauseChoice(lastTurn.nodeName, lastTurn.value)
-            );
-          }
-
-          if (state.turns.length === 1 && lastTurn.type === 'expression') {
-            state.infeasibles[lastTurn.expressionIndex] = 'Infeasible (backtrack)';
-          }
-
-          state.turns.pop();
-          reCalc(work, state);
-          match = false;
-          break;
-        }
-      }
-    }
-
-    if (!match) continue;
-
-    // Step (5): deduce remaining values
-    deduce(work, model);
-
-    // Step (5b): final consistency gate (Algorithm_Design.md §6.1/§6.2).
-    // The per-cause isPossible checks in Step 4 pass while an upstream
-    // intermediate is still indeterminate (checkRelation ignores unknown
-    // inputs). The final deduce above can determine that intermediate and
-    // expose a contradiction — e.g. a shared intermediate required T by a
-    // downstream node while its own inputs force F. Re-validate the finished
-    // condition; on contradiction, backtrack the last turn and retry
-    // (mirrors the Step 4 backtracking).
-    if (isPossible(work, model) !== '') {
-      if (state.turns.length === 0) {
-        return false;
-      }
-      const badTurn = state.turns[state.turns.length - 1];
-      if (badTurn.type === 'expression') {
-        state.vtestcov[badTurn.expressionIndex] = false;
-        state.unsuitableExpressions.add(badTurn.expressionIndex);
-        if (state.turns.length === 1) {
-          state.infeasibles[badTurn.expressionIndex] = 'Infeasible (consistency)';
-        }
-      } else {
-        state.unsuitableCauseValues.add(
-          encodeCauseChoice(badTurn.nodeName, badTurn.value)
-        );
-      }
-      state.turns.pop();
-      reCalc(work, state);
-      continue;
-    }
-
-    // Step (6): recalculate coverage
-    for (let l = 0; l < state.expressions.length; l++) {
-      state.vtestcov[l] = isCoveredBy(work, state.expressions[l]);
-    }
-
-    // Step (7): save coverage and return
-    state.covs.push([...state.vtestcov]);
-    return true;
-  }
-
-  return true;
-}
 
 /**
  * Initialize a fresh work array with all nodes set to ''.
@@ -1188,67 +945,6 @@ function demonstratesMask(
   return c.targets.some((target) => test.get(target.name) === 'M');
 }
 
-function checkStrong(
-  testIndex: number,
-  state: AlgorithmState,
-  model: LogicalModel
-): boolean {
-  let strong = 0;
-  let weak = 0;
-
-  for (let l = 0; l < state.expressions.length; l++) {
-    if (!state.covs[testIndex][l]) continue;
-
-    let ccount = 0;
-    for (let t = 0; t < state.covs.length; t++) {
-      if (state.weaks[t]) continue;
-      if (state.covs[t][l]) ccount++;
-    }
-
-    if (ccount === 1) strong++;
-    else if (ccount > 1) weak++;
-  }
-
-  if (strong === 0 && weak > 0) {
-    // Check if removal would leave any expression uncovered
-    for (let l = 0; l < state.expressions.length; l++) {
-      if (state.infeasibles[l] !== null) continue;
-
-      let otherCoverage = 0;
-      for (let t = 0; t < state.covs.length; t++) {
-        if (t === testIndex) continue;
-        if (state.weaks[t]) continue;
-        if (state.covs[t][l]) otherCoverage++;
-      }
-
-      if (otherCoverage === 0) return true; // Can't remove
-    }
-
-    // MASK demonstration protection (§14.4): keep this test if it is the last
-    // non-weak test that demonstrates some MASK constraint firing (trigger
-    // satisfied → target masked). A generated test suite must show that each
-    // constraint actually functions; for MASK that evidence is the masked (M)
-    // pattern, and the triggering cause is often isolated (anchored to no
-    // expression), so such tests would otherwise be dropped as redundant.
-    for (const c of model.constraints) {
-      if (c.type !== 'MASK') continue;
-      if (!demonstratesMask(state.tests[testIndex], c)) continue;
-
-      let otherDemo = 0;
-      for (let t = 0; t < state.tests.length; t++) {
-        if (t === testIndex) continue;
-        if (state.weaks[t]) continue;
-        if (demonstratesMask(state.tests[t], c)) otherDemo++;
-      }
-
-      if (otherDemo === 0) return true; // Last MASK demonstrator → can't remove
-    }
-
-    return false; // Weak: safe to remove
-  }
-
-  return true; // Strong: keep
-}
 
 /**
  * Generate optimized test conditions using the CEG algorithm.
@@ -1256,6 +952,499 @@ function checkStrong(
  * Returns the algorithm state containing tests, coverage, expressions, etc.
  *
  * Reference: Algorithm_Design.md §5.1
+ */
+
+// =============================================================================
+// §2.5 Observability
+// =============================================================================
+
+/** A value the tester can read as true or false (not M / I / unset). */
+function isDecided(v: WorkValue | undefined): boolean {
+  return v !== undefined && v !== '' && (isTrue(v) || isFalse(v));
+}
+
+/** Effect node names, in model order. */
+function effectNodeNames(model: LogicalModel): string[] {
+  const names: string[] = [];
+  for (const [name, node] of model.nodes) {
+    if (isEffect(node, model)) names.push(name);
+  }
+  return names;
+}
+
+/** Copy of `work` with `nodeName` pinned to `value` and every other derived node re-derived. */
+function pinAndRecompute(
+  work: Map<string, WorkValue>,
+  model: LogicalModel,
+  nodeName: string,
+  value: WorkValue
+): Map<string, WorkValue> {
+  const copy = new Map(work);
+  copy.set(nodeName, value);
+  for (const [name, node] of model.nodes) {
+    if (node.expression && name !== nodeName) copy.set(name, '');
+  }
+  for (const [name, node] of model.nodes) {
+    if (node.expression && name !== nodeName) deduceValue(copy, name, model);
+  }
+  return copy;
+}
+
+/**
+ * Is `nodeName` observable in this column? (Algorithm_Design.md §2.5)
+ *
+ * Both sides are produced the same way, and only effects that are decided on
+ * both sides count — a change from decided to M/I is nothing the tester can
+ * judge, so it is not evidence that the value was observed.
+ */
+function observable(
+  work: Map<string, WorkValue>,
+  model: LogicalModel,
+  nodeName: string,
+  effects: string[]
+): boolean {
+  const v = work.get(nodeName);
+  if (!isDecided(v)) return false;
+  const kept = pinAndRecompute(work, model, nodeName, v as WorkValue);
+  const flipped = pinAndRecompute(work, model, nodeName, isTrue(v as TruthValue) ? 'f' : 't');
+  for (const name of effects) {
+    const before = kept.get(name);
+    const after = flipped.get(name);
+    if (!isDecided(before) || !isDecided(after)) continue;
+    if (isTrue(before as TruthValue) !== isTrue(after as TruthValue)) return true;
+  }
+  return false;
+}
+
+/** The column as the tester receives it: constraint completion and masking applied (§5.1). */
+function settled(work: Map<string, WorkValue>, model: LogicalModel): Map<string, WorkValue> {
+  const copy = new Map(work);
+  deduceAllConstraints(copy, model.constraints);
+  applyAllMasks(copy, model.constraints);
+  return copy;
+}
+
+// =============================================================================
+// §2 Sensitisation — the conditions that carry a value to an effect
+// =============================================================================
+
+/** Nodes taking `nodeName` as a direct input, in model order. */
+function consumersOf(model: LogicalModel, nodeName: string): string[] {
+  const out: string[] = [];
+  for (const [name, node] of model.nodes) {
+    if (node.expression && referencesNode(node.expression, nodeName)) out.push(name);
+  }
+  return out;
+}
+
+/**
+ * §2.1: what the other inputs of `gate` must be so the value of `input` passes through.
+ * AND lets a value through when the others satisfy; OR when the others do not.
+ */
+function gateSensitisation(
+  model: LogicalModel,
+  gate: string,
+  input: string
+): Map<string, ExpressionRequiredValue> | null {
+  const node = model.nodes.get(gate);
+  if (!node?.expression) return null;
+  const { operator, inputs } = analyzeNodeExpression(node.expression);
+  if (!inputs.some((i) => i.name === input)) return null;
+
+  const req = new Map<string, ExpressionRequiredValue>();
+  for (const other of inputs) {
+    if (other.name === input) continue;
+    const value: ExpressionRequiredValue =
+      operator === 'AND' ? (other.negated ? 'F' : 'T') : (other.negated ? 'T' : 'F');
+    const seen = req.get(other.name);
+    if (seen !== undefined && seen !== value) return null; // the gate contradicts itself
+    req.set(other.name, value);
+  }
+  return req;
+}
+
+/**
+ * §2.2 / §2.3: requirement sets that carry `nodeName` to an effect, in model order.
+ * An effect observes itself, so it needs nothing. An empty result means the value
+ * can reach no effect at all — the obligation is unobservable (§13.4).
+ */
+function sensitisationPaths(
+  model: LogicalModel,
+  nodeName: string,
+  effects: string[],
+  limit = 64
+): Map<string, ExpressionRequiredValue>[] {
+  if (effects.includes(nodeName)) return [new Map()];
+
+  const out: Map<string, ExpressionRequiredValue>[] = [];
+  const queue: { node: string; req: Map<string, ExpressionRequiredValue>; seen: Set<string> }[] = [
+    { node: nodeName, req: new Map(), seen: new Set([nodeName]) },
+  ];
+  while (queue.length > 0 && out.length < limit) {
+    const cur = queue.shift()!;
+    for (const gate of consumersOf(model, cur.node)) {
+      if (cur.seen.has(gate)) continue;
+      const gs = gateSensitisation(model, gate, cur.node);
+      if (!gs) continue;
+
+      const merged = new Map(cur.req);
+      let ok = true;
+      for (const [k, v] of gs) {
+        const seen = merged.get(k);
+        if (seen !== undefined && seen !== v) { ok = false; break; }
+        merged.set(k, v);
+      }
+      if (!ok) continue;
+
+      if (effects.includes(gate)) out.push(merged);
+      else queue.push({ node: gate, req: merged, seen: new Set([...cur.seen, gate]) });
+    }
+  }
+  return out;
+}
+
+// =============================================================================
+// §1.4 Obligations
+// =============================================================================
+
+type Obligation =
+  | { kind: 'A'; index: number; owner: string }
+  | { kind: 'B'; cause: string; want: boolean }
+  | { kind: 'C'; constraint: Extract<LogicalConstraint, { type: 'MASK' }> };
+
+/** The obligation set O of §1.4, in model order (so the output is deterministic). */
+function buildObligations(model: LogicalModel, expressions: LogicalExpression[]): Obligation[] {
+  const out: Obligation[] = [];
+  expressions.forEach((e, i) => out.push({ kind: 'A', index: i, owner: e.ownerNode }));
+  for (const [name, node] of model.nodes) {
+    if (!isCause(node) || isIsolatedCause(name, model)) continue;
+    out.push({ kind: 'B', cause: name, want: true });
+    out.push({ kind: 'B', cause: name, want: false });
+  }
+  for (const c of model.constraints) {
+    if (c.type === 'MASK') out.push({ kind: 'C', constraint: c });
+  }
+  return out;
+}
+
+/** The node whose value must reach an effect, or null when nothing propagates (§3.1). */
+function obligationTarget(o: Obligation): string | null {
+  if (o.kind === 'A') return o.owner;
+  if (o.kind === 'B') return o.cause;
+  return null; // C demonstrates masking itself, which is visible in the column
+}
+
+/** The values the obligation asks for, before sensitisation. */
+function baseRequirements(
+  o: Obligation,
+  expressions: LogicalExpression[]
+): Map<string, ExpressionRequiredValue> {
+  const req = new Map<string, ExpressionRequiredValue>();
+  if (o.kind === 'A') {
+    for (const [k, v] of expressions[o.index].requiredValues) req.set(k, v);
+  } else if (o.kind === 'B') {
+    req.set(o.cause, o.want ? 'T' : 'F');
+  } else {
+    req.set(o.constraint.trigger.name, o.constraint.trigger.negated ? 'F' : 'T');
+  }
+  return req;
+}
+
+/** §13.1: does this column realise the expression? Truth matters, its origin does not (§2.2). */
+function realizesExpression(work: Map<string, WorkValue>, expr: LogicalExpression): boolean {
+  for (const [name, req] of expr.requiredValues) {
+    const v = work.get(name);
+    if (v === undefined || v === '') continue; // unset cell: no conflict
+    if (req === 'T' ? !isTrue(v) : !isFalse(v)) return false;
+  }
+  return true;
+}
+
+/** §1.4: does this column discharge the obligation? */
+function dischargesObligation(
+  work: Map<string, WorkValue>,
+  model: LogicalModel,
+  o: Obligation,
+  expressions: LogicalExpression[],
+  effects: string[]
+): boolean {
+  if (o.kind === 'A') {
+    return realizesExpression(work, expressions[o.index]) && observable(work, model, o.owner, effects);
+  }
+  if (o.kind === 'B') {
+    const v = work.get(o.cause);
+    if (!isDecided(v)) return false;
+    if (isTrue(v as TruthValue) !== o.want) return false;
+    return observable(work, model, o.cause, effects);
+  }
+  return demonstratesMask(work, o.constraint);
+}
+
+// =============================================================================
+// §4 Column construction
+// =============================================================================
+
+/** Place one required value, reporting a conflict. 'T' and 't' agree (§2.2). */
+function placeRequirement(
+  work: Map<string, WorkValue>,
+  name: string,
+  value: ExpressionRequiredValue
+): boolean {
+  const cur = work.get(name);
+  if (cur === undefined || cur === '') {
+    work.set(name, value);
+    return true;
+  }
+  if (!isDecided(cur)) return false; // M / I cannot be forced to a value
+  return value === 'T' ? isTrue(cur as TruthValue) : isFalse(cur as TruthValue);
+}
+
+/** Masks, constraint deduction and the two consistency checks (§6.2, obligation D). */
+function prepareColumn(work: Map<string, WorkValue>, model: LogicalModel): boolean {
+  if (!applyAllMasks(work, model.constraints)) return false;
+  for (const constraint of model.constraints) {
+    if (!deduceConstraint(work, constraint)) return false;
+  }
+  if (checkConstr(work, model.constraints) !== '') return false;
+  if (isPossible(work, model) !== '') return false;
+  return true;
+}
+
+/** One expression merged into the column, with the requirement set it brought. */
+interface AppliedExpression {
+  index: number;
+  req: Map<string, ExpressionRequiredValue>;
+}
+
+/** Rebuild the column from its seed and the merges that survived backtracking. */
+function rebuildColumn(
+  work: Map<string, WorkValue>,
+  seed: Map<string, ExpressionRequiredValue>,
+  applied: AppliedExpression[]
+): void {
+  for (const key of work.keys()) work.set(key, '');
+  for (const [k, v] of seed) work.set(k, v);
+  for (const a of applied) {
+    for (const [k, v] of a.req) {
+      const cur = work.get(k);
+      if (cur === undefined || cur === '') work.set(k, v);
+    }
+  }
+}
+
+/**
+ * Merge further expressions into the column (§7.1).
+ *
+ * A candidate brings its own values **and** the sensitisation its owner needs,
+ * so a merge that would close another obligation's path simply fails the value
+ * conflict check. No separate observability gate is needed here.
+ */
+function mergeExpressions(
+  work: Map<string, WorkValue>,
+  state: AlgorithmState,
+  model: LogicalModel,
+  effects: string[],
+  applied: AppliedExpression[],
+  mode: 0 | 1
+): void {
+  for (let l = 0; l < state.expressions.length; l++) {
+    if (mode === 0 && countCoverage(l, state.covs) > 0) continue;
+    if (state.vtestcov[l]) continue;
+    if (state.unsuitableExpressions.has(l)) continue;
+    if (state.infeasibles[l] !== null) continue;
+
+    const expr = state.expressions[l];
+    const paths = sensitisationPaths(model, expr.ownerNode, effects);
+    if (paths.length === 0) continue; // the owner reaches no effect: nothing to verify
+
+    for (const path of paths) {
+      const req = new Map<string, ExpressionRequiredValue>();
+      let ok = true;
+      for (const [k, v] of expr.requiredValues) {
+        const seen = req.get(k);
+        if (seen !== undefined && seen !== v) { ok = false; break; }
+        req.set(k, v);
+      }
+      if (ok) {
+        for (const [k, v] of path) {
+          const seen = req.get(k);
+          if (seen !== undefined && seen !== v) { ok = false; break; }
+          req.set(k, v);
+        }
+      }
+      if (!ok) continue;
+
+      const tmp = new Map(work);
+      for (const [k, v] of req) {
+        if (!placeRequirement(tmp, k, v)) { ok = false; break; }
+      }
+      if (!ok) continue;
+      if (!prepareColumn(tmp, model)) continue;
+
+      for (const [k, v] of tmp) work.set(k, v);
+      state.vtestcov[l] = true;
+      applied.push({ index: l, req });
+      break;
+    }
+  }
+}
+
+/** Fill the free causes and settle the column (§6.2 steps 4-5). */
+function completeColumn(
+  work: Map<string, WorkValue>,
+  state: AlgorithmState,
+  model: LogicalModel,
+  effects: string[],
+  seed: Map<string, ExpressionRequiredValue>,
+  applied: AppliedExpression[]
+): boolean {
+  const causeNodes: string[] = [];
+  for (const [name, node] of model.nodes) {
+    if (isCause(node) && !isIsolatedCause(name, model)) causeNodes.push(name);
+  }
+
+  const maxAttempts = state.lnum + 1;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    applyAllMasks(work, model.constraints);
+    mergeExpressions(work, state, model, effects, applied, 0);
+    mergeExpressions(work, state, model, effects, applied, 1);
+
+    let assigned = true;
+    for (const causeName of causeNodes) {
+      if (work.get(causeName) !== '') continue;
+      if (chooseCauseValue(work, state, model, causeName, 't')) continue;
+      if (chooseCauseValue(work, state, model, causeName, 'f')) continue;
+
+      if (applied.length === 0) return false;
+      const bad = applied.pop()!;
+      state.vtestcov[bad.index] = false;
+      state.unsuitableExpressions.add(bad.index);
+      rebuildColumn(work, seed, applied);
+      assigned = false;
+      break;
+    }
+    if (!assigned) continue;
+
+    deduce(work, model);
+    if (isPossible(work, model) === '') return true;
+
+    if (applied.length === 0) return false;
+    const bad = applied.pop()!;
+    state.vtestcov[bad.index] = false;
+    state.unsuitableExpressions.add(bad.index);
+    rebuildColumn(work, seed, applied);
+  }
+  return false;
+}
+
+/**
+ * Build one column whose reason for existing is `o` (§4 Phase 1).
+ *
+ * The obligation's own values and the sensitisation that carries them to an
+ * effect are placed together, so the column verifies `o` by construction.
+ * Reconvergent paths can still cancel, so the finished column is checked
+ * against §2.5 and the next path is tried when it does (§7.1).
+ */
+function buildColumn(
+  model: LogicalModel,
+  state: AlgorithmState,
+  o: Obligation,
+  effects: string[]
+): Map<string, WorkValue> | null {
+  const target = obligationTarget(o);
+  const paths = target === null ? [new Map<string, ExpressionRequiredValue>()]
+                                : sensitisationPaths(model, target, effects);
+
+  for (const path of paths) {
+    const seed = new Map<string, ExpressionRequiredValue>();
+    let ok = true;
+    for (const [k, v] of baseRequirements(o, state.expressions)) {
+      const seen = seed.get(k);
+      if (seen !== undefined && seen !== v) { ok = false; break; }
+      seed.set(k, v);
+    }
+    if (ok) {
+      for (const [k, v] of path) {
+        const seen = seed.get(k);
+        if (seen !== undefined && seen !== v) { ok = false; break; }
+        seed.set(k, v);
+      }
+    }
+    if (!ok) continue;
+
+    state.vtestcov = new Array(state.lnum).fill(false);
+    state.unsuitableExpressions = new Set();
+    state.unsuitableCauseValues = new Set();
+
+    const work = initWork(model);
+    for (const [k, v] of seed) {
+      if (!placeRequirement(work, k, v)) { ok = false; break; }
+    }
+    if (!ok) continue;
+    if (!prepareColumn(work, model)) continue;
+
+    const applied: AppliedExpression[] = [];
+    if (!completeColumn(work, state, model, effects, seed, applied)) continue;
+
+    // The assertion of §7.1: construction should have made this true.
+    if (!dischargesObligation(settled(work, model), model, o, state.expressions, effects)) continue;
+
+    return work;
+  }
+  return null;
+}
+
+// =============================================================================
+// §14 Weak test deletion — over obligations A, B and C
+// =============================================================================
+
+/**
+ * May this column be removed? (§14.1)
+ *
+ * Only when every obligation it discharges is also discharged by another column
+ * that is still kept. Expression coverage, result coverage and MASK
+ * demonstration are all handled by this one rule.
+ */
+function isRemovable(
+  testIndex: number,
+  state: AlgorithmState,
+  model: LogicalModel,
+  obligations: Obligation[],
+  effects: string[]
+): boolean {
+  const mine = obligations.filter((o) =>
+    dischargesObligation(state.tests[testIndex], model, o, state.expressions, effects));
+
+  for (const o of mine) {
+    let coveredElsewhere = false;
+    for (let t = 0; t < state.tests.length; t++) {
+      if (t === testIndex || state.weaks[t]) continue;
+      if (dischargesObligation(state.tests[t], model, o, state.expressions, effects)) {
+        coveredElsewhere = true;
+        break;
+      }
+    }
+    if (!coveredElsewhere) return false;
+  }
+  return true;
+}
+
+// =============================================================================
+// §5.1 calcTable — the pipeline of §4
+// =============================================================================
+
+/**
+ * Generate the decision table for a model.
+ *
+ * Phase 0  list the obligations (A, B, C) in model order
+ * Phase 1  build one column per obligation still undischarged
+ * Phase 2  constraint completion, so the columns are what the tester receives
+ * Phase 3  drop columns that repeat an input already present (obligation I)
+ * Phase 4  judge expression coverage on the finished columns (§13.1)
+ * Phase 5  weak test deletion over A u B u C (§14)
+ * Phase 6  classify what could not be discharged (§13.4)
+ *
+ * Reference: Algorithm_Design.md §1.4, §4, §5.1
  */
 export function calcTable(model: LogicalModel): AlgorithmState {
   const expressions = extractExpressions(model);
@@ -1268,114 +1457,117 @@ export function calcTable(model: LogicalModel): AlgorithmState {
     tests: [],
     covs: [],
     vtestcov: new Array(lnum).fill(false),
-    turns: [],
     unsuitableExpressions: new Set(),
     unsuitableCauseValues: new Set(),
     infeasibles: new Array(lnum).fill(null),
+    unobservables: new Array(lnum).fill(null),
     weaks: [],
   };
 
-  // No expressions = incomplete graph (e.g., nodes only, no edges yet)
-  if (lnum === 0) {
-    return state;
+  if (lnum === 0) return state;
+
+  const effects = effectNodeNames(model);
+  const obligations = buildObligations(model, expressions);
+
+  // === Phase 1: one column per obligation that is still undischarged ===
+  for (const o of obligations) {
+    const already = state.tests.some((t) =>
+      dischargesObligation(settled(t, model), model, o, expressions, effects));
+    if (already) continue;
+
+    const column = buildColumn(model, state, o, effects);
+    if (!column) continue; // classified in Phase 6
+
+    state.tests.push(column as Map<string, TruthValue>);
+    const view = settled(column, model);
+    state.covs.push(expressions.map((e) =>
+      realizesExpression(view, e) && observable(view, model, e.ownerNode, effects)));
   }
 
-  // === Phase 1: Expression coverage ===
-  let uncover = -1;
-
-  for (let iteration = 0; iteration < lnum; iteration++) {
-    const work = initWork(model);
-    state.vtestcov = new Array(lnum).fill(false);
-    state.unsuitableExpressions = new Set();
-    state.unsuitableCauseValues = new Set();
-    state.turns = [];
-
-    if (nextCondition(work, state, model)) {
-      state.tests.push(new Map(work) as Map<string, TruthValue>);
-    } else {
-      break;
-    }
-
-    // Check if all expressions are covered
-    let complete = true;
-    for (let l = 0; l < lnum; l++) {
-      if (state.infeasibles[l] !== null) continue;
-      if (countCoverage(l, state.covs) === 0) {
-        if (uncover === l) {
-          break;
-        }
-        uncover = l;
-        complete = false;
-        break;
-      }
-    }
-    if (complete) break;
-  }
-
-  // === Phase 2: Result coverage (T/F for each cause) ===
-  const causeNodes: string[] = [];
-  for (const [name, node] of model.nodes) {
-    if (isCause(node) && !isIsolatedCause(name, model)) {
-      causeNodes.push(name);
-    }
-  }
-
-  for (const causeName of causeNodes) {
-    let countT = 0;
-    let countF = 0;
-    for (const test of state.tests) {
-      const v = test.get(causeName);
-      if (v !== undefined && isTrue(v)) countT++;
-      if (v !== undefined && isFalse(v)) countF++;
-    }
-
-    if (countT === 0) {
-      const work = initWork(model);
-      work.set(causeName, 't');
-      state.vtestcov = new Array(lnum).fill(false);
-      state.unsuitableExpressions = new Set();
-      state.unsuitableCauseValues = new Set();
-      state.turns = [{ type: 'causeValue', nodeName: causeName, value: 'T' }];
-
-      if (nextCondition(work, state, model)) {
-        state.tests.push(new Map(work) as Map<string, TruthValue>);
-      }
-    }
-
-    if (countF === 0) {
-      const work = initWork(model);
-      work.set(causeName, 'f');
-      state.vtestcov = new Array(lnum).fill(false);
-      state.unsuitableExpressions = new Set();
-      state.unsuitableCauseValues = new Set();
-      state.turns = [{ type: 'causeValue', nodeName: causeName, value: 'F' }];
-
-      if (nextCondition(work, state, model)) {
-        state.tests.push(new Map(work) as Map<string, TruthValue>);
-      }
-    }
-  }
-
-  // === Phase 3: Weak test deletion ===
-  state.weaks = new Array(state.tests.length).fill(false);
-  for (let t = 0; t < state.tests.length; t++) {
-    if (!checkStrong(t, state, model)) {
-      state.weaks[t] = true;
-    }
-  }
-
-  // === Phase 4: Constraint completion (display fill) ===
-  // Fill cause cells that are uniquely determined by constraints (ONE/EXCL/
-  // INCL/REQ/MASK) but were left unset because the cause appears in no
-  // expression (an isolated cause). deduceAllConstraints/applyAllMasks only
-  // write cells that are still '', so existing values are untouched and — since
-  // the filled causes are absent from every expression — coverage, weak flags,
-  // and test count are unaffected. Cells still '' afterward are genuine
-  // don't-care, rendered as '-' (Algorithm_Design.md §5.1 / §15.2).
+  // === Phase 2: constraint completion (§5.1) ===
   for (const test of state.tests) {
     const work = test as Map<string, WorkValue>;
     deduceAllConstraints(work, model.constraints);
     applyAllMasks(work, model.constraints);
+  }
+
+  // === Phase 3: one column per distinct executed input (obligation I) ===
+  const causeNames: string[] = [];
+  for (const [name, node] of model.nodes) if (isCause(node)) causeNames.push(name);
+  const inputSignature = (t: Map<string, TruthValue>) =>
+    causeNames.map((c) => {
+      const v = t.get(c);
+      if (isDecided(v)) return isTrue(v as TruthValue) ? '1' : '0';
+      return v === 'M' ? 'M' : '-';
+    }).join('');
+  const seenInputs = new Set<string>();
+  const kept: Map<string, TruthValue>[] = [];
+  for (const test of state.tests) {
+    const sig = inputSignature(test);
+    if (seenInputs.has(sig)) continue;
+    seenInputs.add(sig);
+    kept.push(test);
+  }
+  state.tests = kept;
+
+  // === Phase 4: expression coverage on the finished columns (§13.1) ===
+  state.covs = state.tests.map((t) =>
+    expressions.map((e) =>
+      realizesExpression(t as Map<string, WorkValue>, e) &&
+      observable(t as Map<string, WorkValue>, model, e.ownerNode, effects)));
+
+  // === Phase 5: weak test deletion over A u B u C (§14) ===
+  state.weaks = new Array(state.tests.length).fill(false);
+  for (let t = 0; t < state.tests.length; t++) {
+    if (isRemovable(t, state, model, obligations, effects)) state.weaks[t] = true;
+  }
+
+  // === Phase 6: classify the expressions no kept column discharges (§13.4) ===
+  for (let l = 0; l < lnum; l++) {
+    const dischargedHere = state.tests.some((_, t) => !state.weaks[t] && state.covs[t][l]);
+    if (dischargedHere) continue;
+
+    const probe = initWork(model);
+    let realisable = true;
+    for (const [k, v] of expressions[l].requiredValues) {
+      if (!placeRequirement(probe, k, v)) { realisable = false; break; }
+    }
+    if (realisable) {
+      applyAllMasks(probe, model.constraints);
+      for (const constraint of model.constraints) {
+        if (!deduceConstraint(probe, constraint)) { realisable = false; break; }
+      }
+    }
+    if (realisable) {
+      deduce(probe, model);
+      const constr = checkConstr(probe, model.constraints);
+      const logic = isPossible(probe, model);
+      if (constr !== '') { state.infeasibles[l] = constr; continue; }
+      if (logic !== '') { state.infeasibles[l] = logic; continue; }
+    } else {
+      // Report the constraint that rejects it, not a generic message.
+      let reason = 'Infeasible';
+      const retry = initWork(model);
+      let placed = true;
+      for (const [k, v] of expressions[l].requiredValues) {
+        if (!placeRequirement(retry, k, v)) { placed = false; break; }
+      }
+      if (placed) {
+        applyAllMasks(retry, model.constraints);
+        for (const constraint of model.constraints) {
+          if (!deduceConstraint(retry, constraint)) {
+            reason = formatConstraintDisplay(constraint);
+            break;
+          }
+        }
+      }
+      state.infeasibles[l] = reason;
+      continue;
+    }
+
+    if (sensitisationPaths(model, expressions[l].ownerNode, effects).length === 0) {
+      state.unobservables[l] = '遮断';
+    }
   }
 
   return state;
