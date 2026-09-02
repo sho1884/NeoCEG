@@ -1565,9 +1565,29 @@ export function calcTable(model: LogicalModel): AlgorithmState {
       continue;
     }
 
-    if (sensitisationPaths(model, expressions[l].ownerNode, effects).length === 0) {
-      state.unobservables[l] = '遮断';
+    // Unobservable when no sensitisation path can hold together with the
+    // expression's own values: the row can be executed and the value produced,
+    // but it reaches no effect, so the tester could never decide it (§13.4).
+    // A path that merely exists is not enough — it must also survive the
+    // constraints.
+    let sensitisable = false;
+    for (const path of sensitisationPaths(model, expressions[l].ownerNode, effects)) {
+      const witness = initWork(model);
+      let placed = true;
+      for (const [k, v] of expressions[l].requiredValues) {
+        if (!placeRequirement(witness, k, v)) { placed = false; break; }
+      }
+      if (placed) {
+        for (const [k, v] of path) {
+          if (!placeRequirement(witness, k, v)) { placed = false; break; }
+        }
+      }
+      if (!placed) continue;
+      if (!prepareColumn(witness, model)) continue;
+      sensitisable = true;
+      break;
     }
+    if (!sensitisable) state.unobservables[l] = '遮断';
   }
 
   return state;

@@ -105,9 +105,11 @@ export function generateCoverageTableCSV(table: CoverageTable): string {
   for (const row of table.rows) {
     const status = row.isInfeasible
       ? COVERAGE_MESSAGES.statusInfeasible
-      : row.isUntestable
-        ? COVERAGE_MESSAGES.statusUntestable
-        : '';
+      : row.isUnobservable
+        ? COVERAGE_MESSAGES.unobservableBadge
+        : row.isUntestable
+          ? COVERAGE_MESSAGES.statusUntestable
+          : '';
 
     const csvRow = [
       `Expr.${row.expressionIndex}`,

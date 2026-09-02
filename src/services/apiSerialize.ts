@@ -102,6 +102,7 @@ export function serializeCoverageTable(coverage: CoverageTable): object {
       isCovered: r.isCovered,
       isInfeasible: r.isInfeasible,
       isUntestable: r.isUntestable,
+      isUnobservable: r.isUnobservable,
       reason: r.reason,
     })),
     stats: coverage.stats,

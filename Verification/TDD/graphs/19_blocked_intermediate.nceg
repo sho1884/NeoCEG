@@ -1,0 +1,12 @@
+# Blocked intermediate: g is always true because INCL(c) forces c true, so the
+# value of x never reaches an effect and no test can decide it.
+# Used by: coverage table (unobservable status '>')
+
+a: "A"
+b: "B"
+c: "C (forced true)"
+
+x := a AND b
+g := x OR c
+
+INCL(c)
