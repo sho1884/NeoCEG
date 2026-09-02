@@ -1,0 +1,44 @@
+name: CI
+
+# The same four checks CLAUDE.md asks for before committing, run on the push
+# itself so they do not depend on remembering to run them locally.
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Type check
+        run: npx tsc -b --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      # Includes the conformance suite: every fixture in Verification/TDD/graphs
+      # is judged against the obligation set of Algorithm_Design.md §1.4.
+      - name: Test
+        run: npx vitest run
+
+      - name: Build
+        run: npm run build
+
+      # serve mode runs the TypeScript sources through tsx, so a broken CLI
+      # entry point would not show up in the vite build.
+      - name: CLI entry point
+        run: npm run build:cli
