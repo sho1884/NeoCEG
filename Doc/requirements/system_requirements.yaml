@@ -6,6 +6,9 @@ version: "1.1"
 last_updated: "2026-07-24"
 
 # Change Log:
+# v1.2 - Coverage marks assert verification; add the unobservable marker '>' and
+#        count every expression in the coverage rate (SR-030);
+#        see Algorithm_Design.md 1.4 / 2.2 / 2.5 / 13.4
 # v1.1 - Coverage infeasible marker '-' -> '!' (SR-030): avoids colliding with the
 #        decision table's don't-care '-'; see Algorithm_Design.md §5.1 / §13.4.3 / §15.2
 # v1.0 - Simplify node expression handling (SR-002)
@@ -955,6 +958,15 @@ requirements:
       - context: "Logical expression is untestable"
         action: "-"
         outcome: "Display '?' (question) marker in amber; show 'Untestable' in Status column and 'MASK(X → Y)' in Reason column; gray entire row"
+      - context: "Logical expression is unobservable"
+        action: "-"
+        outcome: "Display '>' (greater-than) marker in orange; show 'Blocked' in Status column and the blocking reason in Reason column; light orange row. The expression can be executed and the value produced, but it never reaches an effect, so the tester cannot decide it (see Algorithm_Design.md 2.5/13.4)"
+      - context: "Coverage rate is displayed"
+        action: "-"
+        outcome: "Count every logical expression in the denominator, whether or not it can be discharged; show the breakdown (infeasible / untestable / unobservable) beside the rate so a gap stays visible (see Algorithm_Design.md 1.4)"
+      - context: "A test rule is marked '#' or 'x'"
+        action: "-"
+        outcome: "The mark asserts that the rule verifies the expression: the value under test reaches an effect and the result decides pass or fail. A rule whose value is blocked downstream is not marked (see Algorithm_Design.md 1.4/2.2/2.5)"
       - context: "Constraint with NOT member causes infeasibility"
         action: "-"
         outcome: "Tooltip shows constraint ID with NOT indication (e.g., 'EXCL(A, NOT B)')"

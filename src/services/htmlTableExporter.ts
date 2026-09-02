@@ -40,6 +40,7 @@ const COVERAGE_MARKER_COLORS: Record<string, { bg: string; text: string }> = {
   not_covered: { bg: '#ffffff', text: '#666666' },
   infeasible:  { bg: '#ffffff', text: '#c62828' },
   untestable:  { bg: '#ffffff', text: '#f9a825' },
+  unobservable:{ bg: '#ffffff', text: '#e65100' },
 };
 
 // =============================================================================
@@ -203,8 +204,20 @@ export function generateCoverageTableHTML(table: CoverageTable): string {
     }
 
     // Status column
-    const status = row.isInfeasible ? COVERAGE_MESSAGES.statusInfeasible : row.isUntestable ? COVERAGE_MESSAGES.statusUntestable : '';
-    const statusColor = row.isInfeasible ? '#c62828' : row.isUntestable ? '#f9a825' : '#666';
+    const status = row.isInfeasible
+      ? COVERAGE_MESSAGES.statusInfeasible
+      : row.isUnobservable
+        ? COVERAGE_MESSAGES.unobservableBadge
+        : row.isUntestable
+          ? COVERAGE_MESSAGES.statusUntestable
+          : '';
+    const statusColor = row.isInfeasible
+      ? '#c62828'
+      : row.isUnobservable
+        ? '#e65100'
+        : row.isUntestable
+          ? '#f9a825'
+          : '#666';
     cells.push(`<td style="${CELL_STYLE} background:${rowBg}; color:${statusColor}; font-size:11px;">${status}</td>`);
 
     // Reason column
