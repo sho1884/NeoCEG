@@ -33,7 +33,7 @@ NeoCEGは、原因結果グラフ（CEG）によるテスト設計のためのWe
 5. [Working with Edges / エッジの操作](#5-working-with-edges--エッジの操作)
 6. [Constraints / 制約](#6-constraints--制約)
 7. [Decision Table / デシジョンテーブル](#7-decision-table--デシジョンテーブル)
-8. [Coverage Table / カバレッジテーブル](#8-coverage-table--カバレッジテーブル)
+8. [Coverage Table / カバレッジ表](#8-coverage-table--カバレッジ表)
 9. [Compare View / 比較ビュー](#9-compare-view--比較ビュー)
 10. [NeoCEG DSL Reference / DSLリファレンス](#10-neoceg-dsl-reference--dslリファレンス)
 11. [Import and Export / インポートとエクスポート](#11-import-and-export--インポートとエクスポート)
@@ -120,7 +120,7 @@ Five tabs below the canvas:
 | Tab / タブ | Purpose / 用途 |
 |---|---|
 | **Decision** | Generated decision table with test rules (see [§7](#7-decision-table--デシジョンテーブル)) / テストルールを含むデシジョンテーブル |
-| **Coverage** | Expression coverage analysis (see [§8](#8-coverage-table--カバレッジテーブル)) / 論理式カバレッジ分析 |
+| **Coverage** | Expression coverage analysis (see [§8](#8-coverage-table--カバレッジ表)) / 論理式カバレッジ分析 |
 | **Compare** | Side-by-side decision + coverage view (see [§9](#9-compare-view--比較ビュー)) / デシジョン＋カバレッジの並列表示 |
 | **Skeleton** | Program control-structure skeleton derived from the decision table (see [§7.7](#77-skeleton-tab--スケルトンタブ)) / デシジョンテーブルから導いた制御構造スケルトン |
 | **NeoCEG Language {.nceg}** | Live DSL text view with Copy/Paste/Save/Import buttons, plus **Copy/Download DSL Grammar** (see [§11.9](#119-copydownload-dsl-grammar--dsl文法のコピーダウンロード)) / DSLテキストのリアルタイム表示（コピー・貼付・保存・インポート、加えて **Copy/Download DSL Grammar**） |
@@ -440,7 +440,7 @@ The **Skeleton** tab shows a program control-structure skeleton (pseudo-code) de
 
 ---
 
-## 8. Coverage Table / カバレッジテーブル
+## 8. Coverage Table / カバレッジ表
 
 ### 8.1 What is Expression Coverage / 論理式カバレッジとは
 
@@ -448,7 +448,7 @@ Expression coverage ensures that each logical edge (subexpression) in the CEG is
 
 論理式カバレッジは、CEG内の各論理エッジ（部分式）が少なくとも1つのテストルールで検証されることを保証します。ノードAからノードBへの各エッジが1つの被カバレッジ式になります。
 
-### 8.2 Reading the Coverage Table / カバレッジテーブルの読み方
+### 8.2 Reading the Coverage Table / カバレッジ表の読み方
 
 The **Coverage** tab has two parts:
 
@@ -497,8 +497,8 @@ ones included, because this table explains how the decision table came to look t
 The decision table does not carry this row: it names expression numbers such as `Expr.27`, and what
 those require is written only here. /
 **カバレッジ表**の最終行に、**各列が存在する理由**を示します（生成の元になった義務、観測対象
-ノード、観測先の結果ノード）。**弱テストを含む全列**が対象です。この表が、決定表がその形に
-なった経緯を説明するからです。決定表にはこの行を置きません。`Expr.27` のような式番号が何を
+ノード、観測先の結果ノード）。**弱テストを含む全列**が対象です。この表が、デシジョンテーブルがその形に
+なった経緯を説明するからです。デシジョンテーブルにはこの行を置きません。`Expr.27` のような式番号が何を
 要求するかは、この表にしか書かれていないためです。
 
 ```
@@ -543,7 +543,7 @@ does not reach 100%, and the breakdown says why.
 
 The **Compare** tab displays the Decision Table and Coverage Table stacked vertically with synchronized column widths. This allows you to cross-reference which test rules contribute to which expression coverage without switching tabs.
 
-**Compare** タブはデシジョンテーブルとカバレッジテーブルを列幅を同期させて縦に並べて表示します。タブを切り替えることなく、どのテストルールがどの論理式カバレッジに寄与するかを対照できます。
+**Compare** タブはデシジョンテーブルとカバレッジ表を列幅を同期させて縦に並べて表示します。タブを切り替えることなく、どのテストルールがどの論理式カバレッジに寄与するかを対照できます。
 
 ---
 
@@ -739,7 +739,7 @@ If the browser does not support the multi-format clipboard (`ClipboardItem` / `n
 | | Download SVG | Download graph as SVG / SVGでグラフをダウンロード |
 | | Download PNG | Download graph as PNG (2x) / PNG(2倍)でグラフをダウンロード |
 | | Download Decision CSV | Download decision table CSV / デシジョンテーブルCSVダウンロード |
-| | Download Coverage CSV | Download coverage table CSV / カバレッジテーブルCSVダウンロード |
+| | Download Coverage CSV | Download coverage table CSV / カバレッジ表CSVダウンロード |
 | | Download Skeleton | Download skeleton as `.txt` / スケルトンを`.txt`でダウンロード |
 | ─ | | |
 | Copy/Paste | Copy CEG Definition | Copy `.nceg` to clipboard / `.nceg`をクリップボードにコピー |
@@ -747,7 +747,7 @@ If the browser does not support the multi-format clipboard (`ClipboardItem` / `n
 | | Copy SVG | Copy SVG to clipboard / SVGをクリップボードにコピー |
 | | Copy PNG | Copy PNG to clipboard / PNGをクリップボードにコピー |
 | | Copy Decision Table | Copy decision table — HTML table + CSV at once (§11.7) / デシジョンテーブルをコピー — HTML表＋CSVを同時（§11.7） |
-| | Copy Coverage Table | Copy coverage table — HTML table + CSV at once (§11.7) / カバレッジテーブルをコピー — HTML表＋CSVを同時（§11.7） |
+| | Copy Coverage Table | Copy coverage table — HTML table + CSV at once (§11.7) / カバレッジ表をコピー — HTML表＋CSVを同時（§11.7） |
 | | Copy Skeleton | Copy skeleton text (plain) / スケルトンテキストをコピー（プレーン） |
 | ─ | | |
 | Danger | Clear All | Remove all nodes, edges, and constraints / 全ノード・エッジ・制約を削除 |
@@ -863,7 +863,7 @@ This warning appears when you have unsaved changes. Your work is still in the br
 | Intermediate | 中間 | Node with both incoming and outgoing logical edges / 入力・出力論理エッジの両方を持つノード |
 | Logical Statement | 論理言明 | The label text of a CEG node describing a testable condition / テスト可能な条件を記述するCEGノードのラベル |
 | Rule | ルール | A column in the decision table representing one test condition / デシジョンテーブルの1列（1テスト条件） |
-| Expression | 論理式 | A logical edge (subexpression) to be covered in the coverage table / カバレッジテーブルでカバーすべき論理エッジ（部分式） |
+| Expression | 論理式 | A logical edge (subexpression) to be covered in the coverage table / カバレッジ表でカバーすべき論理エッジ（部分式） |
 | Constraint | 制約 | A rule restricting valid truth-value combinations among causes / 原因間の有効な真理値組合せを制限するルール |
 | Masked (M) | マスク | A Don't Care value caused by a MASK constraint trigger being true / MASKトリガーが真のときのDon't Care値 |
 | Indeterminate (I) | 不定 | A value that cannot be determined due to M propagating through logic / Mが論理式を伝播して確定不能な値 |
@@ -889,5 +889,5 @@ This warning appears when you have unsaved changes. Your work is still in the br
 | 2026-03-01 | Initial version / 初版作成 |
 | 2026-06-14 | Update for current app: node display = proposition + expression tooltip (§4.3); `factor = level` naming convention (§10.4); Validity Warnings (§7.6) and Skeleton tab (§7.7); dual-format table Copy (§11.7); offline Copy/Download DSL Grammar (§3.3, §11.9); five bottom-panel tabs / 現行アプリへ更新：ノード表示＝命題＋式ツールチップ（§4.3）、`factor = level` 命名規約（§10.4）、妥当性警告（§7.6）・Skeleton タブ（§7.7）、表の2形式コピー（§11.7）、オフライン Copy/Download DSL Grammar（§3.3・§11.9）、下部パネル5タブ |
 | 2026-07-24 | Symbol alignment: decision-table don't-care cell = `-` (§7.2); coverage-table infeasible marker = `!` (was `-`), so the two tables never share a glyph (§8.3) / 記号統一：DTの不問セル＝`-`（§7.2）、カバレッジの実行不能＝`!`（旧 `-`）。両表で字形が衝突しない（§8.3） |
-| 2026-09-02 | Each column now says why it exists: a Purpose row at the end of the coverage table, and the `@` marker for the expression a rule was generated for (§8.3, §8.3.1) / 各列の存在理由を表示：カバレッジ表の末尾に目的行、生成の元になった論理式に `@`。決定表には置かない（式番号の定義がカバレッジ表にしかないため） |
+| 2026-09-02 | Each column now says why it exists: a Purpose row at the end of the coverage table, and the `@` marker for the expression a rule was generated for (§8.3, §8.3.1) / 各列の存在理由を表示：カバレッジ表の末尾に目的行、生成の元になった論理式に `@`。デシジョンテーブルには置かない（式番号の定義がカバレッジ表にしかないため） |
 | 2026-09-02 | Coverage markers now assert verification: `#`/`x` appear only when the value reaches an effect; added the Unobservable marker `>`; the coverage rate counts every expression and shows the breakdown (§8.3, §8.5) / カバレッジマーカーは検証できたことの表明に：値が結果に届く場合のみ `#`・`x` が付く。観測不能 `>` を追加。カバレッジ率は全論理式を分母とし内訳を併記（§8.3, §8.5） |

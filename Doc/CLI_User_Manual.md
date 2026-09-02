@@ -240,7 +240,7 @@ existing row changes position, and it lists every column, weak ones included. Th
 has no such row — it would name expression numbers that only the coverage table defines. /
 **カバレッジ** CSV は末尾に**目的行**を持ち、各列が存在する理由（生成の元になった義務・観測対象
 ノード・観測先の結果ノード）を示します。最終行なので既存行の位置は変わらず、弱テストを含む
-全列が対象です。決定表 CSV にはこの行はありません（式番号の定義がカバレッジ表にしかないため）。
+全列が対象です。デシジョンテーブル CSV にはこの行はありません（式番号の定義がカバレッジ表にしかないため）。
 
 The coverage table's infeasible marker is `!` (not `-`); `-` is the decision table's don't-care marker (§5.1), so the two tables never share a glyph.
 

@@ -183,7 +183,7 @@ Constraints are represented as **dedicated constraint nodes** (not just labels o
 | Infeasible / 実行不能 | Violated constraint ID (ONE/EXCL/INCL/REQ) / 違反した制約ID |
 | Untestable / テスト不能 | MASK constraint causing I in effect node / 結果ノードでIを引き起こすMASK制約 |
 | Weak condition / 弱い条件 | Subsuming condition number(s) / 包含する条件番号 |
-| Every condition / すべての条件 | **Why the column exists**, shown in the coverage table only: the obligation it was generated for, the node it observes and the effect it observes it at. The decision table omits it — the expression numbers it names are defined in the coverage table, so it cannot be read from the decision table alone (Algorithm_Design.md §3.7 / §16.3) / **その列が存在する理由**（カバレッジ表のみ）：生成の元になった義務、観測対象ノード、観測先の結果ノード。決定表には置かない（式番号の定義がカバレッジ表にしかなく、決定表だけでは読めないため） |
+| Every condition / すべての条件 | **Why the column exists**, shown in the coverage table only: the obligation it was generated for, the node it observes and the effect it observes it at. The decision table omits it — the expression numbers it names are defined in the coverage table, so it cannot be read from the decision table alone (Algorithm_Design.md §3.7 / §16.3) / **その列が存在する理由**（カバレッジ表のみ）：生成の元になった義務、観測対象ノード、観測先の結果ノード。デシジョンテーブルには置かない（式番号の定義がカバレッジ表にしかなく、デシジョンテーブルだけでは読めないため） |
 
 > Hover over cells to see cause; related constraints highlighted in graph view.
 > セルにマウスオーバーで原因を表示、関連する制約がグラフビューでハイライト。
@@ -235,11 +235,11 @@ When a constraint has NOT on a member, the member's value is inverted before con
 | REQ(A -> NOT B) | A=T, B=T | requires ¬B=T but ¬B=F ✗ (infeasible) |
 | ONE(A, NOT B) | A=F, B=F | effective: A=F, ¬B=T → ∑=1 ✓ |
 
-### 3.4 Coverage Table / カバレッジテーブル
+### 3.4 Coverage Table / カバレッジ表
 
 | ID | Function / 機能 | Parent / 親 |
 |----|----------|--------|
-| SR-030 | Display coverage table / カバレッジテーブルを表示する | UR-004 |
+| SR-030 | Display coverage table / カバレッジ表を表示する | UR-004 |
 
 **Coverage Markers / カバレッジマーカー** (SR-030):
 
@@ -492,7 +492,7 @@ MASK制約：NOTは**トリガー側のみ**許可。ターゲット側のNOTは
 | NOT (negative logic) / 負論理 | Inversion of truth value. Used on both logical edges and constraint members / 真偽値の反転。論理エッジと制約メンバーの両方で使用 |
 | Constraint / 制約 | Restriction on value combinations between nodes / ノード間の値組み合わせに対する制限 |
 | Decision table / デシジョンテーブル | Test conditions in table format / テスト条件の表形式 |
-| Coverage table / カバレッジテーブル | Coverage status of each logical expression / 各論理式の網羅状況 |
+| Coverage table / カバレッジ表 | Coverage status of each logical expression / 各論理式の網羅状況 |
 | Weak test condition / 弱いテスト条件 | Condition subsumed by other test conditions / 他のテスト条件に包含される条件 |
 | Infeasible / 実行不能 | Condition that cannot be executed due to constraints / 制約により実行できない条件 |
 | Untestable / テスト不能 | Condition with indeterminate input, result cannot be judged / 不定入力を持ち、結果が判定できない条件 |
@@ -527,7 +527,7 @@ MASK制約：NOTは**トリガー側のみ**許可。ターゲット側のNOTは
 | 2026-02-01 | 1.2 | NOT support on both logical and constraint edges / 論理エッジと制約エッジの両方にNOTサポート追加 | - |
 | 2026-02-08 | 1.3 | Finalized DSL grammar specification, added reference / DSL文法仕様確定、参照追加 | - |
 | 2026-07-24 | 1.4 | Coverage infeasible marker `-`→`!` (SR-030) to avoid colliding with the decision table's don't-care `-`; see Algorithm_Design.md §5.1 (constraint-completion pass) / §13.4.3 / §15.2 / カバレッジ実行不能マーカー `-`→`!`（SR-030）。DTの不問 `-` との衝突回避 | - |
-| 2026-09-02 | 1.6 | Show why each column exists: a Purpose row at the end of the coverage table, and the `@` marker for the expression a column was generated for (SR-024, SR-030). See Algorithm_Design.md §3.7 / §13.3 / §16.3 / 各列の存在理由を表示：カバレッジ表の末尾に目的行、生成の元になった論理式に `@`。決定表には置かない（式番号の定義がカバレッジ表にしかないため） |
+| 2026-09-02 | 1.6 | Show why each column exists: a Purpose row at the end of the coverage table, and the `@` marker for the expression a column was generated for (SR-024, SR-030). See Algorithm_Design.md §3.7 / §13.3 / §16.3 / 各列の存在理由を表示：カバレッジ表の末尾に目的行、生成の元になった論理式に `@`。デシジョンテーブルには置かない（式番号の定義がカバレッジ表にしかないため） |
 | 2026-09-02 | 1.5 | `#`/`x` assert the test **verifies** the expression (value reaches an effect); coverage rate counts every expression with the breakdown shown; add the Unobservable marker `>` (SR-030); T/t and F/f become a display annotation only (SR-021). See Algorithm_Design.md §1.4 / §2.2 / §2.5 / §13.4 / `#`・`x` は検証の表明であること、カバレッジ率の分母を全論理式にして内訳を併記、観測不能マーカー `>` を追加、T/t・F/f は表示上の注釈 | - |
 
 ---

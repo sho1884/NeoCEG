@@ -249,7 +249,7 @@ export function checkConformance(file: string): ConformanceReport {
   // J. same source, same table
   const dump = (c: Work[]) => JSON.stringify(c.map((w) => [...w.entries()]));
   if (dump(cols) !== dump(generate())) {
-    violations.push({ obligation: 'J', detail: '同一ソースから異なる決定表が生成された' });
+    violations.push({ obligation: 'J', detail: '同一ソースから異なるデシジョンテーブルが生成された' });
   }
 
   return {
