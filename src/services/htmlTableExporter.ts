@@ -36,9 +36,9 @@ const SECTION_COLORS = {
 };
 
 const COVERAGE_MARKER_COLORS: Record<string, { bg: string; text: string }> = {
-  primary:     { bg: '#c8e6c9', text: '#1b5e20' },
-  adopted:     { bg: '#e3f2fd', text: '#1565c0' },
-  covered:     { bg: '#e8eaf6', text: '#558b2f' },
+  primary:     { bg: '#81c784', text: '#1b5e20' },
+  adopted:     { bg: '#dcedc8', text: '#33691e' },
+  covered:     { bg: '#f1f8e9', text: '#7cb342' },
   not_covered: { bg: '#ffffff', text: '#666666' },
   infeasible:  { bg: '#ffffff', text: '#c62828' },
   untestable:  { bg: '#ffffff', text: '#f9a825' },
@@ -154,19 +154,6 @@ export function generateDecisionTableHTML(
   renderSection(sortedIntermediateIds, DECISION_TABLE_MESSAGES.intermediatesSectionHeader, 'intermediate');
   renderSection(sortedEffectIds, DECISION_TABLE_MESSAGES.effectsSectionHeader, 'effect');
 
-  // Purpose row, last: why each column exists (§3.7 / §15.3)
-  if (conditions.some((c) => c.origin)) {
-    const purposeCells = [
-      `<td style="${CELL_STYLE} background:#fafafa; font-size:10px;">${escapeHtml(COVERAGE_MESSAGES.purposeRowHeader)}</td>`,
-      `<td style="${CELL_STYLE} background:#fafafa;"></td>`,
-      `<td style="${CELL_STYLE} background:#fafafa;"></td>`,
-      ...conditions.map(
-        (c) =>
-          `<td style="${CELL_STYLE} background:#fafafa; font-size:10px; color:#555;">${escapeHtml(formatColumnOrigin(c.origin))}</td>`
-      ),
-    ];
-    rows.push(`  <tr>${purposeCells.join('')}</tr>`);
-  }
   return `<table style="${TABLE_STYLE}">\n${rows.join('\n')}\n</table>`;
 }
 
@@ -214,7 +201,7 @@ export function generateCoverageTableHTML(table: CoverageTable): string {
       const marker = row.coverage.get(condId) || 'not_covered';
       const display = getCoverageMarkerDisplay(marker);
       const colors = COVERAGE_MARKER_COLORS[marker] || COVERAGE_MARKER_COLORS.not_covered;
-      const fontWeight = marker === 'adopted' ? 'font-weight:bold;' : '';
+      const fontWeight = marker === 'primary' ? 'font-weight:bold;' : '';
       cells.push(`<td style="${CELL_STYLE} text-align:center; background:${colors.bg}; color:${colors.text}; ${fontWeight}">${display}</td>`);
     }
 

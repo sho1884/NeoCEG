@@ -491,13 +491,15 @@ Infeasible and untestable rows are displayed with a gray background across the e
 
 ### 8.3.1 Purpose Row / 目的行
 
-The last row of both tables says **why each column exists**: the obligation it was generated for,
-the node it observes and the effect it observes it at. The decision table shows it for the rules it
-displays; the coverage table shows it for **every** column, weak ones included, because that table
-explains how the decision table came to look the way it does. /
-両方の表の最終行に、**各列が存在する理由**を示します（生成の元になった義務、観測対象ノード、
-観測先の結果ノード）。決定表は表示している列について、カバレッジ表は**弱テストを含む全列**に
-ついて示します。カバレッジ表は決定表がその形になった経緯を説明する表だからです。
+The last row of the **coverage table** says **why each column exists**: the obligation it was
+generated for, the node it observes and the effect it observes it at. Every column is listed, weak
+ones included, because this table explains how the decision table came to look the way it does.
+The decision table does not carry this row: it names expression numbers such as `Expr.27`, and what
+those require is written only here. /
+**カバレッジ表**の最終行に、**各列が存在する理由**を示します（生成の元になった義務、観測対象
+ノード、観測先の結果ノード）。**弱テストを含む全列**が対象です。この表が、決定表がその形に
+なった経緯を説明するからです。決定表にはこの行を置きません。`Expr.27` のような式番号が何を
+要求するかは、この表にしか書かれていないためです。
 
 ```
 目的  Expr.27 個別審査要因_あり → 主契約引受結果_自動引受
@@ -886,6 +888,6 @@ This warning appears when you have unsaved changes. Your work is still in the br
 |---|---|
 | 2026-03-01 | Initial version / 初版作成 |
 | 2026-06-14 | Update for current app: node display = proposition + expression tooltip (§4.3); `factor = level` naming convention (§10.4); Validity Warnings (§7.6) and Skeleton tab (§7.7); dual-format table Copy (§11.7); offline Copy/Download DSL Grammar (§3.3, §11.9); five bottom-panel tabs / 現行アプリへ更新：ノード表示＝命題＋式ツールチップ（§4.3）、`factor = level` 命名規約（§10.4）、妥当性警告（§7.6）・Skeleton タブ（§7.7）、表の2形式コピー（§11.7）、オフライン Copy/Download DSL Grammar（§3.3・§11.9）、下部パネル5タブ |
-| 2026-09-02 | Each column now says why it exists: a Purpose row at the end of the decision table and the coverage table, and the `@` marker for the expression a rule was generated for (§8.3, §8.3.1) / 各列の存在理由を表示：両表の末尾に目的行、生成の元になった論理式に `@` |
+| 2026-09-02 | Each column now says why it exists: a Purpose row at the end of the coverage table, and the `@` marker for the expression a rule was generated for (§8.3, §8.3.1) / 各列の存在理由を表示：両表の末尾に目的行、生成の元になった論理式に `@` |
 | 2026-09-02 | Coverage markers now assert verification: `#`/`x` appear only when the value reaches an effect; added the Unobservable marker `>`; the coverage rate counts every expression and shows the breakdown (§8.3, §8.5) / カバレッジマーカーは検証できたことの表明に：値が結果に届く場合のみ `#`・`x` が付く。観測不能 `>` を追加。カバレッジ率は全論理式を分母とし内訳を併記（§8.3, §8.5） |
 | 2026-07-24 | Symbol alignment: decision-table don't-care cell = `-` (§7.2); coverage-table infeasible marker = `!` (was `-`), so the two tables never share a glyph (§8.3) / 記号統一：DTの不問セル＝`-`（§7.2）、カバレッジの実行不能＝`!`（旧 `-`）。両表で字形が衝突しない（§8.3） |

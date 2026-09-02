@@ -112,11 +112,12 @@ describe('column origin (§3.7)', () => {
     }
   });
 
-  test('the decision table CSV ends with a Purpose row', async () => {
+  test('the Purpose row belongs to the coverage table, not the decision table', async () => {
     const { parseLogicalDSL } = await import('../services/logicalDslParser');
     const { calcTable } = await import('../services/cegAlgorithm');
     const { generateOptimizedDecisionTableWithState } = await import('../services/decisionTableCalculator');
-    const { generateDecisionTableCSV } = await import('../services/csvGenerator');
+    const { generateCoverageTableFromState } = await import('../services/coverageTableCalculator');
+    const { generateDecisionTableCSV, generateCoverageTableCSV } = await import('../services/csvGenerator');
     const { readFileSync } = await import('node:fs');
 
     const model = parseLogicalDSL(
@@ -124,13 +125,19 @@ describe('column origin (§3.7)', () => {
     const { table } = generateOptimizedDecisionTableWithState(model);
     const state = calcTable(model);
     const labels = new Map([...model.nodes].map(([n, node]) => [n, node.label ?? n]));
-    const csv = generateDecisionTableCSV(
-      table, table.conditions, labels, table.causeIds, table.intermediateIds, table.effectIds);
 
-    const lines = csv.split('\r\n');
+    // The decision table is the artefact a tester executes. It carries no
+    // Purpose row: the expression numbers a purpose names are defined only in
+    // the coverage table, so it could not be read from the decision table alone.
+    const dtCsv = generateDecisionTableCSV(
+      table, table.conditions, labels, table.causeIds, table.intermediateIds, table.effectIds);
+    expect(dtCsv).not.toContain('Purpose');
+
+    // The coverage table explains how the decision table came to look this way,
+    // so it ends with the Purpose row.
+    const covCsv = generateCoverageTableCSV(generateCoverageTableFromState(model, state));
+    const lines = covCsv.split(String.fromCharCode(13, 10));
     expect(lines[lines.length - 1].startsWith('Purpose')).toBe(true);
-    // The purpose row is last, so no existing row moved.
-    expect(lines[0].startsWith('ID,')).toBe(true);
-    expect(state.origins.length).toBeGreaterThan(0);
+    expect(lines[0].startsWith('Expr.')).toBe(true);
   });
 });

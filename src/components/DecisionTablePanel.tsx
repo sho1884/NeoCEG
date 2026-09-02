@@ -414,19 +414,6 @@ function DecisionTableView({ table: _table, conditions, nodeLabels, mode, sorted
               ))}
             </tr>
           ))}
-          {/* Purpose row, last: why each column exists (§3.7 / §15.3) */}
-          {conditions.some((c) => c.origin) && (
-            <tr>
-              <td style={{ ...PURPOSE_ROW_STYLE, position: 'sticky', left: 0 }} colSpan={2}>
-                {COVERAGE_MESSAGES.purposeRowHeader}
-              </td>
-              {conditions.map((c) => (
-                <td key={c.id} style={PURPOSE_ROW_STYLE} title={formatColumnOrigin(c.origin)}>
-                  {formatColumnOrigin(c.origin)}
-                </td>
-              ))}
-            </tr>
-          )}
         </tbody>
       </table>
     </div>
@@ -448,9 +435,11 @@ const PURPOSE_ROW_STYLE = {
 };
 
 const COVERAGE_COLORS: Record<CoverageMarker, { bg: string; text: string }> = {
-  primary: { bg: '#a5d6a7', text: '#1b5e20' },
-  adopted: { bg: '#c8e6c9', text: '#2e7d32' },
-  covered: { bg: '#e8f5e9', text: '#558b2f' },
+  // '@' is why the column exists, so it carries the strongest weight of the
+  // three coverage marks; '#' and 'x' step back (§13.3).
+  primary: { bg: '#81c784', text: '#1b5e20' },
+  adopted: { bg: '#dcedc8', text: '#33691e' },
+  covered: { bg: '#f1f8e9', text: '#7cb342' },
   not_covered: { bg: '#ffffff', text: '#999999' },
   infeasible: { bg: '#ffcdd2', text: '#c62828' },
   untestable: { bg: '#fff9c4', text: '#f9a825' },
@@ -749,7 +738,7 @@ function CoverageTableView({ table, conditions, mode = 'practice' }: CoverageTab
                               : marker === 'untestable'
                                 ? '#f9a825'
                                 : '#666',
-                      fontWeight: marker === 'adopted' ? 'bold' : 'normal',
+                      fontWeight: marker === 'primary' ? 'bold' : 'normal',
                       opacity: isExcluded ? 0.7 : 1,
                     }}
                   >
@@ -1082,7 +1071,7 @@ function CompareView({
                     style={{
                       backgroundColor: c.excluded ? '#f5f5f5' : COVERAGE_COLORS[marker].bg,
                       color: c.excluded ? '#999' : COVERAGE_COLORS[marker].text,
-                      fontWeight: marker === 'adopted' && !c.excluded ? 'bold' : 'normal',
+                      fontWeight: marker === 'primary' && !c.excluded ? 'bold' : 'normal',
                       textAlign: 'center',
                       padding: '4px 8px',
                       border: '1px solid #ddd',

@@ -234,12 +234,13 @@ with infeasible / untestable / unobservable listed separately, so a gap stays vi
 結果で合否が決まる）。カバレッジ率は全論理式を分母に数え（`covered / total`）、実行不能・テスト不能・
 観測不能を内訳として別に示すため、漏れが見えなくなることはありません。
 
-Both CSV tables end with a **Purpose row** giving why each column exists: the obligation it was
-generated for, the node it observes and the effect it observes it at. It is the last row, so no
-existing row changes position. The coverage table lists every column, weak ones included. /
-両方の CSV は末尾に**目的行**を持ち、各列が存在する理由（生成の元になった義務・観測対象ノード・
-観測先の結果ノード）を示します。最終行なので既存行の位置は変わりません。カバレッジ表は
-弱テストを含む全列を対象とします。
+The **coverage** CSV ends with a **Purpose row** giving why each column exists: the obligation it
+was generated for, the node it observes and the effect it observes it at. It is the last row, so no
+existing row changes position, and it lists every column, weak ones included. The decision-table CSV
+has no such row — it would name expression numbers that only the coverage table defines. /
+**カバレッジ** CSV は末尾に**目的行**を持ち、各列が存在する理由（生成の元になった義務・観測対象
+ノード・観測先の結果ノード）を示します。最終行なので既存行の位置は変わらず、弱テストを含む
+全列が対象です。決定表 CSV にはこの行はありません（式番号の定義がカバレッジ表にしかないため）。
 
 The coverage table's infeasible marker is `!` (not `-`); `-` is the decision table's don't-care marker (§5.1), so the two tables never share a glyph.
 
@@ -401,6 +402,6 @@ Errors are always JSON: `{"error": {"type": "...", "message": "..."}}`.
 | 2026-04-04 | Initial version / 初版作成 |
 | 2026-07-24 | Add §8 Demo API (serve mode) with the public demo URL, curl examples, and guardrails / §8 デモ API（serve モード）を追加：公開デモ URL・curl 例・ガードレール |
 | 2026-07-24 | Document `--all-combinations` (learning mode) and its 256-column limit to match the core; remove the stale Observable column (the observable flag was removed in 2026-06) / コアに合わせ `--all-combinations`（学習モード）と 256 列上限を記載。廃止済みの Observable 列を削除（観測フラグは 2026-06 に削除） |
-| 2026-09-02 | Add the Purpose row at the end of both CSV tables and the `@` marker for the expression a rule was generated for / 両 CSV の末尾に目的行、生成の元になった論理式に `@` |
+| 2026-09-02 | Add the Purpose row at the end of the coverage CSV and the `@` marker for the expression a rule was generated for / 両 CSV の末尾に目的行、生成の元になった論理式に `@` |
 | 2026-09-02 | Coverage markers assert verification (`#`/`x` only when the value reaches an effect); added the Unobservable marker `>`; the coverage rate counts every expression with the breakdown shown / カバレッジマーカーは検証の表明（値が結果に届く場合のみ `#`・`x`）。観測不能 `>` を追加。カバレッジ率は全論理式を分母とし内訳を併記 |
 | 2026-07-24 | Symbol alignment: decision-table don't-care is `-`; coverage-table infeasible is `!` (was `-`), untestable `?` — added the missing coverage markers and the DT `-` legend / 記号統一：DTの不問は `-`、カバレッジの実行不能は `!`（旧 `-`）・テスト不能 `?`。欠けていたカバレッジ記号と DT `-` の凡例を追加 |

@@ -81,18 +81,6 @@ export function generateDecisionTableCSV(
   for (const nodeId of sortedIntermediateIds) lines.push(section(nodeId, DECISION_TABLE_MESSAGES.classificationIntermediate));
   for (const nodeId of sortedEffectIds) lines.push(section(nodeId, DECISION_TABLE_MESSAGES.classificationEffect));
 
-  // Purpose row, last: why each column exists (§3.7 / §15.3). Placed at the end
-  // so no existing row moves.
-  if (conditions.some((c) => c.origin)) {
-    const purposeRow = [
-      COVERAGE_MESSAGES.purposeRowHeader,
-      '',
-      '',
-      ...conditions.map((c) => formatColumnOrigin(c.origin)),
-    ];
-    lines.push(purposeRow.map(escapeCSV).join(','));
-  }
-
   return lines.join('\r\n');
 }
 
