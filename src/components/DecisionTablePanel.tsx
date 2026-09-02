@@ -549,6 +549,13 @@ function CoverageTableView({ table, conditions, mode = 'practice' }: CoverageTab
   // Use provided conditions or fall back to table.conditionIds
   const displayConditions = conditions || table.conditionIds.map(id => ({ id, excluded: false } as TestCondition));
 
+  // The view may show a subset of the columns (practice mode drops the weak
+  // ones), so look the origin up by condition id rather than by position.
+  const originOfCondition = (conditionId: number) => {
+    const index = table.conditionIds.indexOf(conditionId);
+    return index >= 0 ? table.origins?.[index] ?? null : null;
+  };
+
   // Get node labels for headers
   const getNodeLabel = (nodeName: string) => table.nodeLabels.get(nodeName) || nodeName;
 
@@ -720,24 +727,12 @@ function CoverageTableView({ table, conditions, mode = 'practice' }: CoverageTab
                       padding: '2px 4px',
                       border: '1px solid #ddd',
                       textAlign: 'center',
-                      backgroundColor: isExcluded
-                        ? '#f5f5f5'
-                        : marker === 'adopted'
-                          ? '#e3f2fd'
-                          : marker === 'covered'
-                            ? '#e8eaf6'
-                            : '#fff',
-                      color: isExcluded
-                        ? '#999'
-                        : marker === 'adopted'
-                          ? '#1565c0'
-                          : marker === 'covered'
-                            ? '#558b2f'
-                            : marker === 'infeasible'
-                              ? '#c62828'
-                              : marker === 'untestable'
-                                ? '#f9a825'
-                                : '#666',
+                      // One palette for every marker (COVERAGE_COLORS): colours
+                      // written per view drift, and this one had no entry for
+                      // '@' or '>' — they fell through to plain grey while '#'
+                      // kept a blue background.
+                      backgroundColor: isExcluded ? '#f5f5f5' : COVERAGE_COLORS[marker].bg,
+                      color: isExcluded ? '#999' : COVERAGE_COLORS[marker].text,
                       fontWeight: marker === 'primary' ? 'bold' : 'normal',
                       opacity: isExcluded ? 0.7 : 1,
                     }}
@@ -776,18 +771,22 @@ function CoverageTableView({ table, conditions, mode = 'practice' }: CoverageTab
               </td>
             </tr>
           ))}
-          {/* Purpose row, last: why each column exists — weak columns included (§16.3) */}
+          {/* Purpose row, last: why each column exists (§16.3) */}
           {table.origins?.some((o) => o) && (
             <tr>
               <td style={PURPOSE_ROW_STYLE}>{COVERAGE_MESSAGES.purposeRowHeader}</td>
               {table.nodeNames.map((n) => (
                 <td key={`purpose-${n}`} style={PURPOSE_ROW_STYLE} />
               ))}
-              {table.origins.map((o, i) => (
-                <td key={`purpose-c${i}`} style={PURPOSE_ROW_STYLE} title={formatColumnOrigin(o)}>
-                  {formatColumnOrigin(o)}
-                </td>
-              ))}
+              {displayConditions.map((c) => {
+                const conditionId = typeof c === 'number' ? c : c.id;
+                const text = formatColumnOrigin(originOfCondition(conditionId));
+                return (
+                  <td key={`purpose-c${conditionId}`} style={PURPOSE_ROW_STYLE} title={text}>
+                    {text}
+                  </td>
+                );
+              })}
               <td style={PURPOSE_ROW_STYLE} />
               <td style={PURPOSE_ROW_STYLE} />
             </tr>
