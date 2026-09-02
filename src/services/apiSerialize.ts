@@ -77,7 +77,6 @@ export function serializeDecisionTable(
       id: c.id,
       excluded: c.excluded,
       exclusionReason: c.exclusionReason ?? null,
-      origin: c.origin ?? null,
       values: valuesToObject(c.values),
     })),
     constraints: table.constraints,

@@ -138,6 +138,11 @@ export function truthNot(v: TruthValue): TruthValue {
  *
  * One obligation per column — the one it was generated for. The obligations a
  * column happens to discharge as well are shown by the coverage table.
+ *
+ * Shown by the coverage table only (§16.3): an origin names expression numbers,
+ * and what those require is written there. A reader holding the decision table
+ * alone could not interpret it, so that table carries the values to execute and
+ * nothing else.
  */
 export interface ColumnOrigin {
   /** A: expression coverage, B: result coverage, C: constraint demonstration */
@@ -168,8 +173,6 @@ export interface TestCondition {
   /** Reason for exclusion (if excluded) */
   exclusionReason?: ExclusionReason;
 
-  /** Why this column exists (§3.7) */
-  origin?: ColumnOrigin;
 }
 
 /**

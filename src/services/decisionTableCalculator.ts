@@ -243,7 +243,6 @@ function convertStateToDecisionTable(
           type: 'weak',
           explanation: 'Weak: all covered expressions are redundantly covered by other tests',
         },
-        origin: state.origins?.[t],
       });
     } else {
       feasibleCount++;
@@ -251,7 +250,6 @@ function convertStateToDecisionTable(
         id: conditionId,
         values: new Map(state.tests[t]),
         excluded: false,
-        origin: state.origins?.[t],
       });
     }
   }
