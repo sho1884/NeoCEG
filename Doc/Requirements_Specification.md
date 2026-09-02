@@ -527,7 +527,7 @@ MASK制約：NOTは**トリガー側のみ**許可。ターゲット側のNOTは
 | 2026-02-01 | 1.2 | NOT support on both logical and constraint edges / 論理エッジと制約エッジの両方にNOTサポート追加 | - |
 | 2026-02-08 | 1.3 | Finalized DSL grammar specification, added reference / DSL文法仕様確定、参照追加 | - |
 | 2026-07-24 | 1.4 | Coverage infeasible marker `-`→`!` (SR-030) to avoid colliding with the decision table's don't-care `-`; see Algorithm_Design.md §5.1 (constraint-completion pass) / §13.4.3 / §15.2 / カバレッジ実行不能マーカー `-`→`!`（SR-030）。DTの不問 `-` との衝突回避 | - |
-| 2026-09-02 | 1.6 | Show why each column exists: a Purpose row at the end of the coverage table, and the `@` marker for the expression a column was generated for (SR-024, SR-030). See Algorithm_Design.md §3.7 / §13.3 / §15.3 / §16.3 / 各列の存在理由を表示：決定表とカバレッジ表の末尾に目的行、生成の元になった論理式に `@` |
+| 2026-09-02 | 1.6 | Show why each column exists: a Purpose row at the end of the coverage table, and the `@` marker for the expression a column was generated for (SR-024, SR-030). See Algorithm_Design.md §3.7 / §13.3 / §16.3 / 各列の存在理由を表示：カバレッジ表の末尾に目的行、生成の元になった論理式に `@`。決定表には置かない（式番号の定義がカバレッジ表にしかないため） |
 | 2026-09-02 | 1.5 | `#`/`x` assert the test **verifies** the expression (value reaches an effect); coverage rate counts every expression with the breakdown shown; add the Unobservable marker `>` (SR-030); T/t and F/f become a display annotation only (SR-021). See Algorithm_Design.md §1.4 / §2.2 / §2.5 / §13.4 / `#`・`x` は検証の表明であること、カバレッジ率の分母を全論理式にして内訳を併記、観測不能マーカー `>` を追加、T/t・F/f は表示上の注釈 | - |
 
 ---

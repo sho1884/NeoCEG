@@ -323,7 +323,19 @@ truth value colors (green=T, red=F, yellow=I, gray=M) which follow traffic-light
 設計原則：ノードロール色は青→紫のグラデーションとし、信号機の慣習に従った
 真理値の色（緑=T、赤=F、黄=I、灰=M）との衝突を回避する。
 
-### 7.4 Validity warnings (model health) / 妥当性の警告（モデル健全性）
+### 7.4 Coverage Tab / カバレッジタブ
+
+The coverage tab explains how the decision table came to look the way it does, so it carries what
+the decision table deliberately leaves out. /
+カバレッジタブは、決定表がその形になった経緯を説明する。決定表があえて載せないものを、こちらが持つ。
+
+| Element / 要素 | Behaviour / 挙動 |
+|---|---|
+| Marker cells / マーカーセル | One palette for every marker (`@` `#` `x` `!` `?` `>`); `@` carries the strongest weight, then `#`, then `x` — the order the marks mean (Algorithm_Design.md §13.3) / 全マーカーを1つの配色で描く。強調は `@` > `#` > `x` の順で、記号の意味の順序と一致させる |
+| Purpose row / 目的行 | The last row: why each column exists (Algorithm_Design.md §16.3). It lines up with the columns actually shown — practice mode hides the weak ones — so it is looked up by condition id, never by position / 最終行に各列の存在理由。表示中の列に合わせる（実務モードは弱テストを隠す）ため、位置ではなく条件IDで引く |
+| Decision table / デシジョンテーブル | Carries no Purpose row: an origin names expression numbers that only this tab defines / 目的行を持たない。素性が含む式番号の定義がこのタブにしかないため |
+
+### 7.5 Validity warnings (model health) / 妥当性の警告（モデル健全性）
 
 Warnings appear in an **always-visible banner** at the top of the panel — the **same area** as the
 learning-mode auto-switch notice ([DecisionTablePanel] warning area, rendered **outside** the tab switch
@@ -424,8 +436,8 @@ control-structure skeleton derived from the graph (see `Skeleton_Generator_Speci
 | Empty state / 空状態 | Placeholder when there is no decision table to render / デシジョンテーブルが無いときはプレースホルダ |
 
 Validity warnings for the skeleton (and the decision table) appear in the always-visible panel banner, not
-inside this tab — see §7.4. / スケルトン（およびデシジョンテーブル）の妥当性警告は、このタブ内ではなく
-常時表示のパネルバナーに出す（§7.4 参照）。
+inside this tab — see §7.5. / スケルトン（およびデシジョンテーブル）の妥当性警告は、このタブ内ではなく
+常時表示のパネルバナーに出す（§7.5 参照）。
 
 ---
 
@@ -452,4 +464,5 @@ inside this tab — see §7.4. / スケルトン（およびデシジョンテ�
 | 2026-03-04 | Add Import/Paste CEG Definition: File menu "Import..." renamed to "Import CEG Definition", add "Paste CEG Definition" to menu and Language tab. Both validate DSL before replacing. / Import/Paste CEG Definitionを追加：Fileメニュー「Import...」を「Import CEG Definition」に改名、メニューとLanguageタブに「Paste CEG Definition」追加。両方とも置換前にDSLバリデーション実施。 |
 | 2026-03-04 | Add HTML table clipboard copy: `⎘ HTML` buttons on Decision/Coverage tab headers + Copy Decision HTML / Copy Coverage HTML in File menu. Uses ClipboardItem API with text/html + text/plain (CSV fallback) for styled paste into PowerPoint, Word, etc. / HTMLテーブルクリップボードコピーを追加：Decision/CoverageタブヘッダーにHTMLボタン＋Fileメニューにコピー項目。ClipboardItem APIでtext/html＋text/plain(CSV)を同時書込、PowerPoint・Word等にスタイル付きペースト。 |
 | 2026-06-13 | §2.4 Node display = proposition (label / meaningful identifier); the logical expression moves to a hover tooltip; placeholder-named nodes prompt for a concept name. Auto-naming a node from its expression is removed. / §2.4 表示名＝命題（ラベル/意味ある識別子）、論理式はホバーのツールチップへ、プレースホルダ名は命名を促す。式からの名前自動生成は廃止。 |
+| 2026-09-02 | Add §7.4 Coverage Tab: one palette for every marker with `@` carrying the strongest weight, and a Purpose row aligned to the columns shown; the decision table carries no Purpose row (old §7.4 validity warnings → §7.5) / §7.4 カバレッジタブを追加：全マーカーを1つの配色で描き `@` を最も強く、目的行は表示中の列に合わせる。決定表には目的行を置かない（旧 §7.4 妥当性警告は §7.5 へ） |
 | 2026-06-13 | Remove the observable flag entirely (graph indicator, "Mark as (Non-)Observable" menu, node property, decision-table Observable column, old §7.4 indicator section). / 観測フラグを完全削除（グラフ表示・右クリック切替・ノードプロパティ・DTのObservable列・旧§7.4節）。 |
