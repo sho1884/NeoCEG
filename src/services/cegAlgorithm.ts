@@ -14,6 +14,7 @@ import { isCause, isEffect, referencesNode } from '../types/logical';
 import type { TruthValue } from '../types/decisionTable';
 import { isTrue, isFalse } from '../types/decisionTable';
 import type { LogicalExpression, ExpressionRequiredValue, WorkValue, AlgorithmState } from '../types/cegAlgorithm';
+import type { ColumnOrigin } from '../types/decisionTable';
 import { encodeCauseChoice } from '../types/cegAlgorithm';
 
 // =============================================================================
@@ -1063,6 +1064,12 @@ function gateSensitisation(
   return req;
 }
 
+/** One way to carry a value to an effect: what must hold, and where it lands. */
+interface SensitisationPath {
+  req: Map<string, ExpressionRequiredValue>;
+  effect: string;
+}
+
 /**
  * §2.2 / §2.3: requirement sets that carry `nodeName` to an effect, in model order.
  * An effect observes itself, so it needs nothing. An empty result means the value
@@ -1073,10 +1080,10 @@ function sensitisationPaths(
   nodeName: string,
   effects: string[],
   limit = 64
-): Map<string, ExpressionRequiredValue>[] {
-  if (effects.includes(nodeName)) return [new Map()];
+): SensitisationPath[] {
+  if (effects.includes(nodeName)) return [{ req: new Map(), effect: nodeName }];
 
-  const out: Map<string, ExpressionRequiredValue>[] = [];
+  const out: SensitisationPath[] = [];
   const queue: { node: string; req: Map<string, ExpressionRequiredValue>; seen: Set<string> }[] = [
     { node: nodeName, req: new Map(), seen: new Set([nodeName]) },
   ];
@@ -1096,7 +1103,7 @@ function sensitisationPaths(
       }
       if (!ok) continue;
 
-      if (effects.includes(gate)) out.push(merged);
+      if (effects.includes(gate)) out.push({ req: merged, effect: gate });
       else queue.push({ node: gate, req: merged, seen: new Set([...cur.seen, gate]) });
     }
   }
@@ -1266,7 +1273,7 @@ function mergeExpressions(
         req.set(k, v);
       }
       if (ok) {
-        for (const [k, v] of path) {
+        for (const [k, v] of path.req) {
           const seen = req.get(k);
           if (seen !== undefined && seen !== v) { ok = false; break; }
           req.set(k, v);
@@ -1350,10 +1357,11 @@ function buildColumn(
   state: AlgorithmState,
   o: Obligation,
   effects: string[]
-): Map<string, WorkValue> | null {
+): { work: Map<string, WorkValue>; origin: ColumnOrigin } | null {
   const target = obligationTarget(o);
-  const paths = target === null ? [new Map<string, ExpressionRequiredValue>()]
-                                : sensitisationPaths(model, target, effects);
+  const paths: SensitisationPath[] = target === null
+    ? [{ req: new Map(), effect: '' }]
+    : sensitisationPaths(model, target, effects);
 
   for (const path of paths) {
     const seed = new Map<string, ExpressionRequiredValue>();
@@ -1364,7 +1372,7 @@ function buildColumn(
       seed.set(k, v);
     }
     if (ok) {
-      for (const [k, v] of path) {
+      for (const [k, v] of path.req) {
         const seen = seed.get(k);
         if (seen !== undefined && seen !== v) { ok = false; break; }
         seed.set(k, v);
@@ -1389,9 +1397,37 @@ function buildColumn(
     // The assertion of §7.1: construction should have made this true.
     if (!dischargesObligation(settled(work, model), model, o, state.expressions, effects)) continue;
 
-    return work;
+    return { work, origin: originOf(o, path.effect) };
   }
   return null;
+}
+
+/** Why this column exists, in the shape the output carries (§3.7). */
+function originOf(o: Obligation, effect: string): ColumnOrigin {
+  if (o.kind === 'A') {
+    return { kind: 'A', expressionIndex: o.index, observed: o.owner, effect };
+  }
+  if (o.kind === 'B') {
+    return { kind: 'B', cause: o.cause, causeValue: o.want, observed: o.cause, effect };
+  }
+  return { kind: 'C', constraint: formatConstraintDisplay(o.constraint) };
+}
+
+/**
+ * One line saying why a column exists (§3.7). Every output renders it the same
+ * way, so the decision table, the coverage table, the CSV and the API agree.
+ */
+export function formatColumnOrigin(origin: ColumnOrigin | null | undefined): string {
+  if (!origin) return '';
+  // An effect observes itself, so naming it twice says nothing.
+  const at = origin.observed === origin.effect ? '' : ` → ${origin.effect ?? ''}`;
+  if (origin.kind === 'A') {
+    return `Expr.${(origin.expressionIndex ?? 0) + 1} ${origin.observed ?? ''}${at}`;
+  }
+  if (origin.kind === 'B') {
+    return `${origin.cause ?? ''}=${origin.causeValue ? 'T' : 'F'}${at}`;
+  }
+  return origin.constraint ?? '';
 }
 
 // =============================================================================
@@ -1461,6 +1497,7 @@ export function calcTable(model: LogicalModel): AlgorithmState {
     unsuitableCauseValues: new Set(),
     infeasibles: new Array(lnum).fill(null),
     unobservables: new Array(lnum).fill(null),
+    origins: [],
     weaks: [],
   };
 
@@ -1475,11 +1512,12 @@ export function calcTable(model: LogicalModel): AlgorithmState {
       dischargesObligation(settled(t, model), model, o, expressions, effects));
     if (already) continue;
 
-    const column = buildColumn(model, state, o, effects);
-    if (!column) continue; // classified in Phase 6
+    const built = buildColumn(model, state, o, effects);
+    if (!built) continue; // classified in Phase 6
 
-    state.tests.push(column as Map<string, TruthValue>);
-    const view = settled(column, model);
+    state.tests.push(built.work as Map<string, TruthValue>);
+    state.origins.push(built.origin);
+    const view = settled(built.work, model);
     state.covs.push(expressions.map((e) =>
       realizesExpression(view, e) && observable(view, model, e.ownerNode, effects)));
   }
@@ -1502,13 +1540,16 @@ export function calcTable(model: LogicalModel): AlgorithmState {
     }).join('');
   const seenInputs = new Set<string>();
   const kept: Map<string, TruthValue>[] = [];
-  for (const test of state.tests) {
+  const keptOrigins: ColumnOrigin[] = [];
+  state.tests.forEach((test, i) => {
     const sig = inputSignature(test);
-    if (seenInputs.has(sig)) continue;
+    if (seenInputs.has(sig)) return; // the surviving column keeps its own origin
     seenInputs.add(sig);
     kept.push(test);
-  }
+    keptOrigins.push(state.origins[i]);
+  });
   state.tests = kept;
+  state.origins = keptOrigins;
 
   // === Phase 4: expression coverage on the finished columns (§13.1) ===
   state.covs = state.tests.map((t) =>
@@ -1578,7 +1619,7 @@ export function calcTable(model: LogicalModel): AlgorithmState {
         if (!placeRequirement(witness, k, v)) { placed = false; break; }
       }
       if (placed) {
-        for (const [k, v] of path) {
+        for (const [k, v] of path.req) {
           if (!placeRequirement(witness, k, v)) { placed = false; break; }
         }
       }

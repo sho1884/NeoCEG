@@ -118,6 +118,12 @@ export function generateCoverageTableFromState(
     let isCovered = false;
     let firstCovered = false; // tracks if '#' has been assigned for this expression
 
+    /** Was this column generated to verify this very expression? (§3.7) */
+    const isPrimaryFor = (t: number) => {
+      const origin = state.origins?.[t];
+      return origin?.kind === 'A' && origin.expressionIndex === l;
+    };
+
     if (isInfeasible) {
       // All cells get 'infeasible' marker
       for (let t = 0; t < state.tests.length; t++) {
@@ -132,7 +138,13 @@ export function generateCoverageTableFromState(
       for (let t = 0; t < state.tests.length; t++) {
         const condId = t + 1;
         if (state.covs[t]?.[l]) {
-          if (state.weaks[t]) {
+          if (isPrimaryFor(t)) {
+            // The column exists to verify this expression (§13.2). Marked even
+            // for a weak column: it still says why that column was made.
+            coverage.set(condId, 'primary');
+            firstCovered = true;
+            if (!state.weaks[t]) isCovered = true;
+          } else if (state.weaks[t]) {
             // Weak tests always get 'covered' (x)
             coverage.set(condId, 'covered');
           } else if (!firstCovered) {
@@ -219,6 +231,8 @@ export function generateCoverageTableFromState(
     nodeNames,
     nodeLabels,
     conditionIds,
+    // §16.3: every column, weak ones included, says why it was made
+    origins: allTestIndices.map((t) => state.origins?.[t] ?? null),
     stats: {
       totalExpressions: state.expressions.length,
       coveredExpressions: coveredCount,
@@ -234,7 +248,8 @@ export function generateCoverageTableFromState(
  * Get coverage marker display character.
  *
  * Symbols (Algorithm_Design.md §13.3, §13.4.3):
- * - # : first coverage (first non-weak test to cover this expression)
+ * - @ : primary obligation (the column was generated to verify this expression)
+ * - # : first coverage (covered it first, without being made for it)
  * - x : additional coverage (expression already covered by a previous test)
  * - ! : infeasible (constraint violation, cannot execute)
  * - ? : untestable (can execute, but result unknown due to MASK)
@@ -254,6 +269,8 @@ export function getCoverageMarkerDisplay(marker: CoverageMarker): string {
       return '';
     case 'infeasible':
       return '!';
+    case 'primary':
+      return '@';
     case 'untestable':
       return '?';
     case 'unobservable':

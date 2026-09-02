@@ -81,3 +81,56 @@ describe('unobservable expressions (§13.4)', () => {
     expect(coverage.stats.coveragePercent).toBeCloseTo((1 / 6) * 100, 5);
   });
 });
+
+describe('column origin (§3.7)', () => {
+  test('every column says why it exists, and the coverage table marks that cell', async () => {
+    const { parseLogicalDSL } = await import('../services/logicalDslParser');
+    const { calcTable, formatColumnOrigin } = await import('../services/cegAlgorithm');
+    const { generateCoverageTableFromState } = await import('../services/coverageTableCalculator');
+    const { readFileSync } = await import('node:fs');
+
+    for (const name of models) {
+      const model = parseLogicalDSL(readFileSync(join(GRAPH_DIR, name), 'utf8')).model!;
+      const state = calcTable(model);
+
+      // One origin per column, and it renders to something readable.
+      expect(state.origins, name).toHaveLength(state.tests.length);
+      for (const origin of state.origins) {
+        expect(formatColumnOrigin(origin), name).not.toBe('');
+      }
+
+      // The coverage table carries them for every column, weak ones included.
+      const coverage = generateCoverageTableFromState(model, state);
+      expect(coverage.origins, name).toHaveLength(state.tests.length);
+
+      // A column generated for an expression marks that cell '@'.
+      state.origins.forEach((origin, t) => {
+        if (origin.kind !== 'A') return;
+        const row = coverage.rows[origin.expressionIndex!];
+        expect(row.coverage.get(t + 1), `${name} column ${t + 1}`).toBe('primary');
+      });
+    }
+  });
+
+  test('the decision table CSV ends with a Purpose row', async () => {
+    const { parseLogicalDSL } = await import('../services/logicalDslParser');
+    const { calcTable } = await import('../services/cegAlgorithm');
+    const { generateOptimizedDecisionTableWithState } = await import('../services/decisionTableCalculator');
+    const { generateDecisionTableCSV } = await import('../services/csvGenerator');
+    const { readFileSync } = await import('node:fs');
+
+    const model = parseLogicalDSL(
+      readFileSync(join(GRAPH_DIR, '17_admission_fee.nceg'), 'utf8')).model!;
+    const { table } = generateOptimizedDecisionTableWithState(model);
+    const state = calcTable(model);
+    const labels = new Map([...model.nodes].map(([n, node]) => [n, node.label ?? n]));
+    const csv = generateDecisionTableCSV(
+      table, table.conditions, labels, table.causeIds, table.intermediateIds, table.effectIds);
+
+    const lines = csv.split('\r\n');
+    expect(lines[lines.length - 1].startsWith('Purpose')).toBe(true);
+    // The purpose row is last, so no existing row moved.
+    expect(lines[0].startsWith('ID,')).toBe(true);
+    expect(state.origins.length).toBeGreaterThan(0);
+  });
+});

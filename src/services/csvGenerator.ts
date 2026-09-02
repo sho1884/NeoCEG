@@ -9,6 +9,7 @@
  */
 
 import { getCoverageMarkerDisplay } from './coverageTableCalculator.js';
+import { formatColumnOrigin } from './cegAlgorithm.js';
 import { DECISION_TABLE_MESSAGES, COVERAGE_MESSAGES } from '../constants/messages.js';
 import type { DecisionTable, TestCondition } from '../types/decisionTable.js';
 import type { CoverageTable } from '../types/coverageTable.js';
@@ -80,6 +81,18 @@ export function generateDecisionTableCSV(
   for (const nodeId of sortedIntermediateIds) lines.push(section(nodeId, DECISION_TABLE_MESSAGES.classificationIntermediate));
   for (const nodeId of sortedEffectIds) lines.push(section(nodeId, DECISION_TABLE_MESSAGES.classificationEffect));
 
+  // Purpose row, last: why each column exists (§3.7 / §15.3). Placed at the end
+  // so no existing row moves.
+  if (conditions.some((c) => c.origin)) {
+    const purposeRow = [
+      COVERAGE_MESSAGES.purposeRowHeader,
+      '',
+      '',
+      ...conditions.map((c) => formatColumnOrigin(c.origin)),
+    ];
+    lines.push(purposeRow.map(escapeCSV).join(','));
+  }
+
   return lines.join('\r\n');
 }
 
@@ -119,6 +132,19 @@ export function generateCoverageTableCSV(table: CoverageTable): string {
       escapeCSV(row.reason || ''),
     ];
     lines.push(csvRow.join(','));
+  }
+
+  // Purpose row, last: why each column exists — weak columns included, because
+  // the coverage table explains the basis of the decision table (§16.3).
+  if (table.origins?.some((o) => o)) {
+    const purposeRow = [
+      COVERAGE_MESSAGES.purposeRowHeader,
+      ...table.nodeNames.map(() => ''),
+      ...table.origins.map((o) => formatColumnOrigin(o)),
+      '',
+      '',
+    ];
+    lines.push(purposeRow.map(escapeCSV).join(','));
   }
 
   return lines.join('\r\n');

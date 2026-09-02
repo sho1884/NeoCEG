@@ -6,6 +6,9 @@ version: "1.1"
 last_updated: "2026-07-24"
 
 # Change Log:
+# v1.3 - Column origin (SR-024, SR-030): a Purpose row at the end of the decision
+#        table and the coverage table, and the '@' marker for the expression a
+#        column was generated for; see Algorithm_Design.md 3.7 / 13.3 / 15.3 / 16.3
 # v1.2 - Coverage marks assert verification; add the unobservable marker '>' and
 #        count every expression in the coverage rate (SR-030);
 #        see Algorithm_Design.md 1.4 / 2.2 / 2.5 / 13.4
@@ -958,6 +961,12 @@ requirements:
       - context: "Logical expression is untestable"
         action: "-"
         outcome: "Display '?' (question) marker in amber; show 'Untestable' in Status column and 'MASK(X → Y)' in Reason column; gray entire row"
+      - context: "A test rule was generated to verify a particular expression"
+        action: "-"
+        outcome: "Mark that cell '@' (primary obligation) instead of '#'; '#' then means a rule that covered the expression first without being made for it (see Algorithm_Design.md 3.7/13.3)"
+      - context: "Coverage table is displayed"
+        action: "-"
+        outcome: "Show a Purpose row at the end giving why each column exists (obligation, observed node, effect observed at) for every column including weak ones, so the basis of the decision table can be read (see Algorithm_Design.md 16.3)"
       - context: "Logical expression is unobservable"
         action: "-"
         outcome: "Display '>' (greater-than) marker in orange; show 'Blocked' in Status column and the blocking reason in Reason column; light orange row. The expression can be executed and the value produced, but it never reaches an effect, so the tester cannot decide it (see Algorithm_Design.md 2.5/13.4)"

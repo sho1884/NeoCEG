@@ -133,6 +133,28 @@ export function truthNot(v: TruthValue): TruthValue {
 /**
  * A single test condition (column in decision table)
  */
+/**
+ * Why a column exists (Algorithm_Design.md §3.7).
+ *
+ * One obligation per column — the one it was generated for. The obligations a
+ * column happens to discharge as well are shown by the coverage table.
+ */
+export interface ColumnOrigin {
+  /** A: expression coverage, B: result coverage, C: constraint demonstration */
+  kind: 'A' | 'B' | 'C';
+  /** A: index of the expression (0-based) */
+  expressionIndex?: number;
+  /** B: the cause and the value it must take */
+  cause?: string;
+  causeValue?: boolean;
+  /** A / B: the node whose value the column observes */
+  observed?: string;
+  /** A / B: the effect node where that value is observed */
+  effect?: string;
+  /** C: the MASK constraint being demonstrated, already formatted */
+  constraint?: string;
+}
+
 export interface TestCondition {
   /** Unique identifier for this test condition */
   id: number;
@@ -145,6 +167,9 @@ export interface TestCondition {
 
   /** Reason for exclusion (if excluded) */
   exclusionReason?: ExclusionReason;
+
+  /** Why this column exists (§3.7) */
+  origin?: ColumnOrigin;
 }
 
 /**

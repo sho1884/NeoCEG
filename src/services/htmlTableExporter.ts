@@ -9,6 +9,7 @@
 import { generateDecisionTableCSV, generateCoverageTableCSV, computeTablesFromGraph } from './csvExporter';
 import { copyTableToClipboard, type CopyResult } from './clipboardWrite';
 import { getCoverageMarkerDisplay } from './coverageTableCalculator';
+import { formatColumnOrigin } from './cegAlgorithm';
 import type { DecisionTable, TestCondition, TruthValue } from '../types/decisionTable';
 import type { CoverageTable } from '../types/coverageTable';
 import { DECISION_TABLE_MESSAGES, COVERAGE_MESSAGES } from '../constants/messages';
@@ -35,6 +36,7 @@ const SECTION_COLORS = {
 };
 
 const COVERAGE_MARKER_COLORS: Record<string, { bg: string; text: string }> = {
+  primary:     { bg: '#c8e6c9', text: '#1b5e20' },
   adopted:     { bg: '#e3f2fd', text: '#1565c0' },
   covered:     { bg: '#e8eaf6', text: '#558b2f' },
   not_covered: { bg: '#ffffff', text: '#666666' },
@@ -152,6 +154,19 @@ export function generateDecisionTableHTML(
   renderSection(sortedIntermediateIds, DECISION_TABLE_MESSAGES.intermediatesSectionHeader, 'intermediate');
   renderSection(sortedEffectIds, DECISION_TABLE_MESSAGES.effectsSectionHeader, 'effect');
 
+  // Purpose row, last: why each column exists (§3.7 / §15.3)
+  if (conditions.some((c) => c.origin)) {
+    const purposeCells = [
+      `<td style="${CELL_STYLE} background:#fafafa; font-size:10px;">${escapeHtml(COVERAGE_MESSAGES.purposeRowHeader)}</td>`,
+      `<td style="${CELL_STYLE} background:#fafafa;"></td>`,
+      `<td style="${CELL_STYLE} background:#fafafa;"></td>`,
+      ...conditions.map(
+        (c) =>
+          `<td style="${CELL_STYLE} background:#fafafa; font-size:10px; color:#555;">${escapeHtml(formatColumnOrigin(c.origin))}</td>`
+      ),
+    ];
+    rows.push(`  <tr>${purposeCells.join('')}</tr>`);
+  }
   return `<table style="${TABLE_STYLE}">\n${rows.join('\n')}\n</table>`;
 }
 
@@ -226,6 +241,20 @@ export function generateCoverageTableHTML(table: CoverageTable): string {
     rows.push(`  <tr>${cells.join('')}</tr>`);
   }
 
+  // Purpose row, last: every column including the weak ones (§16.3)
+  if (table.origins?.some((o) => o)) {
+    const purposeCells = [
+      `<td style="${CELL_STYLE} background:#fafafa; font-size:10px;">${escapeHtml(COVERAGE_MESSAGES.purposeRowHeader)}</td>`,
+      ...table.nodeNames.map(() => `<td style="${CELL_STYLE} background:#fafafa;"></td>`),
+      ...table.origins.map(
+        (o) =>
+          `<td style="${CELL_STYLE} background:#fafafa; font-size:10px; color:#555;">${escapeHtml(formatColumnOrigin(o))}</td>`
+      ),
+      `<td style="${CELL_STYLE} background:#fafafa;"></td>`,
+      `<td style="${CELL_STYLE} background:#fafafa;"></td>`,
+    ];
+    rows.push(`  <tr>${purposeCells.join('')}</tr>`);
+  }
   return `<table style="${TABLE_STYLE}">\n${rows.join('\n')}\n</table>`;
 }
 

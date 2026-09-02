@@ -11,7 +11,7 @@
  * Reference: Doc/Algorithm_Design.md §3 "Data Structures"
  */
 
-import type { TruthValue } from './decisionTable';
+import type { TruthValue, ColumnOrigin } from './decisionTable';
 
 // =============================================================================
 // §3.1 Logical Expression (logics[l][k])
@@ -141,6 +141,15 @@ export interface AlgorithmState {
    * null = feasible, string = reason for infeasibility.
    */
   infeasibles: (string | null)[];
+
+  // --- §3.7 Column origin ---
+
+  /**
+   * Why each column exists (origins[]), one per entry of `tests`.
+   * Kept through duplicate removal and weak-test deletion, so the coverage
+   * table can explain deleted columns too (§3.7, §16.3).
+   */
+  origins: ColumnOrigin[];
 
   // --- §13.4 Blocked (unobservable) marks ---
 

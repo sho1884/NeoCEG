@@ -146,6 +146,7 @@ describe('generateCoverageTableHTML', () => {
       nodeNames: ['c1', 'e1'],
       nodeLabels: new Map([['c1', 'Cause 1'], ['e1', 'Effect 1']]),
       conditionIds: [0, 1],
+      origins: [null, null],
       stats: {
         totalExpressions: 1,
         coveredExpressions: 1,
@@ -198,6 +199,7 @@ describe('generateCoverageTableHTML', () => {
       nodeNames: ['c1', 'e1'],
       nodeLabels: new Map([['c1', 'C'], ['e1', 'E']]),
       conditionIds: [0],
+      origins: [null],
       stats: {
         totalExpressions: 1,
         coveredExpressions: 0,
@@ -230,6 +232,7 @@ describe('generateCoverageTableHTML', () => {
       nodeNames: ['c1', 'e1'],
       nodeLabels: new Map([['c1', 'C'], ['e1', 'E']]),
       conditionIds: [0],
+      origins: [null],
       stats: {
         totalExpressions: 1,
         coveredExpressions: 0,

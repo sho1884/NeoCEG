@@ -1455,7 +1455,7 @@ describe('generateCoverageTableFromState', () => {
     }
   });
 
-  it('coverage markers: # for unique, x for redundant', () => {
+  it('coverage markers: @ for the column generated for the expression (§13.3)', () => {
     const model = createModel([
       { name: 'A' },
       { name: 'B' },
@@ -1465,14 +1465,16 @@ describe('generateCoverageTableFromState', () => {
     const state = calcTable(model);
     const table = generateCoverageTableFromState(model, state);
 
-    // At least one row should have an 'adopted' (#) marker
-    let hasAdopted = false;
+    // A column exists to verify one expression, and that cell carries '@'.
+    // '#' means a column that covered an expression first without being made
+    // for it, so a small model may have none.
+    let hasPrimary = false;
     for (const row of table.rows) {
       for (const [, marker] of row.coverage) {
-        if (marker === 'adopted') hasAdopted = true;
+        if (marker === 'primary') hasPrimary = true;
       }
     }
-    expect(hasAdopted).toBe(true);
+    expect(hasPrimary).toBe(true);
   });
 });
 

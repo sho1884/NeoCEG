@@ -7,7 +7,7 @@
  * Coverage means the test condition demonstrates the effect of the expression.
  */
 
-import type { TruthValue } from './decisionTable';
+import type { TruthValue, ColumnOrigin } from './decisionTable';
 
 // =============================================================================
 // Coverage Cell Values
@@ -24,6 +24,7 @@ import type { TruthValue } from './decisionTable';
  * Reference: Algorithm_Design.md §13.2, §13.4
  */
 export type CoverageMarker =
+  | 'primary'
   | 'adopted'
   | 'covered'
   | 'not_covered'
@@ -119,6 +120,12 @@ export interface CoverageTable {
   nodeLabels: Map<string, string>;
   /** Test condition IDs (from decision table, feasible only) */
   conditionIds: number[];
+  /**
+   * Why each column exists (§3.7), parallel to conditionIds. Weak columns are
+   * included: the coverage table explains the basis of the decision table, so a
+   * deleted column must still say why it was made (§16.3).
+   */
+  origins: (ColumnOrigin | null)[];
   /** Statistics */
   stats: {
     /** Total number of logical expressions */

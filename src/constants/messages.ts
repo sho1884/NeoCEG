@@ -52,6 +52,7 @@ export const COVERAGE_MESSAGES = {
   infeasibleBadge: 'Infeasible',
   untestableBadge: 'Untestable',
   unobservableBadge: 'Blocked',
+  purposeRowHeader: 'Purpose (目的)',
   notCoveredBadge: 'Not Covered',
 
   // Abbreviated badges for column headers

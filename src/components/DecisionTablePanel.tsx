@@ -38,6 +38,7 @@ import {
   copyCoverageTableToClipboard,
 } from '../services/htmlTableExporter';
 import { generateSkeletonPseudoCode } from '../services/skeletonExporter';
+import { formatColumnOrigin } from '../services/cegAlgorithm';
 import type { SkeletonResult } from '../services/skeletonExporter';
 import { getGrammarText, GRAMMAR_FILENAME } from '../services/grammarSpec';
 import type { DecisionTable, TestCondition, TruthValue, DisplayMode } from '../types/decisionTable';
@@ -413,6 +414,19 @@ function DecisionTableView({ table: _table, conditions, nodeLabels, mode, sorted
               ))}
             </tr>
           ))}
+          {/* Purpose row, last: why each column exists (§3.7 / §15.3) */}
+          {conditions.some((c) => c.origin) && (
+            <tr>
+              <td style={{ ...PURPOSE_ROW_STYLE, position: 'sticky', left: 0 }} colSpan={2}>
+                {COVERAGE_MESSAGES.purposeRowHeader}
+              </td>
+              {conditions.map((c) => (
+                <td key={c.id} style={PURPOSE_ROW_STYLE} title={formatColumnOrigin(c.origin)}>
+                  {formatColumnOrigin(c.origin)}
+                </td>
+              ))}
+            </tr>
+          )}
         </tbody>
       </table>
     </div>
@@ -423,7 +437,18 @@ function DecisionTableView({ table: _table, conditions, nodeLabels, mode, sorted
 // Coverage Table Components
 // =============================================================================
 
+
+const PURPOSE_ROW_STYLE = {
+  padding: '4px 8px',
+  border: '1px solid #ddd',
+  fontSize: '10px',
+  color: '#555',
+  backgroundColor: '#fafafa',
+  whiteSpace: 'nowrap' as const,
+};
+
 const COVERAGE_COLORS: Record<CoverageMarker, { bg: string; text: string }> = {
+  primary: { bg: '#a5d6a7', text: '#1b5e20' },
   adopted: { bg: '#c8e6c9', text: '#2e7d32' },
   covered: { bg: '#e8f5e9', text: '#558b2f' },
   not_covered: { bg: '#ffffff', text: '#999999' },
@@ -762,6 +787,22 @@ function CoverageTableView({ table, conditions, mode = 'practice' }: CoverageTab
               </td>
             </tr>
           ))}
+          {/* Purpose row, last: why each column exists — weak columns included (§16.3) */}
+          {table.origins?.some((o) => o) && (
+            <tr>
+              <td style={PURPOSE_ROW_STYLE}>{COVERAGE_MESSAGES.purposeRowHeader}</td>
+              {table.nodeNames.map((n) => (
+                <td key={`purpose-${n}`} style={PURPOSE_ROW_STYLE} />
+              ))}
+              {table.origins.map((o, i) => (
+                <td key={`purpose-c${i}`} style={PURPOSE_ROW_STYLE} title={formatColumnOrigin(o)}>
+                  {formatColumnOrigin(o)}
+                </td>
+              ))}
+              <td style={PURPOSE_ROW_STYLE} />
+              <td style={PURPOSE_ROW_STYLE} />
+            </tr>
+          )}
         </tbody>
       </table>
     </div>
@@ -1670,6 +1711,7 @@ export default function DecisionTablePanel() {
         nodeNames: [],
         nodeLabels: new Map(),
         conditionIds: [],
+        origins: [],
         stats: { totalExpressions: 0, coveredExpressions: 0, infeasibleExpressions: 0, untestableExpressions: 0, unobservableExpressions: 0, coveragePercent: 100 },
       };
       return {
