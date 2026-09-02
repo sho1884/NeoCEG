@@ -1,8 +1,8 @@
 # NeoCEG User Manual / NeoCEG ユーザーマニュアル
 
-**Version**: 1.2
-**Date**: 2026-07-12
-**Status**: Updated for current release / 現行リリースに更新 (added screen figures / 画面図を追加)
+**Version**: 1.3
+**Date**: 2026-09-02
+**Status**: Updated for current release / 現行リリースに更新 (coverage marks assert verification; `@` primary and `>` unobservable marks; Purpose row / カバレッジの記号が検証を表明、`@` 主義務・`>` 観測不能、目的行)
 
 ---
 
@@ -888,6 +888,6 @@ This warning appears when you have unsaved changes. Your work is still in the br
 |---|---|
 | 2026-03-01 | Initial version / 初版作成 |
 | 2026-06-14 | Update for current app: node display = proposition + expression tooltip (§4.3); `factor = level` naming convention (§10.4); Validity Warnings (§7.6) and Skeleton tab (§7.7); dual-format table Copy (§11.7); offline Copy/Download DSL Grammar (§3.3, §11.9); five bottom-panel tabs / 現行アプリへ更新：ノード表示＝命題＋式ツールチップ（§4.3）、`factor = level` 命名規約（§10.4）、妥当性警告（§7.6）・Skeleton タブ（§7.7）、表の2形式コピー（§11.7）、オフライン Copy/Download DSL Grammar（§3.3・§11.9）、下部パネル5タブ |
-| 2026-09-02 | Each column now says why it exists: a Purpose row at the end of the coverage table, and the `@` marker for the expression a rule was generated for (§8.3, §8.3.1) / 各列の存在理由を表示：両表の末尾に目的行、生成の元になった論理式に `@` |
-| 2026-09-02 | Coverage markers now assert verification: `#`/`x` appear only when the value reaches an effect; added the Unobservable marker `>`; the coverage rate counts every expression and shows the breakdown (§8.3, §8.5) / カバレッジマーカーは検証できたことの表明に：値が結果に届く場合のみ `#`・`x` が付く。観測不能 `>` を追加。カバレッジ率は全論理式を分母とし内訳を併記（§8.3, §8.5） |
 | 2026-07-24 | Symbol alignment: decision-table don't-care cell = `-` (§7.2); coverage-table infeasible marker = `!` (was `-`), so the two tables never share a glyph (§8.3) / 記号統一：DTの不問セル＝`-`（§7.2）、カバレッジの実行不能＝`!`（旧 `-`）。両表で字形が衝突しない（§8.3） |
+| 2026-09-02 | Each column now says why it exists: a Purpose row at the end of the coverage table, and the `@` marker for the expression a rule was generated for (§8.3, §8.3.1) / 各列の存在理由を表示：カバレッジ表の末尾に目的行、生成の元になった論理式に `@`。決定表には置かない（式番号の定義がカバレッジ表にしかないため） |
+| 2026-09-02 | Coverage markers now assert verification: `#`/`x` appear only when the value reaches an effect; added the Unobservable marker `>`; the coverage rate counts every expression and shows the breakdown (§8.3, §8.5) / カバレッジマーカーは検証できたことの表明に：値が結果に届く場合のみ `#`・`x` が付く。観測不能 `>` を追加。カバレッジ率は全論理式を分母とし内訳を併記（§8.3, §8.5） |

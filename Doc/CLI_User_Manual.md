@@ -1,8 +1,8 @@
 # NeoCEG CLI User Manual / NeoCEG CLI ユーザーマニュアル
 
-**Version**: 1.0
-**Date**: 2026-04-04
-**Status**: Initial release / 初版
+**Version**: 1.1
+**Date**: 2026-09-02
+**Status**: Updated for current release / 現行リリースに更新 (`--all-combinations` and the demo API; coverage marks assert verification; `@` primary, `>` unobservable, Purpose row / `--all-combinations` とデモ API、カバレッジの記号が検証を表明、`@` 主義務・`>` 観測不能・目的行)
 
 ---
 
@@ -402,6 +402,6 @@ Errors are always JSON: `{"error": {"type": "...", "message": "..."}}`.
 | 2026-04-04 | Initial version / 初版作成 |
 | 2026-07-24 | Add §8 Demo API (serve mode) with the public demo URL, curl examples, and guardrails / §8 デモ API（serve モード）を追加：公開デモ URL・curl 例・ガードレール |
 | 2026-07-24 | Document `--all-combinations` (learning mode) and its 256-column limit to match the core; remove the stale Observable column (the observable flag was removed in 2026-06) / コアに合わせ `--all-combinations`（学習モード）と 256 列上限を記載。廃止済みの Observable 列を削除（観測フラグは 2026-06 に削除） |
+| 2026-07-24 | Symbol alignment: decision-table don't-care is `-`; coverage-table infeasible is `!` (was `-`), untestable `?` — added the missing coverage markers and the DT `-` legend / 記号統一：DTの不問は `-`、カバレッジの実行不能は `!`（旧 `-`）・テスト不能 `?`。欠けていたカバレッジ記号と DT `-` の凡例を追加 |
 | 2026-09-02 | Add the Purpose row at the end of the coverage CSV and the `@` marker for the expression a rule was generated for / 両 CSV の末尾に目的行、生成の元になった論理式に `@` |
 | 2026-09-02 | Coverage markers assert verification (`#`/`x` only when the value reaches an effect); added the Unobservable marker `>`; the coverage rate counts every expression with the breakdown shown / カバレッジマーカーは検証の表明（値が結果に届く場合のみ `#`・`x`）。観測不能 `>` を追加。カバレッジ率は全論理式を分母とし内訳を併記 |
-| 2026-07-24 | Symbol alignment: decision-table don't-care is `-`; coverage-table infeasible is `!` (was `-`), untestable `?` — added the missing coverage markers and the DT `-` legend / 記号統一：DTの不問は `-`、カバレッジの実行不能は `!`（旧 `-`）・テスト不能 `?`。欠けていたカバレッジ記号と DT `-` の凡例を追加 |
