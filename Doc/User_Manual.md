@@ -26,23 +26,24 @@ NeoCEGは、原因結果グラフ（CEG）によるテスト設計のためのWe
 
 ## Table of Contents / 目次
 
-1. [Introduction / はじめに](#1-introduction--はじめに)
-2. [Quick Start / クイックスタート](#2-quick-start--クイックスタート)
-3. [Screen Layout / 画面構成](#3-screen-layout--画面構成)
-4. [Working with Nodes / ノードの操作](#4-working-with-nodes--ノードの操作)
-5. [Working with Edges / エッジの操作](#5-working-with-edges--エッジの操作)
-6. [Constraints / 制約](#6-constraints--制約)
-7. [Decision Table / デシジョンテーブル](#7-decision-table--デシジョンテーブル)
-8. [Coverage Table / カバレッジ表](#8-coverage-table--カバレッジ表)
-9. [Compare View / 比較ビュー](#9-compare-view--比較ビュー)
-10. [NeoCEG DSL Reference / DSLリファレンス](#10-neoceg-dsl-reference--dslリファレンス)
-11. [Import and Export / インポートとエクスポート](#11-import-and-export--インポートとエクスポート)
-12. [Keyboard Shortcuts / キーボードショートカット](#12-keyboard-shortcuts--キーボードショートカット)
-13. [FAQ / よくある質問](#13-faq--よくある質問)
-14. [Glossary / 用語集](#14-glossary--用語集)
+1. [Introduction / はじめに](#1-introduction)
+2. [Quick Start / クイックスタート](#2-quick-start)
+3. [Screen Layout / 画面構成](#3-screen-layout)
+4. [Working with Nodes / ノードの操作](#4-working-with-nodes)
+5. [Working with Edges / エッジの操作](#5-working-with-edges)
+6. [Constraints / 制約](#6-constraints)
+7. [Decision Table / デシジョンテーブル](#7-decision-table)
+8. [Coverage Table / カバレッジ表](#8-coverage-table)
+9. [Compare View / 比較ビュー](#9-compare-view)
+10. [NeoCEG DSL Reference / DSLリファレンス](#10-neoceg-dsl-reference-dsl)
+11. [Import and Export / インポートとエクスポート](#11-import-and-export)
+12. [Keyboard Shortcuts / キーボードショートカット](#12-keyboard-shortcuts)
+13. [FAQ / よくある質問](#13-faq)
+14. [Glossary / 用語集](#14-glossary)
 
 ---
 
+<a id="1-introduction"></a>
 ## 1. Introduction / はじめに
 
 NeoCEG is a reimplementation of the CEGTest tool, rebuilt from scratch using modern web technologies (React, TypeScript, React Flow). Key differences from traditional CEG tools:
@@ -64,6 +65,7 @@ On first launch with an empty canvas, a **Welcome Panel** appears with a Quick S
 
 ---
 
+<a id="2-quick-start"></a>
 ## 2. Quick Start / クイックスタート
 
 This tutorial walks through creating a login authentication CEG with 3 causes, 2 effects, and a constraint.
@@ -89,6 +91,7 @@ This tutorial walks through creating a login authentication CEG with 3 causes, 2
 
 ---
 
+<a id="3-screen-layout"></a>
 ## 3. Screen Layout / 画面構成
 
 ### 3.1 Toolbar / ツールバー
@@ -100,9 +103,9 @@ This tutorial walks through creating a login authentication CEG with 3 causes, 2
 | Section / セクション | Description / 説明 |
 |---|---|
 | NeoCEG (Logo) | Application name with build timestamp / アプリケーション名とビルドタイムスタンプ |
-| File | Dropdown menu for import, export, and clear operations (see [§11](#11-import-and-export--インポートとエクスポート)) / インポート、エクスポート、クリア操作のドロップダウン |
+| File | Dropdown menu for import, export, and clear operations (see [§11](#11-import-and-export)) / インポート、エクスポート、クリア操作のドロップダウン |
 | ↶ ↷ | Undo (Ctrl+Z) and Redo (Ctrl+Y), up to 50 states / 元に戻す・やり直し（最大50状態） |
-| One Excl Incl Req Mask | Constraint creation buttons — always enabled (see [§6](#6-constraints--制約)) / 制約作成ボタン（常に有効） |
+| One Excl Incl Req Mask | Constraint creation buttons — always enabled (see [§6](#6-constraints)) / 制約作成ボタン（常に有効） |
 | Status | Selection count and help tooltip (?) / 選択数表示とヘルプツールチップ |
 
 ### 3.2 Canvas / キャンバス
@@ -119,17 +122,18 @@ Five tabs below the canvas:
 
 | Tab / タブ | Purpose / 用途 |
 |---|---|
-| **Decision** | Generated decision table with test rules (see [§7](#7-decision-table--デシジョンテーブル)) / テストルールを含むデシジョンテーブル |
-| **Coverage** | Expression coverage analysis (see [§8](#8-coverage-table--カバレッジ表)) / 論理式カバレッジ分析 |
-| **Compare** | Side-by-side decision + coverage view (see [§9](#9-compare-view--比較ビュー)) / デシジョン＋カバレッジの並列表示 |
-| **Skeleton** | Program control-structure skeleton derived from the decision table (see [§7.7](#77-skeleton-tab--スケルトンタブ)) / デシジョンテーブルから導いた制御構造スケルトン |
-| **NeoCEG Language {.nceg}** | Live DSL text view with Copy/Paste/Save/Import buttons, plus **Copy/Download DSL Grammar** (see [§11.9](#119-copydownload-dsl-grammar--dsl文法のコピーダウンロード)) / DSLテキストのリアルタイム表示（コピー・貼付・保存・インポート、加えて **Copy/Download DSL Grammar**） |
+| **Decision** | Generated decision table with test rules (see [§7](#7-decision-table)) / テストルールを含むデシジョンテーブル |
+| **Coverage** | Expression coverage analysis (see [§8](#8-coverage-table)) / 論理式カバレッジ分析 |
+| **Compare** | Side-by-side decision + coverage view (see [§9](#9-compare-view)) / デシジョン＋カバレッジの並列表示 |
+| **Skeleton** | Program control-structure skeleton derived from the decision table (see [§7.7](#77-skeleton-tab)) / デシジョンテーブルから導いた制御構造スケルトン |
+| **NeoCEG Language {.nceg}** | Live DSL text view with Copy/Paste/Save/Import buttons, plus **Copy/Download DSL Grammar** (see [§11.9](#119-copydownload-dsl-grammar-dsl)) / DSLテキストのリアルタイム表示（コピー・貼付・保存・インポート、加えて **Copy/Download DSL Grammar**） |
 
-A persistent **validity-warning banner** (see [§7.6](#76-validity-warnings--妥当性の警告)) appears above the tabs when the model may be incomplete — it is visible on every tab.
-モデルが不完全かもしれないとき、タブの上に常時表示の**妥当性警告バナー**（[§7.6](#76-validity-warnings--妥当性の警告)）が出る（どのタブでも見える）。
+A persistent **validity-warning banner** (see [§7.6](#76-validity-warnings)) appears above the tabs when the model may be incomplete — it is visible on every tab.
+モデルが不完全かもしれないとき、タブの上に常時表示の**妥当性警告バナー**（[§7.6](#76-validity-warnings)）が出る（どのタブでも見える）。
 
 ---
 
+<a id="4-working-with-nodes"></a>
 ## 4. Working with Nodes / ノードの操作
 
 ### 4.1 Creating Nodes / ノード作成
@@ -167,8 +171,8 @@ Labels support Unicode characters including Japanese. Node width auto-adjusts an
 
 ラベルは日本語を含むUnicode文字に対応。ノード幅は自動調整され、選択時にノード枠をドラッグして手動リサイズも可能（範囲：80-400px、デフォルト：150px）。
 
-**What a node displays / ノードの表示内容.** A node is a **proposition**, so it shows its **label** (or, if unlabeled, its identifier) — *not* its logical expression. Hover the node to see the expression as a **tooltip**. A node still carrying a placeholder name ("Logical Statement 3") or its bare identifier is **not yet fully modelled**, so name the concept it represents. The expression is **not** auto-adopted as the name (it would go stale when you edit the graph). For how to name well, see the `factor = level` convention in [§10.4](#104-naming-convention-factor--level--命名規約factor--level).
-ノードは**命題**なので、表示されるのは**ラベル**（無ければ識別子）で、論理式ではない。式はノードにマウスを重ねると**ツールチップ**で見える。プレースホルダ名（「Logical Statement 3」）や素の識別子のままのノードは**モデリング途上**なので、表す概念を命名する。式を名前に自動採用は**しない**（グラフ編集で陳腐化するため）。良い命名は [§10.4](#104-naming-convention-factor--level--命名規約factor--level) の `factor = level` 規約参照。
+**What a node displays / ノードの表示内容.** A node is a **proposition**, so it shows its **label** (or, if unlabeled, its identifier) — *not* its logical expression. Hover the node to see the expression as a **tooltip**. A node still carrying a placeholder name ("Logical Statement 3") or its bare identifier is **not yet fully modelled**, so name the concept it represents. The expression is **not** auto-adopted as the name (it would go stale when you edit the graph). For how to name well, see the `factor = level` convention in [§10.4](#104-naming-convention-factor-level-factor-level).
+ノードは**命題**なので、表示されるのは**ラベル**（無ければ識別子）で、論理式ではない。式はノードにマウスを重ねると**ツールチップ**で見える。プレースホルダ名（「Logical Statement 3」）や素の識別子のままのノードは**モデリング途上**なので、表す概念を命名する。式を名前に自動採用は**しない**（グラフ編集で陳腐化するため）。良い命名は [§10.4](#104-naming-convention-factor-level-factor-level) の `factor = level` 規約参照。
 
 ### 4.4 AND/OR Operator / AND/OR演算子
 
@@ -188,6 +192,7 @@ When a node receives its first incoming edge, an **AND** badge appears at the no
 
 ---
 
+<a id="5-working-with-edges"></a>
 ## 5. Working with Edges / エッジの操作
 
 ### 5.1 Logical Edges / 論理エッジ
@@ -211,6 +216,7 @@ A negated edge displays a blue "NOT" label and a circle marker at the source end
 
 ---
 
+<a id="6-constraints"></a>
 ## 6. Constraints / 制約
 
 ### 6.1 Overview / 概要
@@ -311,6 +317,7 @@ When changing a constraint's type:
 
 ---
 
+<a id="7-decision-table"></a>
 ## 7. Decision Table / デシジョンテーブル
 
 ### 7.1 Overview / 概要
@@ -410,6 +417,7 @@ Within each section, rows are sorted by the Y-coordinate of the corresponding no
 
 各セクション内の行は、キャンバス上のノードのY座標の昇順（上→下）でソートされます。これは表示層のみのソートで、ノード識別子やDSLエクスポート順には影響しません。
 
+<a id="76-validity-warnings"></a>
 ### 7.6 Validity Warnings / 妥当性の警告
 
 When a result might not be what you intend, a **notice banner is shown above the panel tabs at all times** — independent of the active tab and of whether the panel is collapsed. The notices are:
@@ -425,6 +433,7 @@ When a result might not be what you intend, a **notice banner is shown above the
 These are advisories, not errors — the tool works normally; they just invite a second look at the constraints.
 これらはエラーでなく注意喚起です。ツールは通常どおり動作し、制約を見直すきっかけを示すだけです。
 
+<a id="77-skeleton-tab"></a>
 ### 7.7 Skeleton Tab / スケルトンタブ
 
 The **Skeleton** tab shows a program control-structure skeleton (pseudo-code) derived from the decision table — the nested `if`/`else` shape an implementation would take to realize the same cause→effect behavior. It is read-only and updates as you edit the graph.
@@ -440,6 +449,7 @@ The **Skeleton** tab shows a program control-structure skeleton (pseudo-code) de
 
 ---
 
+<a id="8-coverage-table"></a>
 ## 8. Coverage Table / カバレッジ表
 
 ### 8.1 What is Expression Coverage / 論理式カバレッジとは
@@ -539,6 +549,7 @@ does not reach 100%, and the breakdown says why.
 
 ---
 
+<a id="9-compare-view"></a>
 ## 9. Compare View / 比較ビュー
 
 The **Compare** tab displays the Decision Table and Coverage Table stacked vertically with synchronized column widths. This allows you to cross-reference which test rules contribute to which expression coverage without switching tabs.
@@ -547,6 +558,7 @@ The **Compare** tab displays the Decision Table and Coverage Table stacked verti
 
 ---
 
+<a id="10-neoceg-dsl-reference-dsl"></a>
 ## 10. NeoCEG DSL Reference / DSLリファレンス
 
 ### 10.1 File Format / ファイル形式
@@ -605,6 +617,7 @@ All keywords are **case-insensitive** but conventionally written in UPPERCASE.
 | `REQ` | Requires constraint / 要求制約 |
 | `MASK` | Masking constraint / マスク制約 |
 
+<a id="104-naming-convention-factor-level-factor-level"></a>
 ### 10.4 Naming convention (factor = level) / 命名規約（factor = level）
 
 Name a **cause** by an attribute and its value — `factor = level` — where the level is an **equivalence class**, not a raw value (e.g. `天候 = 雨` / `weather = rainy`, `気温 = 低` / `temperature = low`). Name an **effect** as an output `factor = level` too (e.g. `料金 = 無料` / `fee = free`). The logic (AND/OR/NOT) lives in the graph, **never inside a node name**. Levels of one factor are mutually exclusive — usually a `ONE`/`EXCL` constraint. This matches the sibling tool **NeoCombi**'s factor/level model, so a graph converts cleanly to a combination-testing model.
@@ -640,6 +653,7 @@ For the complete EBNF grammar definition, see [DSL_Grammar_Specification.md](./D
 
 ---
 
+<a id="11-import-and-export"></a>
 ## 11. Import and Export / インポートとエクスポート
 
 ### 11.1 Open from URL / URLから開く
@@ -754,6 +768,7 @@ If the browser does not support the multi-format clipboard (`ClipboardItem` / `n
 
 ---
 
+<a id="119-copydownload-dsl-grammar-dsl"></a>
 ### 11.9 Copy/Download DSL Grammar / DSL文法のコピー・ダウンロード
 
 You can hand the **DSL grammar** to an AI assistant so it can generate `.nceg` graphs from natural-language requirements. Copy or download it from the **NeoCEG Language tab** or the **Help (?) popup**.
@@ -773,6 +788,7 @@ Because the grammar is embedded at build time, the version you copy always corre
 
 ---
 
+<a id="12-keyboard-shortcuts"></a>
 ## 12. Keyboard Shortcuts / キーボードショートカット
 
 | Shortcut / ショートカット | Action / 動作 |
@@ -794,6 +810,7 @@ Because the grammar is embedded at build time, the version you copy always corre
 
 ---
 
+<a id="13-faq"></a>
 ## 13. FAQ / よくある質問
 
 **Q: Decision table shows "No feasible rules" — is this a bug?**
@@ -854,6 +871,7 @@ This warning appears when you have unsaved changes. Your work is still in the br
 
 ---
 
+<a id="14-glossary"></a>
 ## 14. Glossary / 用語集
 
 | English Term | 日本語 | Definition / 定義 |
