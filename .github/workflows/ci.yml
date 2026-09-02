@@ -42,3 +42,25 @@ jobs:
       # entry point would not show up in the vite build.
       - name: CLI entry point
         run: npm run build:cli
+
+      # The published manual is a mirror of Doc/, copied by hand on each publish
+      # (see deploy/README.md and the publish-manual skill). Nothing else notices
+      # when the two drift: the public-files workflow builds and deploys whatever
+      # the mirror holds, however old. It once ran five weeks behind.
+      - name: Published manuals match Doc/
+        run: |
+          status=0
+          for f in User_Manual CLI_User_Manual DSL_Grammar_Specification; do
+            url="https://raw.githubusercontent.com/sho1884/public-files/main/NeoCEG/docs/$f.md"
+            if ! curl -fsSL -o "/tmp/$f.md" "$url"; then
+              echo "::error::could not fetch the published $f.md"
+              status=1
+              continue
+            fi
+            if ! diff -q "/tmp/$f.md" "Doc/$f.md" >/dev/null; then
+              echo "::error file=Doc/$f.md::differs from the published copy — re-publish public-files/NeoCEG/docs/"
+              diff "/tmp/$f.md" "Doc/$f.md" | head -20
+              status=1
+            fi
+          done
+          exit $status
