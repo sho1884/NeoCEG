@@ -1,7 +1,7 @@
 # NeoCEG User Manual / NeoCEG ユーザーマニュアル
 
-**Version**: 1.3
-**Date**: 2026-09-02
+**Version**: 1.4
+**Date**: 2026-09-05
 **Status**: Updated for current release / 現行リリースに更新 (coverage marks assert verification; `@` primary and `>` unobservable marks; Purpose row / カバレッジの記号が検証を表明、`@` 主義務・`>` 観測不能、目的行)
 
 ---
@@ -898,6 +898,20 @@ This warning appears when you have unsaved changes. Your work is still in the br
 - ISO/IEC/IEEE 29119-4:2021 "Software and systems engineering — Software testing — Part 4: Test techniques"
 - [DSL Grammar Specification](./DSL_Grammar_Specification.md) — Formal EBNF grammar for `.nceg` files
 
+**Articles about this tool / 本ツールの解説記事:**
+
+- [AIで「世界一難しいテスト技法」の敷居を下げる──面倒だった原因結果グラフ法をお手軽に](https://codezine.jp/article/detail/28931) (CodeZine / DeveloperZine)
+- [状態遷移表はなぜ必要か？「制約」から見える原因結果グラフ法の真価と、論理関係との境界線](https://codezine.jp/article/detail/28939) (CodeZine / DeveloperZine)
+
+**Sibling tools / 姉妹ツール:**
+
+NeoCEG is one of three tools sharing a text design source and one architecture, introduced together
+at [modellogue.com](https://modellogue.com/): [ModelLogue](https://modellogue.com/app) (state
+machines, SysML diagrams, review), **NeoCEG** (cause-effect graphs → decision tables) and
+[NeoCombi](https://sho1884.github.io/public-files/NeoCombi/) (combinatorial). /
+NeoCEG は、テキストの設計ソースと統一感のある構成思想でつながる3つのツールの一つです
+（[modellogue.com](https://modellogue.com/)）。
+
 ---
 
 ## Document History / 変更履歴
@@ -909,3 +923,4 @@ This warning appears when you have unsaved changes. Your work is still in the br
 | 2026-07-24 | Symbol alignment: decision-table don't-care cell = `-` (§7.2); coverage-table infeasible marker = `!` (was `-`), so the two tables never share a glyph (§8.3) / 記号統一：DTの不問セル＝`-`（§7.2）、カバレッジの実行不能＝`!`（旧 `-`）。両表で字形が衝突しない（§8.3） |
 | 2026-09-02 | Each column now says why it exists: a Purpose row at the end of the coverage table, and the `@` marker for the expression a rule was generated for (§8.3, §8.3.1) / 各列の存在理由を表示：カバレッジ表の末尾に目的行、生成の元になった論理式に `@`。デシジョンテーブルには置かない（式番号の定義がカバレッジ表にしかないため） |
 | 2026-09-02 | Coverage markers now assert verification: `#`/`x` appear only when the value reaches an effect; added the Unobservable marker `>`; the coverage rate counts every expression and shows the breakdown (§8.3, §8.5) / カバレッジマーカーは検証できたことの表明に：値が結果に届く場合のみ `#`・`x` が付く。観測不能 `>` を追加。カバレッジ率は全論理式を分母とし内訳を併記（§8.3, §8.5） |
+| 2026-09-05 | Appendix A: add the CodeZine articles about the tool and the three sibling tools at modellogue.com / 参考文献に本ツールの CodeZine 解説記事と、modellogue.com の3姉妹ツールを追加 |
